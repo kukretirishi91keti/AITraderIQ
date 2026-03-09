@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from './context/AuthContext';
 import ConnectionStatus from './components/ConnectionStatus';
+import BacktestPanel from './components/BacktestPanel';
+import SentimentDashboard from './components/SentimentDashboard';
+import MarketCommentary from './components/MarketCommentary';
+import AIScanner from './components/AIScanner';
 import { getPriceStream } from './services/websocket';
 
 // ============================================================
@@ -2309,12 +2313,12 @@ export default function App() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-4">
-            {['technicals', 'fundamentals', 'sentiment', 'news'].map(tab => (
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded text-sm font-medium capitalize ${
+                className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${
                   activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'
                 }`}
               >
@@ -2558,6 +2562,21 @@ export default function App() {
                 )}
               </div>
             )}
+
+            {activeTab === 'backtest' && (
+              <BacktestPanel symbol={selectedSymbol} traderStyle={traderStyle?.toLowerCase()} />
+            )}
+
+            {activeTab === 'sentiment' && (
+              <SentimentDashboard symbol={selectedSymbol} />
+            )}
+
+            {activeTab === 'AI scanner' && (
+              <AIScanner
+                traderStyle={traderStyle?.toLowerCase()}
+                onSymbolSelect={handleSymbolSelect}
+              />
+            )}
           </div>
         </main>
 
@@ -2637,6 +2656,10 @@ export default function App() {
                 Send
               </button>
             </div>
+          </div>
+          {/* Market Commentary Section */}
+          <div className="border-t border-gray-700 p-3 overflow-y-auto max-h-60">
+            <MarketCommentary />
           </div>
         </aside>
       </div>

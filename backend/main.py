@@ -237,6 +237,31 @@ load_router(
     '(real-time prices)'
 )
 
+# Phase 2: Backtesting, Sentiment, Commentary, Scanner
+load_router(
+    ['routers.backtest'],
+    'backtest router',
+    '(signal accuracy, strategy comparison)'
+)
+
+load_router(
+    ['routers.sentiment'],
+    'sentiment router',
+    '(combined sentiment aggregation)'
+)
+
+load_router(
+    ['routers.commentary'],
+    'commentary router',
+    '(AI market commentary)'
+)
+
+load_router(
+    ['routers.scanner'],
+    'scanner router',
+    '(AI-ranked opportunities)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS

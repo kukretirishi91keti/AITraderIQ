@@ -33,7 +33,12 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables."""
+    """Create all tables (imports all models so metadata is complete)."""
+    import database.models  # noqa: F401 - registers User, WatchlistItem, etc.
+    try:
+        from services.backtest_engine import SignalRecord  # noqa: F401
+    except ImportError:
+        pass
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

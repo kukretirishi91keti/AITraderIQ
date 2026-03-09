@@ -248,6 +248,43 @@ async def remove_from_portfolio(
 
 
 # =============================================================================
+# PORTFOLIO ANALYTICS
+# =============================================================================
+
+@router.get("/portfolio/analytics")
+async def get_portfolio_analytics(
+    user: User = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get full portfolio analytics: P&L, allocation, sector breakdown, risk metrics.
+
+    Requires at least one holding in the portfolio.
+    """
+    from services.portfolio_analytics import calculate_portfolio_analytics
+
+    result = await db.execute(
+        select(PortfolioItem)
+        .where(PortfolioItem.user_id == user.id)
+    )
+    items = result.scalars().all()
+
+    holdings = [
+        {
+            "symbol": item.symbol,
+            "shares": item.shares,
+            "avg_price": item.avg_price,
+            "currency": item.currency,
+            "market": item.market,
+        }
+        for item in items
+    ]
+
+    analytics = calculate_portfolio_analytics(holdings)
+    return {"success": True, **analytics}
+
+
+# =============================================================================
 # ALERTS ENDPOINTS
 # =============================================================================
 
