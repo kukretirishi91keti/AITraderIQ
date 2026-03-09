@@ -148,27 +148,22 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 def load_router(module_paths, router_name, description=""):
     """Try to load a router from multiple possible paths."""
+    from importlib import import_module
     for path in module_paths:
         try:
-            if '.' in path:
-                parts = path.rsplit('.', 1)
-                module = __import__(parts[0], fromlist=[parts[1]])
-                router = getattr(module, parts[1])
-            else:
-                module = __import__(path)
-                router = getattr(module, 'router')
-            
+            module = import_module(path)
+            router = getattr(module, 'router')
             app.include_router(router)
             loaded_routers.append(router_name)
-            logger.info(f"✅ {router_name} loaded {description}")
+            logger.info(f"  {router_name} loaded {description}")
             return True
-        except ImportError as e:
+        except ImportError:
             continue
         except Exception as e:
             logger.warning(f"Error loading {router_name} from {path}: {e}")
             continue
-    
-    logger.warning(f"⚠️  {router_name} not available")
+
+    logger.warning(f"  {router_name} not available")
     return False
 
 
