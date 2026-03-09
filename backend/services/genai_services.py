@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 # Get API key from environment or use provided key
-GROQ_API_KEY = os.environ.get('GROQ_API_KEY', 'REMOVED')
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = "llama-3.3-70b-versatile"  # Fast and capable
 GROQ_BACKUP_MODEL = "llama-3.1-8b-instant"  # Fallback model
 

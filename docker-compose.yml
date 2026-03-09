@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: traderai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEMO_MODE=${DEMO_MODE:-true}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
+      - DATABASE_URL=sqlite+aiosqlite:///./traderai.db
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost
+      - RATE_LIMIT_DEFAULT=60/minute
+      - RATE_LIMIT_AI=10/minute
+      - RATE_LIMIT_AUTH=5/minute
+    volumes:
+      - backend-data:/app/cache
+      - db-data:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: traderai-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  db-data:

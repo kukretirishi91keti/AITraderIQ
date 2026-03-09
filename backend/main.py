@@ -28,6 +28,13 @@ from datetime import datetime
 # Add the backend directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Rate limiting
+try:
+    from middleware.rate_limit import setup_rate_limiting
+    RATE_LIMITING_AVAILABLE = True
+except ImportError:
+    RATE_LIMITING_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 # Check demo mode from environment
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
-VERSION = "5.7.1"
+VERSION = "6.0.0"
 
 # Track loaded routers
 loaded_routers = []
@@ -46,38 +53,52 @@ loaded_routers = []
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle management."""
+    # Initialize database
+    try:
+        from database.engine import init_db, close_db
+        await init_db()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.warning(f"Database init failed (non-fatal): {e}")
+
     print("\n" + "=" * 70)
-    print(f"🚀 TraderAI Pro API v{VERSION} - PRODUCTION READY")
+    print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
     print("=" * 70)
-    print(f"📊 AI-Powered Decision Support Dashboard for Day Traders")
-    print(f"⏰ Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"🎮 Demo Mode: {'ENABLED ✅' if DEMO_MODE else 'DISABLED (Live Mode)'}")
+    print(f"  AI-Powered Decision Support Dashboard for Day Traders")
+    print(f"  Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Demo Mode: {'ENABLED' if DEMO_MODE else 'DISABLED (Live Mode)'}")
     print("=" * 70)
-    
+
     # Print loaded routers
-    print("\n📡 Registered Routes:")
+    print("\n  Registered Routes:")
     routes = []
     for route in app.routes:
         if hasattr(route, 'path') and hasattr(route, 'methods'):
             for method in route.methods:
                 if method in ['GET', 'POST', 'PUT', 'DELETE']:
                     routes.append(f"   {method:6} {route.path}")
-    
-    for r in sorted(routes)[:25]:
+
+    for r in sorted(routes)[:30]:
         print(r)
-    if len(routes) > 25:
-        print(f"   ... and {len(routes) - 25} more routes")
+    if len(routes) > 30:
+        print(f"   ... and {len(routes) - 30} more routes")
     print(f"\n   Total: {len(routes)} API routes registered")
-    
+
     print("\n" + "=" * 70)
-    print("🌐 API Documentation: http://localhost:8000/docs")
-    print("📖 ReDoc Documentation: http://localhost:8000/redoc")
-    print("📊 Health Check: http://localhost:8000/api/health")
+    print("  API Documentation: http://localhost:8000/docs")
+    print("  Health Check: http://localhost:8000/api/health")
+    print("  WebSocket: ws://localhost:8000/ws/prices")
     print("=" * 70 + "\n")
-    
+
     yield
-    
-    print("\n🛑 TraderAI Pro shutting down...")
+
+    # Cleanup
+    try:
+        from database.engine import close_db
+        await close_db()
+    except Exception:
+        pass
+    print("\n  TraderAI Pro shutting down...")
 
 
 # Create FastAPI app
@@ -88,24 +109,34 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration - Allow all origins for development
+# CORS configuration - Restrict to known frontend origins
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
-# Global exception handler
+# Setup rate limiting
+if RATE_LIMITING_AVAILABLE:
+    setup_rate_limiting(app)
+    logger.info("Rate limiting enabled")
+else:
+    logger.warning("slowapi not installed - rate limiting disabled. Run: pip install slowapi")
+
+# Global exception handler - never leak internal details to clients
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}")
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
         content={
             "error": "Internal server error",
-            "message": str(exc),
             "timestamp": datetime.now().isoformat()
         }
     )
@@ -190,6 +221,27 @@ load_router(
     ''
 )
 
+# Load auth router (register, login, profile)
+load_router(
+    ['routers.auth'],
+    'auth router',
+    '(register, login, profile)'
+)
+
+# Load user data router (watchlist, portfolio, alerts - DB-backed)
+load_router(
+    ['routers.user_data'],
+    'user data router',
+    '(watchlist, portfolio, alerts)'
+)
+
+# Load WebSocket router (real-time price streaming)
+load_router(
+    ['routers.websocket'],
+    'websocket router',
+    '(real-time prices)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
@@ -257,7 +309,7 @@ if __name__ == "__main__":
     
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
-    reload = os.getenv("RELOAD", "true").lower() == "true"
+    reload = os.getenv("RELOAD", "false").lower() == "true"
     
     print(f"\n🚀 Starting TraderAI Pro on {host}:{port}")
     print(f"   Demo Mode: {'ENABLED' if DEMO_MODE else 'DISABLED'}")

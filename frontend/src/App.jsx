@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useAuth } from './context/AuthContext';
+import ConnectionStatus from './components/ConnectionStatus';
+import { getPriceStream } from './services/websocket';
 
 // ============================================================
 // CONFIGURATION - v5.8.8: Added Portfolio add/remove functionality
@@ -952,6 +955,9 @@ const KeyboardShortcutsModal = ({ onClose }) => (
 // ============================================================
 
 export default function App() {
+  // Auth
+  const { user, isLoggedIn, setShowAuthModal, logout } = useAuth();
+
   // Core state
   const [selectedMarket, setSelectedMarket] = useState('US');
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
@@ -1034,6 +1040,27 @@ export default function App() {
   // Refs
   const intervalRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  // WebSocket real-time price updates
+  useEffect(() => {
+    const stream = getPriceStream();
+    stream.connect();
+
+    const cleanup = stream.onQuote((data) => {
+      // Update quote if it's for the currently selected symbol
+      if (data.symbol === selectedSymbol) {
+        setQuote(prev => prev ? { ...prev, price: data.price, change: data.change, changePercent: data.changePercent, volume: data.volume, dataQuality: data.dataQuality } : prev);
+      }
+    });
+
+    // Subscribe to watchlist + selected symbol
+    const allSymbols = [...new Set([selectedSymbol, ...watchlist])];
+    stream.subscribe(allSymbols);
+
+    return () => {
+      cleanup();
+    };
+  }, [selectedSymbol, watchlist]);
 
   // Current market configuration
   const currentMarket = useMemo(() => 
@@ -1926,12 +1953,31 @@ export default function App() {
             >
               📖 Guide
             </button>
-            <button 
+            <button
               onClick={() => setShowDebug(!showDebug)}
               className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium"
             >
               🔧
             </button>
+            <ConnectionStatus />
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-cyan-400">{user?.username}</span>
+                <button
+                  onClick={logout}
+                  className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded-lg text-sm font-medium"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
 
