@@ -1,0 +1,35 @@
+{
+  "quote": {
+    "symbol": "AAPL",
+    "name": "Apple Inc.",
+    "price": 253.88,
+    "change": 3.88,
+    "change_percent": 1.55,
+    "open": 250.00,
+    "high": 255.50,
+    "low": 249.20,
+    "volume": 45678900
+  },
+  "signals": {
+    "rsi": 60.6,
+    "signal": "HOLD",
+    "confidence": 68,
+    "risk": "MEDIUM",
+    "macd": {
+      "value": 2.45,
+      "signal": 1.89,
+      "histogram": 0.56
+    },
+    "bollinger": {
+      "upper": 260.27,
+      "middle": 252.34,
+      "lower": 244.41
+    }
+  },
+  "watchlist": ["AAPL", "NVDA", "TSLA", "BTC-USD", "RELIANCE.NS"],
+  "portfolio": [
+    { "symbol": "AAPL", "shares": 10, "avgPrice": 175.50 },
+    { "symbol": "NVDA", "shares": 5, "avgPrice": 450.00 },
+    { "symbol": "BTC-USD", "shares": 0.5, "avgPrice": 42000 }
+  ]
+}

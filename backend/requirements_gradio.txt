@@ -1,0 +1,8 @@
+# TradingAI Pro - Gradio Demo Requirements
+# Install: pip install -r requirements_gradio.txt
+
+gradio>=4.0.0
+plotly>=5.18.0
+pandas>=2.0.0
+numpy>=1.24.0
+yfinance>=0.2.33

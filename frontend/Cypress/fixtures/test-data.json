@@ -1,0 +1,164 @@
+{
+  "stocks": {
+    "AAPL": {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "market": "US",
+      "currency": "$",
+      "price": 178.50,
+      "open": 177.20,
+      "high": 179.80,
+      "low": 176.90,
+      "close": 178.50,
+      "previousClose": 176.80,
+      "volume": 52340000,
+      "change": 1.70,
+      "changePercent": 0.96
+    },
+    "NVDA": {
+      "symbol": "NVDA",
+      "name": "NVIDIA Corporation",
+      "market": "US",
+      "currency": "$",
+      "price": 485.20,
+      "open": 480.00,
+      "high": 490.50,
+      "low": 478.30,
+      "close": 485.20,
+      "previousClose": 478.90,
+      "volume": 38520000,
+      "change": 6.30,
+      "changePercent": 1.32
+    },
+    "RELIANCE.NS": {
+      "symbol": "RELIANCE.NS",
+      "name": "Reliance Industries",
+      "market": "India",
+      "currency": "₹",
+      "price": 2456.75,
+      "open": 2440.00,
+      "high": 2468.50,
+      "low": 2435.20,
+      "close": 2456.75,
+      "previousClose": 2442.30,
+      "volume": 12450000,
+      "change": 14.45,
+      "changePercent": 0.59
+    },
+    "BTC-USD": {
+      "symbol": "BTC-USD",
+      "name": "Bitcoin USD",
+      "market": "Crypto",
+      "currency": "$",
+      "price": 98542.30,
+      "open": 97800.00,
+      "high": 99200.50,
+      "low": 97200.00,
+      "close": 98542.30,
+      "previousClose": 97650.80,
+      "volume": 28500000000,
+      "change": 891.50,
+      "changePercent": 0.91
+    }
+  },
+  "signals": {
+    "AAPL": {
+      "signal": "BUY",
+      "confidence": 72,
+      "rsi": 45.3,
+      "macd": 2.15,
+      "trend": "Bullish",
+      "risk_level": "Medium",
+      "risk_score": 45,
+      "vwap": 177.85,
+      "sma_20": 175.40,
+      "ema_12": 176.90
+    },
+    "NVDA": {
+      "signal": "STRONG BUY",
+      "confidence": 85,
+      "rsi": 62.8,
+      "macd": 5.42,
+      "trend": "Strong Bullish",
+      "risk_level": "Medium",
+      "risk_score": 52,
+      "vwap": 483.20,
+      "sma_20": 478.50,
+      "ema_12": 481.30
+    },
+    "RELIANCE.NS": {
+      "signal": "HOLD",
+      "confidence": 58,
+      "rsi": 52.1,
+      "macd": 0.85,
+      "trend": "Neutral",
+      "risk_level": "Low",
+      "risk_score": 32,
+      "vwap": 2450.50,
+      "sma_20": 2445.80,
+      "ema_12": 2448.60
+    },
+    "BTC-USD": {
+      "signal": "BUY",
+      "confidence": 68,
+      "rsi": 58.5,
+      "macd": 1250.30,
+      "trend": "Bullish",
+      "risk_level": "High",
+      "risk_score": 72,
+      "vwap": 98100.00,
+      "sma_20": 96500.00,
+      "ema_12": 97800.00
+    }
+  },
+  "markets": [
+    { "id": "US", "name": "US", "flag": "🇺🇸", "currency": "$", "defaultSymbol": "AAPL" },
+    { "id": "India", "name": "India", "flag": "🇮🇳", "currency": "₹", "defaultSymbol": "RELIANCE.NS" },
+    { "id": "UK", "name": "UK", "flag": "🇬🇧", "currency": "£", "defaultSymbol": "HSBA.L" },
+    { "id": "Germany", "name": "Germany", "flag": "🇩🇪", "currency": "€", "defaultSymbol": "SAP.DE" },
+    { "id": "France", "name": "France", "flag": "🇫🇷", "currency": "€", "defaultSymbol": "OR.PA" },
+    { "id": "Japan", "name": "Japan", "flag": "🇯🇵", "currency": "¥", "defaultSymbol": "7203.T" },
+    { "id": "China", "name": "China", "flag": "🇨🇳", "currency": "¥", "defaultSymbol": "9988.HK" },
+    { "id": "HongKong", "name": "Hong Kong", "flag": "🇭🇰", "currency": "HK$", "defaultSymbol": "0700.HK" },
+    { "id": "Australia", "name": "Australia", "flag": "🇦🇺", "currency": "A$", "defaultSymbol": "BHP.AX" },
+    { "id": "Canada", "name": "Canada", "flag": "🇨🇦", "currency": "C$", "defaultSymbol": "RY.TO" },
+    { "id": "Brazil", "name": "Brazil", "flag": "🇧🇷", "currency": "R$", "defaultSymbol": "PETR4.SA" },
+    { "id": "Korea", "name": "Korea", "flag": "🇰🇷", "currency": "₩", "defaultSymbol": "005930.KS" },
+    { "id": "Singapore", "name": "Singapore", "flag": "🇸🇬", "currency": "S$", "defaultSymbol": "D05.SI" },
+    { "id": "Switzerland", "name": "Switzerland", "flag": "🇨🇭", "currency": "CHF", "defaultSymbol": "NESN.SW" },
+    { "id": "Netherlands", "name": "Netherlands", "flag": "🇳🇱", "currency": "€", "defaultSymbol": "ASML.AS" },
+    { "id": "Spain", "name": "Spain", "flag": "🇪🇸", "currency": "€", "defaultSymbol": "SAN.MC" },
+    { "id": "Italy", "name": "Italy", "flag": "🇮🇹", "currency": "€", "defaultSymbol": "ENI.MI" },
+    { "id": "Crypto", "name": "Crypto", "flag": "₿", "currency": "$", "defaultSymbol": "BTC-USD" },
+    { "id": "ETF", "name": "ETF", "flag": "📊", "currency": "$", "defaultSymbol": "SPY" },
+    { "id": "Forex", "name": "Forex", "flag": "💱", "currency": "$", "defaultSymbol": "EURUSD=X" },
+    { "id": "Commodities", "name": "Commodities", "flag": "🛢️", "currency": "$", "defaultSymbol": "GC=F" }
+  ],
+  "intervals": [
+    { "label": "1M", "period": "1d", "interval": "1m" },
+    { "label": "5M", "period": "5d", "interval": "5m" },
+    { "label": "15M", "period": "5d", "interval": "15m" },
+    { "label": "1H", "period": "1mo", "interval": "1h" },
+    { "label": "1D", "period": "3mo", "interval": "1d" },
+    { "label": "1W", "period": "1y", "interval": "1wk" }
+  ],
+  "tradingStyles": [
+    { "id": "Day", "name": "Day Trader" },
+    { "id": "Swing", "name": "Swing Trader" },
+    { "id": "Position", "name": "Position Trader" },
+    { "id": "Scalper", "name": "Scalper" }
+  ],
+  "dataSources": [
+    { "id": "REALTIME", "label": "REAL-TIME", "icon": "📡" },
+    { "id": "DEMO", "label": "DEMO", "icon": "🎮" },
+    { "id": "SIMULATED", "label": "SIMULATED", "icon": "⚡" }
+  ],
+  "defaultWatchlist": ["AAPL", "NVDA", "MSFT", "BTC-USD", "SPY"],
+  "defaultPortfolio": [
+    { "symbol": "AAPL", "shares": 10, "avgPrice": 150 },
+    { "symbol": "MSFT", "shares": 5, "avgPrice": 380 },
+    { "symbol": "NVDA", "shares": 3, "avgPrice": 450 }
+  ],
+  "tickerSymbols": ["AAPL", "NVDA", "MSFT", "RELIANCE", "TCS", "SAP", "BTC", "ETH"],
+  "version": "5.7.0"
+}
