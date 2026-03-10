@@ -2,7 +2,7 @@
  * SentimentDashboard - Combined sentiment from Reddit, StockTwits, and News.
  * Shows composite score, source breakdown, and sample posts.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -22,7 +22,7 @@ const SCORE_BG = {
   VERY_BEARISH: 'bg-red-900/30',
 };
 
-export default function SentimentDashboard({ symbol }) {
+function SentimentDashboard({ symbol }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -98,6 +98,8 @@ export default function SentimentDashboard({ symbol }) {
     </div>
   );
 }
+
+export default memo(SentimentDashboard);
 
 function SourceCard({ name, source }) {
   const color = SCORE_COLORS[source.label] || 'text-gray-400';

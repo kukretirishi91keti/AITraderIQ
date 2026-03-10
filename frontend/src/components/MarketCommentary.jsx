@@ -2,7 +2,7 @@
  * MarketCommentary - AI-generated market digest.
  * Shows auto-commentary on significant market moves.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -12,7 +12,7 @@ const SEVERITY_STYLES = {
   normal: 'border-l-gray-600 bg-gray-800/50',
 };
 
-export default function MarketCommentary() {
+function MarketCommentary() {
   const [digest, setDigest] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -85,3 +85,5 @@ export default function MarketCommentary() {
     </div>
   );
 }
+
+export default memo(MarketCommentary);

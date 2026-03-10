@@ -1246,83 +1246,79 @@ export default function App() {
 
   const fetchAllData = useCallback(async (signal = null) => {
     if (!selectedSymbol) return;
-    
+
     setLoading(true);
-    
+    setFinancialsLoading(true);
+
     try {
-      // Fetch quote
-      const quoteRes = await fetch(`${API_BASE}/api/v4/quote/${selectedSymbol}`, { signal });
+      // Fire ALL requests in parallel using Promise.allSettled
+      // This reduces total load time from sum-of-all to max-of-all
+      const [quoteRes, historyRes, signalsRes, newsRes, sentimentRes, financialsRes, healthRes] =
+        await Promise.allSettled([
+          fetch(`${API_BASE}/api/v4/quote/${selectedSymbol}`, { signal }),
+          fetch(`${API_BASE}/api/v4/history/${selectedSymbol}?interval=${chartInterval}`, { signal }),
+          fetch(`${API_BASE}/api/v4/signals/${selectedSymbol}`, { signal }),
+          fetch(`${API_BASE}/api/news/${selectedSymbol}`, { signal }),
+          fetch(`${API_BASE}/api/sentiment/reddit/${selectedSymbol}`, { signal }),
+          fetch(`${API_BASE}/api/v4/financials/${selectedSymbol}`, { signal }),
+          fetch(`${API_BASE}/api/health`, { signal }),
+        ]);
+
       if (signal?.aborted) return;
-      if (quoteRes.ok) {
-        const quoteData = await quoteRes.json();
+
+      // Process quote
+      if (quoteRes.status === 'fulfilled' && quoteRes.value.ok) {
+        const quoteData = await quoteRes.value.json();
         setQuote(quoteData);
       }
-      
-      // Fetch history
-      const historyRes = await fetch(`${API_BASE}/api/v4/history/${selectedSymbol}?interval=${chartInterval}`, { signal });
-      if (signal?.aborted) return;
-      if (historyRes.ok) {
-        const historyData = await historyRes.json();
-        // Backend returns: {candles: [...], history: [...], data: [...]}
+
+      // Process history
+      if (historyRes.status === 'fulfilled' && historyRes.value.ok) {
+        const historyData = await historyRes.value.json();
         const chartData = historyData.candles || historyData.history || historyData.data || historyData.prices || [];
         console.log('[Chart] Loaded', chartData.length, 'candles for', selectedSymbol, 'interval:', chartInterval);
-        
-        // v5.8.2: Log first/last candle for debugging timestamps
         if (chartData.length > 0) {
           console.log('[Chart] First candle:', chartData[0]);
           console.log('[Chart] Last candle:', chartData[chartData.length - 1]);
         }
-        
         setHistory(Array.isArray(chartData) ? chartData : []);
-      } else {
-        console.error('[Chart] Failed to load history:', historyRes.status);
+      } else if (historyRes.status === 'fulfilled') {
+        console.error('[Chart] Failed to load history:', historyRes.value.status);
         setHistory([]);
       }
-      
-      // Fetch signals
-      const signalsRes = await fetch(`${API_BASE}/api/v4/signals/${selectedSymbol}`, { signal });
-      if (signal?.aborted) return;
-      if (signalsRes.ok) {
-        const signalsData = await signalsRes.json();
+
+      // Process signals
+      if (signalsRes.status === 'fulfilled' && signalsRes.value.ok) {
+        const signalsData = await signalsRes.value.json();
         setSignals(signalsData);
       }
-      
-      // Fetch news
-      const newsRes = await fetch(`${API_BASE}/api/news/${selectedSymbol}`, { signal });
-      if (signal?.aborted) return;
-      if (newsRes.ok) {
-        const newsData = await newsRes.json();
+
+      // Process news
+      if (newsRes.status === 'fulfilled' && newsRes.value.ok) {
+        const newsData = await newsRes.value.json();
         setNews(newsData.articles || []);
       }
-      
-      // Fetch sentiment
-      const sentimentRes = await fetch(`${API_BASE}/api/sentiment/reddit/${selectedSymbol}`, { signal });
-      if (signal?.aborted) return;
-      if (sentimentRes.ok) {
-        const sentimentData = await sentimentRes.json();
+
+      // Process sentiment
+      if (sentimentRes.status === 'fulfilled' && sentimentRes.value.ok) {
+        const sentimentData = await sentimentRes.value.json();
         setSentiment(sentimentData);
       }
-      
-      // Fetch financials - FIXED: Map backend snake_case to frontend camelCase
-      setFinancialsLoading(true);
-      try {
-        const financialsRes = await fetch(`${API_BASE}/api/v4/financials/${selectedSymbol}`, { signal });
-        if (signal?.aborted) return;
-        if (financialsRes.ok) {
-          const data = await financialsRes.json();
+
+      // Process financials - Map backend snake_case to frontend camelCase
+      if (financialsRes.status === 'fulfilled' && financialsRes.value.ok) {
+        try {
+          const data = await financialsRes.value.json();
           console.log('[Financials] Raw response:', data);
-          
-          // Backend returns: { success, symbol, name, currency, financials: {...}, source, timestamp }
+
           if (data.success && data.financials) {
             const f = data.financials;
-            // Map snake_case to camelCase and add formatted values
             const mapped = {
               symbol: data.symbol,
               name: data.name,
               currency: data.currency,
               sector: f.sector || 'Technology',
               industry: f.industry || 'Software',
-              // Formatted display values
               marketCap: f.market_cap_formatted || formatLargeNumber(f.market_cap),
               peRatio: f.pe_ratio ? f.pe_ratio.toFixed(2) : 'N/A',
               revenue: f.revenue_formatted || formatLargeNumber(f.revenue),
@@ -1332,7 +1328,6 @@ export default function App() {
               fiftyTwoWeekHigh: f['52_week_high'] || f.fiftyTwoWeekHigh,
               fiftyTwoWeekLow: f['52_week_low'] || f.fiftyTwoWeekLow,
               profitMargin: f.profit_margin ? `${f.profit_margin.toFixed(1)}%` : 'N/A',
-              // Raw values for calculations
               marketCapRaw: f.market_cap,
               revenueRaw: f.revenue,
               netIncomeRaw: f.net_income,
@@ -1341,42 +1336,33 @@ export default function App() {
             setFinancials(mapped);
             console.log('[Financials] Mapped for', selectedSymbol, ':', mapped);
           } else if (data.marketCap || data.peRatio) {
-            // Already in correct format
             setFinancials(data);
           } else {
             console.warn('[Financials] Unexpected structure:', Object.keys(data));
             setFinancials(null);
           }
-        } else {
-          console.error('[Financials] Failed:', financialsRes.status, financialsRes.statusText);
+        } catch (err) {
+          console.error('[Financials] Parse error:', err);
           setFinancials(null);
         }
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('[Financials] Error:', err);
+      } else {
         setFinancials(null);
-      } finally {
-        if (!signal?.aborted) setFinancialsLoading(false);
       }
-      
-      // Check health
-      const healthRes = await fetch(`${API_BASE}/api/health`, { signal });
-      if (signal?.aborted) return;
-      if (healthRes.ok) {
-        const healthData = await healthRes.json();
+      setFinancialsLoading(false);
+
+      // Process health
+      if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+        const healthData = await healthRes.value.json();
         setHealthStatus(healthData.status?.toUpperCase() || 'HEALTHY');
-        
-        // Adjust polling based on health
         if (healthData.polling_recommendation) {
           setPollingInterval(healthData.polling_recommendation * 1000);
         }
       }
-      
+
       setLastFetchTime(new Date());
       setLoading(false);
-      
+
     } catch (err) {
-      // Ignore AbortError - this is expected when component unmounts
       if (err.name === 'AbortError') {
         console.log('[Fetch] Request aborted (cleanup)');
         return;
@@ -1384,9 +1370,8 @@ export default function App() {
       console.error('Fetch error:', err);
       setHealthStatus('ERROR');
       setPollingInterval(POLLING_INTERVALS.ERROR);
-      // Don't override movers on error - keep existing movers
-      // setMovers(generateMoversForMarket(selectedMarket)); // REMOVED - was causing market movers to reset
       setLoading(false);
+      setFinancialsLoading(false);
     }
   }, [selectedSymbol, chartInterval, selectedMarket]);
 

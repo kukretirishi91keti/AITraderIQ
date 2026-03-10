@@ -10,11 +10,13 @@ Scans symbols and ranks them by a combined AI score that weighs:
 Produces an actionable ranked list of trading opportunities.
 """
 
+import asyncio
 from fastapi import APIRouter, Query
 from datetime import datetime
 
 from services.backtest_engine import get_backtest_engine
 from services.sentiment_aggregator import get_aggregated_sentiment
+from services.cache_manager import get_cache_manager
 
 router = APIRouter(prefix="/api/scanner", tags=["AI Scanner"])
 
@@ -23,6 +25,10 @@ DEFAULT_SYMBOLS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "AMD",
     "NFLX", "INTC", "SPY", "QQQ", "BTC-USD", "ETH-USD",
 ]
+
+# Cache for AI scores (5-minute TTL)
+_scanner_cache = get_cache_manager("scanner")
+SCANNER_CACHE_TTL = 300  # 5 minutes
 
 
 def _compute_ai_score(symbol: str, trader_type: str) -> dict:
@@ -90,6 +96,20 @@ def _compute_ai_score(symbol: str, trader_type: str) -> dict:
     }
 
 
+async def _compute_ai_score_cached(symbol: str, trader_type: str) -> dict:
+    """Compute AI score with caching to avoid redundant computation."""
+    cache_key = f"ai_score:{symbol}:{trader_type}"
+    entry = _scanner_cache.get(cache_key, SCANNER_CACHE_TTL)
+    if entry:
+        return entry.data
+
+    # Run in thread pool to avoid blocking the event loop
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, _compute_ai_score, symbol, trader_type)
+    _scanner_cache.set(cache_key, result, source="LIVE")
+    return result
+
+
 @router.get("/rank")
 async def rank_symbols(
     symbols: str = Query(None, description="Comma-separated (default: major US stocks + crypto)"),
@@ -109,9 +129,12 @@ async def rank_symbols(
     if symbols:
         symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
+    # Parallel computation of all symbol scores
+    tasks = [_compute_ai_score_cached(sym, trader_type) for sym in symbol_list[:20]]
+    all_scores = await asyncio.gather(*tasks)
+
     rankings = []
-    for sym in symbol_list[:20]:
-        score = _compute_ai_score(sym, trader_type)
+    for score in all_scores:
         if direction and direction.upper() not in score["direction"]:
             continue
         rankings.append(score)
@@ -143,10 +166,9 @@ async def find_opportunities(
     Returns top bullish and bearish setups ranked by AI score,
     filtered to only show high-confidence signals with good backtest history.
     """
-    all_scores = []
-    for sym in DEFAULT_SYMBOLS:
-        score = _compute_ai_score(sym, trader_type)
-        all_scores.append(score)
+    # Parallel computation of all symbol scores
+    tasks = [_compute_ai_score_cached(sym, trader_type) for sym in DEFAULT_SYMBOLS]
+    all_scores = await asyncio.gather(*tasks)
 
     # Filter for high-confidence opportunities
     bullish = [s for s in all_scores if "BULLISH" in s["direction"] and s["confidence"] >= 60]

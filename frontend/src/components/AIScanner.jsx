@@ -2,11 +2,11 @@
  * AIScanner - AI-ranked market opportunities.
  * Shows symbols ranked by composite AI score (technicals + backtest + sentiment).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-export default function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
+function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // all, BULLISH, BEARISH
@@ -112,3 +112,5 @@ export default function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
     </div>
   );
 }
+
+export default memo(AIScanner);

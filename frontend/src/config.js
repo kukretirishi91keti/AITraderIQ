@@ -26,10 +26,10 @@ export const ENDPOINTS = {
 
 // Refresh intervals (milliseconds)
 export const REFRESH_INTERVALS = {
-  QUOTE: 5000,
-  CANDLES: 30000,
-  HEALTH: 10000,
-  WATCHLIST: 10000,
+  QUOTE: 30000,     // 30 seconds (was 5s - too aggressive)
+  CANDLES: 60000,   // 60 seconds
+  HEALTH: 60000,    // 60 seconds (was 10s)
+  WATCHLIST: 30000, // 30 seconds (was 10s)
 };
 
 // Data freshness thresholds (seconds)

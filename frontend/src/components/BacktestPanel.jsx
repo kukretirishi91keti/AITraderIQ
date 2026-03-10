@@ -2,11 +2,11 @@
  * BacktestPanel - Shows signal backtesting results for a symbol.
  * Displays win rate, Sharpe ratio, signal breakdown, and strategy comparison.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-export default function BacktestPanel({ symbol, traderStyle = 'swing' }) {
+function BacktestPanel({ symbol, traderStyle = 'swing' }) {
   const [data, setData] = useState(null);
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -235,6 +235,8 @@ export default function BacktestPanel({ symbol, traderStyle = 'swing' }) {
     </div>
   );
 }
+
+export default memo(BacktestPanel);
 
 function MetricCard({ label, value, color = 'text-white' }) {
   return (
