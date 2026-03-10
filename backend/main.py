@@ -16,6 +16,10 @@ Features:
 """
 from dotenv import load_dotenv
 load_dotenv()
+
+from validate_env import validate_environment
+validate_environment()
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
