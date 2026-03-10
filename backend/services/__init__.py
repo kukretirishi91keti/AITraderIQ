@@ -1,89 +1,68 @@
 """
-TraderAI Pro Services Package v4.9
+TraderAI Pro Services Package v5.0
 ==================================
-Location: backend/services/__init__.py
-
-Production-grade services:
-- market_data_service: Real yfinance + LKG cache + MME fallback
-- finbert_service: FinBERT sentiment analysis
-- news_service: NewsAPI + curated fallback
-- genai_service: Groq LLM integration
-- financials_service: Company financials
-- cache_manager: JSON file cache with locking
+All imports are safe - missing dependencies degrade gracefully.
 """
 
-from .cache_manager import (
-    get_cache_manager,
-    get_singleflight,
-    CacheManager,
-    SingleFlight,
-    CacheEntry
-)
+import logging
 
-from .market_data_service import (
-    get_market_data_service,
-    MarketDataService,
-    MARKET_CONFIG,
-    GLOBAL_STOCKS
-)
+logger = logging.getLogger(__name__)
 
-from .finbert_service import (
-    analyze_sentiment,
-    analyze_batch,
-    analyze_news_for_symbol,
-    aggregate_sentiment,
-    is_finbert_available,
-    get_service_status as get_finbert_status
-)
+# Cache
+try:
+    from .cache_manager import (
+        get_cache_manager, get_singleflight,
+        CacheManager, SingleFlight, CacheEntry
+    )
+except ImportError as e:
+    logger.warning(f"cache_manager not available: {e}")
 
-from .news_service import (
-    get_news_service,
-    get_news_with_sentiment,
-    NewsService
-)
+# Market Data
+try:
+    from .market_data_service import (
+        get_market_data_service, MarketDataService,
+        MARKET_CONFIG, GLOBAL_STOCKS
+    )
+except ImportError as e:
+    logger.warning(f"market_data_service not available: {e}")
 
-from .genai_service import (
-    get_genai_service,
-    GenAIService
-)
+# FinBERT Sentiment
+try:
+    from .finbert_service import (
+        analyze_sentiment, analyze_batch,
+        analyze_news_for_symbol, aggregate_sentiment,
+        is_finbert_available,
+        get_service_status as get_finbert_status
+    )
+except (ImportError, Exception) as e:
+    logger.warning(f"finbert_service not available: {e}")
+    def analyze_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
+    def analyze_batch(*a, **kw): return []
+    def analyze_news_for_symbol(*a, **kw): return []
+    def aggregate_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
+    def is_finbert_available(): return False
+    def get_finbert_status(): return {"status": "unavailable"}
 
-from .financials_service import (
-    get_financials_service,
-    FinancialsService
-)
+# News
+try:
+    from .news_service import (
+        get_news_service, get_news_with_sentiment, NewsService
+    )
+except (ImportError, Exception) as e:
+    logger.warning(f"news_service not available: {e}")
 
-__all__ = [
-    # Cache
-    'get_cache_manager',
-    'get_singleflight',
-    'CacheManager',
-    'SingleFlight',
-    'CacheEntry',
-    
-    # Market Data
-    'get_market_data_service',
-    'MarketDataService',
-    'MARKET_CONFIG',
-    'GLOBAL_STOCKS',
-    
-    # FinBERT
-    'analyze_sentiment',
-    'analyze_batch',
-    'analyze_news_for_symbol',
-    'aggregate_sentiment',
-    'is_finbert_available',
-    'get_finbert_status',
-    
-    # News
-    'get_news_service',
-    'get_news_with_sentiment',
-    'NewsService',
-    
-    # GenAI
-    'get_genai_service',
-    'GenAIService',
-    
-    # Financials
-    'get_financials_service',
-    'FinancialsService',
-]
+# GenAI
+try:
+    from .genai_service import (
+        get_genai_service, GenAIService
+    )
+except (ImportError, Exception) as e:
+    logger.warning(f"genai_service not available: {e}")
+
+# Financials
+try:
+    from .financials_service import (
+        get_financials_service, FinancialsService
+    )
+except (ImportError, Exception) as e:
+    logger.warning(f"financials_service not available: {e}")

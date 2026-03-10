@@ -16,42 +16,31 @@ import random
 import math
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 
-from database.engine import Base
+# Optional: DB model for persisting signal records (requires SQLAlchemy)
+try:
+    from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime
+    from database.engine import Base
 
-
-# =============================================================================
-# DATABASE MODEL
-# =============================================================================
-
-class SignalRecord(Base):
-    __tablename__ = "signal_records"
-
-    id = Column(Integer, primary_key=True, index=True)
-    symbol = Column(String(20), nullable=False, index=True)
-    signal = Column(String(20), nullable=False)  # BUY, SELL, STRONG_BUY, etc.
-    confidence = Column(Float, nullable=False)
-    trader_type = Column(String(20), default="swing")
-
-    # Price at signal generation
-    entry_price = Column(Float, nullable=False)
-
-    # Outcome (filled after evaluation)
-    exit_price = Column(Float, nullable=True)
-    return_pct = Column(Float, nullable=True)
-    is_correct = Column(Boolean, nullable=True)  # None = pending
-    evaluated = Column(Boolean, default=False)
-
-    # Technical context at signal time
-    rsi = Column(Float, nullable=True)
-    macd = Column(Float, nullable=True)
-    bollinger_position = Column(String(20), nullable=True)
-
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
-    evaluated_at = Column(DateTime, nullable=True)
+    class SignalRecord(Base):
+        __tablename__ = "signal_records"
+        id = Column(Integer, primary_key=True, index=True)
+        symbol = Column(String(20), nullable=False, index=True)
+        signal = Column(String(20), nullable=False)
+        confidence = Column(Float, nullable=False)
+        trader_type = Column(String(20), default="swing")
+        entry_price = Column(Float, nullable=False)
+        exit_price = Column(Float, nullable=True)
+        return_pct = Column(Float, nullable=True)
+        is_correct = Column(Boolean, nullable=True)
+        evaluated = Column(Boolean, default=False)
+        rsi = Column(Float, nullable=True)
+        macd = Column(Float, nullable=True)
+        bollinger_position = Column(String(20), nullable=True)
+        created_at = Column(DateTime, default=datetime.utcnow, index=True)
+        evaluated_at = Column(DateTime, nullable=True)
+except ImportError:
+    SignalRecord = None
 
 
 # =============================================================================

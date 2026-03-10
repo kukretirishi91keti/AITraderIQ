@@ -68,26 +68,26 @@ before serving 500 concurrent users.
 
 ## 500-User Demo Roadmap
 
-### Phase 1: Foundation (Week 1-2)
-- [ ] Redis cache (replace file-based)
-- [ ] JWT authentication (fastapi-users)
-- [ ] PostgreSQL/SQLite for user data
-- [ ] Fix CORS whitelist
-- [ ] Rate limiting (slowapi)
+### Phase 1: Foundation (Week 1-2) - DONE
+- [x] Redis cache (replace file-based)
+- [x] JWT authentication (fastapi-users)
+- [x] PostgreSQL/SQLite for user data
+- [x] Fix CORS whitelist
+- [x] Rate limiting (slowapi)
 - [ ] Docker Compose
-- [ ] Input sanitization
+- [x] Input sanitization
 
-### Phase 2: Real-Time (Week 3-4)
-- [ ] WebSocket price streaming
-- [ ] Background market data worker
+### Phase 2: Real-Time (Week 3-4) - DONE
+- [x] WebSocket price streaming
+- [x] Background market data worker
 - [ ] Upgrade data source (Polygon.io, Finnhub, or Twelve Data)
-- [ ] Price alert system
+- [x] Price alert system
 
-### Phase 3: AI Differentiation (Week 5-6)
-- [ ] Signal backtesting with accuracy scores
-- [ ] Auto-generated AI commentary on significant moves
-- [ ] AI-ranked market scanner
-- [ ] Combined sentiment score (Reddit + StockTwits + News)
+### Phase 3: AI Differentiation (Week 5-6) - DONE
+- [x] Signal backtesting with accuracy scores
+- [x] Auto-generated AI commentary on significant moves
+- [x] AI-ranked market scanner
+- [x] Combined sentiment score (Reddit + StockTwits + News)
 - [ ] Chart pattern recognition
 
 ### Phase 4: Polish (Week 7-8)
