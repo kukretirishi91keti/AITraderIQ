@@ -39,11 +39,15 @@ try:
 except ImportError:
     RATE_LIMITING_AVAILABLE = False
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure structured logging
+try:
+    from logging_config import setup_logging
+    setup_logging()
+except ImportError:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
 logger = logging.getLogger(__name__)
 
 # Check demo mode from environment
@@ -125,6 +129,14 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
 )
+
+# Request logging middleware
+try:
+    from middleware.request_logging import RequestLoggingMiddleware
+    app.add_middleware(RequestLoggingMiddleware)
+    logger.info("Request logging middleware enabled")
+except ImportError:
+    logger.warning("Request logging middleware not available")
 
 # Setup rate limiting
 if RATE_LIMITING_AVAILABLE:
