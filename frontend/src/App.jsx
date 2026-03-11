@@ -515,7 +515,7 @@ export default function App() {
               🔔 Alerts
               {alerts.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-xs w-5 h-5 rounded-full flex items-center justify-center">{alerts.length}</span>}
             </button>
-            <button onClick={() => setShowWhatsNext(true)} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium">🚀 What's Next</button>
+            <button onClick={() => setShowWhatsNext(true)} className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-sm font-medium">🚀 What&apos;s Next</button>
             <button onClick={() => setShowUserGuide(true)} className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium">📖 Guide</button>
             <button onClick={() => setShowDebug(!showDebug)} className="px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium">🔧</button>
             <ConnectionStatus />
