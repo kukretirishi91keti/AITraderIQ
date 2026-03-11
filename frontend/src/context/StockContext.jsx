@@ -10,9 +10,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 const REFRESH_INTERVALS = {
-  QUOTE: 5000,      // 5 seconds
-  CANDLES: 30000,   // 30 seconds
-  OVERVIEW: 60000,  // 1 minute
+  QUOTE: 30000,     // 30 seconds (was 5s - too aggressive for demo data)
+  CANDLES: 60000,   // 60 seconds
+  OVERVIEW: 120000, // 2 minutes
 };
 
 const StockContext = createContext(undefined);

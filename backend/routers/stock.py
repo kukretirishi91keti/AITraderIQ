@@ -32,6 +32,7 @@ import random
 import hashlib
 
 from services.market_data_service import get_market_data_service
+from utils.validation import validate_symbol, validate_symbols, validate_market, validate_interval, validate_period
 
 logger = logging.getLogger(__name__)
 
@@ -169,13 +170,14 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
 @router.get("/quote/{symbol}")
 async def get_quote(symbol: str):
     """Get quote for a single symbol."""
+    symbol = validate_symbol(symbol)
     try:
         svc = get_market_data_service()
         quote = await svc.get_quote(symbol)
         return {"success": True, **quote}
     except Exception as e:
         logger.error(f"Quote error for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch quote")
 
 
 @router.get("/quotes")
@@ -189,7 +191,7 @@ async def get_quotes_query(
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"Batch quotes error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/quotes")
@@ -209,7 +211,7 @@ async def get_quotes_body(request: BatchQuotesRequest):
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"Batch quotes error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -224,9 +226,10 @@ async def get_candles(
     lookback: int = Query(100, ge=5, le=500)
 ):
     """Get historical OHLCV candles."""
+    symbol = validate_symbol(symbol)
+    tf = validate_interval(timeframe or interval)
     try:
         svc = get_market_data_service()
-        tf = timeframe or interval
         result = await svc.get_candles(symbol, interval=tf, lookback=lookback)
         return {
             "success": True,
@@ -240,7 +243,7 @@ async def get_candles(
         }
     except Exception as e:
         logger.error(f"Candles error for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -259,15 +262,17 @@ async def get_history(
     This endpoint is called by the frontend chart component.
     Falls back to demo data if live data unavailable.
     """
-    symbol = symbol.upper()
-    
+    symbol = validate_symbol(symbol)
+    period = validate_period(period)
+    interval = validate_interval(interval)
+
     # Map period to lookback count
     period_to_count = {
         "1d": 100, "5d": 100, "1mo": 200, "3mo": 300,
         "6mo": 400, "1y": 500, "2y": 600
     }
     lookback = period_to_count.get(period, 100)
-    
+
     try:
         svc = get_market_data_service()
         result = await svc.get_candles(symbol, interval=interval, lookback=lookback)
@@ -318,11 +323,11 @@ async def get_history(
 async def get_signals(symbol: str):
     """
     Get trading signals for a symbol.
-    
+
     Returns RSI, MACD, trend, signal recommendation, ATR, and risk score.
     This endpoint is called by the frontend Technicals tab.
     """
-    symbol = symbol.upper()
+    symbol = validate_symbol(symbol)
     
     # Generate consistent signals based on symbol + time
     seed = get_seed(symbol) + int(datetime.now().timestamp() / 300)  # Change every 5 min
@@ -460,7 +465,7 @@ async def get_watchlist(
         }
     except Exception as e:
         logger.error(f"Watchlist error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/watchlist")
@@ -553,7 +558,7 @@ async def get_top_movers(
         }
     except Exception as e:
         logger.error(f"Top movers error for {market}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -590,7 +595,7 @@ async def get_market_overview():
         }
     except Exception as e:
         logger.error(f"Market overview error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -603,6 +608,8 @@ async def get_stock_data(
     timeframe: str = Query("1d")
 ):
     """Get complete stock data: quote + chart."""
+    symbol = validate_symbol(symbol)
+    timeframe = validate_interval(timeframe)
     try:
         svc = get_market_data_service()
         
@@ -634,7 +641,7 @@ async def get_stock_data(
         }
     except Exception as e:
         logger.error(f"Stock data error for {symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -644,7 +651,7 @@ async def get_stock_data(
 @router.get("/financials/{symbol}")
 async def get_financials(symbol: str):
     """Get company financials for a symbol."""
-    symbol = symbol.upper()
+    symbol = validate_symbol(symbol)
     seed = get_seed(symbol)
     random.seed(seed)
     
@@ -731,7 +738,7 @@ async def get_health():
         }
     except Exception as e:
         logger.error(f"Health check error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -747,7 +754,7 @@ async def get_roadmap():
         return {"success": True, **roadmap}
     except Exception as e:
         logger.error(f"Roadmap error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -763,4 +770,4 @@ async def reset_circuit_breaker():
         return {"success": True, "message": "Circuit breaker reset"}
     except Exception as e:
         logger.error(f"Reset breaker error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")

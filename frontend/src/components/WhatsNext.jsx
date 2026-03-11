@@ -359,7 +359,7 @@ const WhatsNext = ({ defaultExpanded = true, showCosts = true }) => {
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            🚀 What's Next
+            🚀 What&apos;s Next
           </h2>
           <p className="text-gray-500 mt-1">
             Building the ultimate trading intelligence platform
@@ -438,7 +438,7 @@ const WhatsNext = ({ defaultExpanded = true, showCosts = true }) => {
               <div className="flex-1">
                 <h4 className="font-semibold">Have a Feature Request?</h4>
                 <p className="text-blue-100 text-sm mt-1">
-                  We're building this platform for traders like you. Let us know what would help!
+                  We&apos;re building this platform for traders like you. Let us know what would help!
                 </p>
               </div>
               <button className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors whitespace-nowrap">

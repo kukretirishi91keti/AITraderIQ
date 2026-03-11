@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+.env
+.env.*
+*.db
+cache/
+.git
+*.md
+tests/
+Pytest.ini
+*.log
+.DS_Store

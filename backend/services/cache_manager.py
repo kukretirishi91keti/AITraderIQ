@@ -321,57 +321,60 @@ class CacheManager:
 class SingleFlight:
     """
     Singleflight pattern implementation.
-    
+
     Ensures that only one request is "in-flight" for a given key at any time.
     Subsequent requests for the same key wait for the first request to complete.
-    
+
     This prevents the "thundering herd" problem where multiple requests
     simultaneously try to fetch the same data.
     """
-    
+
     def __init__(self):
         import asyncio
         self._inflight: Dict[str, asyncio.Future] = {}
         self._lock = asyncio.Lock()
-    
+
     async def do(self, key: str, fn: Callable, *args, **kwargs) -> Any:
         """
         Execute fn() only once for the given key.
-        
+
         If a request for this key is already in-flight, wait for its result.
-        
+        The global lock is only held briefly to check/register the key,
+        NOT during the actual fetch (which would block all other keys).
+
         Args:
             key: Unique identifier for this request
             fn: Async function to execute
             *args, **kwargs: Arguments to pass to fn
-            
+
         Returns:
             Result of fn()
         """
         import asyncio
-        
+
+        is_owner = False
+
         async with self._lock:
             if key in self._inflight:
-                # Request already in-flight, wait for it
                 future = self._inflight[key]
             else:
-                # No in-flight request, create one
                 future = asyncio.get_event_loop().create_future()
                 self._inflight[key] = future
-                
-                # Execute the function
-                try:
-                    if asyncio.iscoroutinefunction(fn):
-                        result = await fn(*args, **kwargs)
-                    else:
-                        result = fn(*args, **kwargs)
-                    future.set_result(result)
-                except Exception as e:
-                    future.set_exception(e)
-                finally:
-                    # Cleanup
-                    del self._inflight[key]
-        
+                is_owner = True
+
+        if is_owner:
+            try:
+                if asyncio.iscoroutinefunction(fn):
+                    result = await fn(*args, **kwargs)
+                else:
+                    result = fn(*args, **kwargs)
+                future.set_result(result)
+            except Exception as e:
+                future.set_exception(e)
+            finally:
+                async with self._lock:
+                    self._inflight.pop(key, None)
+
         return await future
     
     def inflight_count(self) -> int:
