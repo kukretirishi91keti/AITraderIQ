@@ -24,7 +24,7 @@ const WhatsNextModal = ({ onClose }) => {
       >
         <div className="sticky top-0 bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-cyan-400">🚀 What's Next</h2>
+            <h2 className="text-xl font-bold text-cyan-400">🚀 What&apos;s Next</h2>
             <p className="text-sm text-gray-400">TraderAI Pro Roadmap</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -80,7 +80,7 @@ const WhatsNextModal = ({ onClose }) => {
           <section className="p-4 bg-cyan-600/10 rounded-lg border border-cyan-600/30">
             <h3 className="text-lg font-semibold text-cyan-400 mb-2">💡 Have a Feature Request?</h3>
             <p className="text-sm text-gray-300">
-              We're building TraderAI Pro with your feedback. Connect with us on kukretirishi91@gmail.com.
+              We&apos;re building TraderAI Pro with your feedback. Connect with us on kukretirishi91@gmail.com.
             </p>
           </section>
         </div>

@@ -12,7 +12,7 @@ const PortfolioModal = ({ onClose, portfolio, quote, onSymbolSelect, onRemove })
       </div>
       <div className="p-4 overflow-y-auto max-h-[60vh]">
         {portfolio.length === 0 ? (
-          <p className="text-gray-400 text-center py-8">Your portfolio is empty. Add stocks using the "+ Portfolio" button.</p>
+          <p className="text-gray-400 text-center py-8">Your portfolio is empty. Add stocks using the &quot;+ Portfolio&quot; button.</p>
         ) : (
           <table className="w-full">
             <thead>

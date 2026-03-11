@@ -55,8 +55,8 @@ const UserGuideModal = ({ onClose }) => (
         <section>
           <h3 className="text-lg font-semibold text-cyan-400 mb-2">⭐ Watchlist & Alerts</h3>
           <p className="text-gray-300 text-sm">
-            Click "+ Watchlist" to track stocks. Set price alerts with "Set Alert" -
-            you'll be notified when conditions are met.
+            Click &quot;+ Watchlist&quot; to track stocks. Set price alerts with &quot;Set Alert&quot; -
+            you&apos;ll be notified when conditions are met.
           </p>
         </section>
 
