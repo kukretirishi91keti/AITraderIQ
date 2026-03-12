@@ -37,7 +37,12 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
-  
+
+  // LLM settings from localStorage
+  const llmProvider = localStorage.getItem('llm_provider') || '';
+  const llmModel = localStorage.getItem('llm_model') || '';
+  const llmApiKey = localStorage.getItem('llm_api_key') || '';
+
   // Get currency for current ticker
   const currency = getCurrencySymbol(currentTicker);
 
@@ -69,9 +74,14 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
         body: JSON.stringify({
           question: msg,
           symbol: currentTicker,
-          trader_type: traderType,
-          stock_data: { ...stockData, currency: currency },
-          current_signal: signal
+          trader_style: traderType,
+          price: stockData?.price,
+          currency: currency,
+          rsi: stockData?.rsi,
+          signal: signal,
+          ...(llmProvider && { llm_provider: llmProvider }),
+          ...(llmModel && { llm_model: llmModel }),
+          ...(llmApiKey && { llm_api_key: llmApiKey }),
         }),
       });
 

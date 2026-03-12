@@ -108,6 +108,10 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [llmProvider, setLlmProvider] = useState(() => localStorage.getItem('llm_provider') || '');
+  const [llmModel, setLlmModel] = useState(() => localStorage.getItem('llm_model') || '');
+  const [llmApiKey, setLlmApiKey] = useState(() => localStorage.getItem('llm_api_key') || '');
 
   // Health monitoring
   const [healthStatus, setHealthStatus] = useState('HEALTHY');
@@ -365,15 +369,19 @@ export default function App() {
         body: JSON.stringify({
           question: prompt, symbol: selectedSymbol, price: quote?.price,
           currency: currentMarket.currency, market: currentMarket.name,
-          trader_type: traderStyle.toLowerCase(),
-          rsi: getSignalValue(signals?.rsi), signal: signals?.signal || signals?.overall_signal
+          trader_style: traderStyle.toLowerCase(),
+          rsi: getSignalValue(signals?.rsi), signal: signals?.signal || signals?.overall_signal,
+          ...(llmProvider && { llm_provider: llmProvider }),
+          ...(llmModel && { llm_model: llmModel }),
+          ...(llmApiKey && { llm_api_key: llmApiKey }),
         })
       });
       const data = await response.json();
+      const sourceLabel = data.source === 'fallback' ? 'AI Analysis' : data.provider || data.source || 'AI';
       setAiMessages(prev => [...prev, {
         role: 'assistant',
         content: data.answer || data.response || 'Unable to generate response',
-        source: data.source || 'ai'
+        source: sourceLabel,
       }]);
     } catch (err) {
       setAiMessages(prev => [...prev, { role: 'assistant', content: `AI service temporarily unavailable. Error: ${err.message}`, source: 'error' }]);
@@ -877,8 +885,38 @@ export default function App() {
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-cyan-400">AI Assistant</h3>
-              <span className="text-xs text-green-400">● Active</span>
+              <div className="flex items-center gap-2">
+                {llmProvider && <span className="text-xs text-cyan-300 bg-cyan-900/40 px-1.5 py-0.5 rounded">{llmProvider}</span>}
+                <button onClick={() => setShowAiSettings(s => !s)} className="text-xs text-gray-400 hover:text-cyan-400 transition-colors" title="AI Settings">⚙</button>
+                <span className="text-xs text-green-400">● Active</span>
+              </div>
             </div>
+            {showAiSettings && (
+              <div className="mt-3 p-3 bg-gray-900/60 rounded-lg border border-gray-700 space-y-2">
+                <p className="text-xs text-gray-400 font-medium">LLM Provider</p>
+                <select value={llmProvider} onChange={e => { setLlmProvider(e.target.value); localStorage.setItem('llm_provider', e.target.value); setLlmModel(''); localStorage.setItem('llm_model', ''); }} className="w-full bg-gray-700 text-sm px-2 py-1.5 rounded border border-gray-600 focus:border-cyan-500 focus:outline-none">
+                  <option value="">Auto (server default)</option>
+                  <option value="groq">Groq (Llama 3.3)</option>
+                  <option value="openai">OpenAI (GPT-4o)</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                </select>
+                {llmProvider && (
+                  <>
+                    <p className="text-xs text-gray-400 font-medium">Model</p>
+                    <select value={llmModel} onChange={e => { setLlmModel(e.target.value); localStorage.setItem('llm_model', e.target.value); }} className="w-full bg-gray-700 text-sm px-2 py-1.5 rounded border border-gray-600 focus:border-cyan-500 focus:outline-none">
+                      <option value="">Default</option>
+                      {llmProvider === 'groq' && <><option value="llama-3.3-70b-versatile">Llama 3.3 70B</option><option value="llama-3.1-8b-instant">Llama 3.1 8B (fast)</option></>}
+                      {llmProvider === 'openai' && <><option value="gpt-4o">GPT-4o</option><option value="gpt-4o-mini">GPT-4o Mini</option><option value="gpt-3.5-turbo">GPT-3.5 Turbo</option></>}
+                      {llmProvider === 'anthropic' && <><option value="claude-sonnet-4-20250514">Claude Sonnet 4</option><option value="claude-haiku-4-20250414">Claude Haiku 4</option></>}
+                    </select>
+                  </>
+                )}
+                <p className="text-xs text-gray-400 font-medium">API Key <span className="text-gray-600">(stored locally)</span></p>
+                <input type="password" value={llmApiKey} onChange={e => { setLlmApiKey(e.target.value); localStorage.setItem('llm_api_key', e.target.value); }} placeholder={llmProvider === 'groq' ? 'gsk_...' : llmProvider === 'anthropic' ? 'sk-ant-...' : llmProvider === 'openai' ? 'sk-...' : 'Enter API key'} className="w-full bg-gray-700 text-sm px-2 py-1.5 rounded border border-gray-600 focus:border-cyan-500 focus:outline-none" />
+                <p className="text-xs text-gray-500">Key stays in your browser. Never sent to our servers.</p>
+                {llmApiKey && <button onClick={() => { setLlmApiKey(''); localStorage.removeItem('llm_api_key'); }} className="text-xs text-red-400 hover:text-red-300">Clear key</button>}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {aiMessages.length === 0 ? (

@@ -1,21 +1,18 @@
 """
-GenAI Router v4.9.6
-====================
-AI-powered trading insights using Groq LLM.
+GenAI Router v5.0
+==================
+Multi-provider AI trading insights.
 
-FIXES in v4.9.6:
-- Fixed TypeError: '<' not supported between NoneType and int
-- Added null-safe checks for rsi, price, vwap, macd
-- Improved fallback response generation
+Supported LLM Providers:
+- Groq (llama-3.3-70b-versatile, llama-3.1-8b-instant)
+- OpenAI (gpt-4o, gpt-4o-mini, gpt-3.5-turbo)
+- Anthropic (claude-sonnet-4-20250514, claude-haiku-4-20250414)
 
-Features:
-- Context-aware responses based on stock data
-- Currency-aware formatting
-- Trader style customization
-- Rate limiting and error handling
+Users can select provider and supply their own API key from the UI.
+Server-side env keys are used as defaults when no user key is provided.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
@@ -25,10 +22,19 @@ import logging
 router = APIRouter(prefix="/api/genai", tags=["genai"])
 logger = logging.getLogger(__name__)
 
-# Configuration
+# Server-side default keys (from .env)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-DEFAULT_MODEL = "llama-3.3-70b-versatile"
-MAX_TOKENS = 300
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+# Provider → default model
+PROVIDER_DEFAULTS = {
+    "groq": "llama-3.3-70b-versatile",
+    "openai": "gpt-4o-mini",
+    "anthropic": "claude-sonnet-4-20250514",
+}
+
+MAX_TOKENS = 500
 
 # =============================================================================
 # REQUEST/RESPONSE MODELS
@@ -37,35 +43,106 @@ MAX_TOKENS = 300
 class QueryRequest(BaseModel):
     question: str
     symbol: Optional[str] = "AAPL"
-    price: Optional[float] = None  # Allow None
+    price: Optional[float] = None
     currency: Optional[str] = "$"
-    rsi: Optional[float] = None    # Allow None
+    rsi: Optional[float] = None
     signal: Optional[str] = "HOLD"
     trader_style: Optional[str] = "swing"
     vwap: Optional[float] = None
     macd: Optional[float] = None
+    llm_provider: Optional[str] = None   # groq, openai, anthropic
+    llm_model: Optional[str] = None      # override model
+    llm_api_key: Optional[str] = None    # user-supplied key
 
 class QueryResponse(BaseModel):
     answer: str
     source: str
     model: Optional[str] = None
+    provider: Optional[str] = None
     timestamp: str
 
 # =============================================================================
-# GROQ CLIENT
+# LLM CLIENT FACTORY
 # =============================================================================
 
-def get_groq_client():
-    """Get or create Groq client."""
-    try:
+def _resolve_provider_and_key(request: QueryRequest):
+    """Determine which provider/key/model to use.
+
+    Priority: user-supplied key > server env key. Auto-detect provider from key prefix if not specified.
+    """
+    provider = (request.llm_provider or "").lower().strip()
+    api_key = (request.llm_api_key or "").strip()
+
+    # Auto-detect provider from key prefix
+    if not provider and api_key:
+        if api_key.startswith("gsk_"):
+            provider = "groq"
+        elif api_key.startswith("sk-ant-"):
+            provider = "anthropic"
+        elif api_key.startswith("sk-"):
+            provider = "openai"
+
+    # Fall back to whichever server key is configured
+    if not provider:
+        if GROQ_API_KEY:
+            provider = "groq"
+        elif OPENAI_API_KEY:
+            provider = "openai"
+        elif ANTHROPIC_API_KEY:
+            provider = "anthropic"
+
+    # Resolve key
+    if not api_key:
+        api_key = {"groq": GROQ_API_KEY, "openai": OPENAI_API_KEY, "anthropic": ANTHROPIC_API_KEY}.get(provider, "")
+
+    model = (request.llm_model or "").strip() or PROVIDER_DEFAULTS.get(provider, "")
+
+    return provider, api_key, model
+
+
+def _call_llm(provider: str, api_key: str, model: str, system_prompt: str, user_message: str) -> str:
+    """Call the selected LLM provider. Returns the response text or raises."""
+    if provider == "groq":
         from groq import Groq
-        return Groq(api_key=GROQ_API_KEY)
-    except ImportError:
-        logger.warning("Groq library not installed")
-        return None
-    except Exception as e:
-        logger.error(f"Failed to create Groq client: {e}")
-        return None
+        client = Groq(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            max_tokens=MAX_TOKENS,
+            temperature=0.7,
+        )
+        return resp.choices[0].message.content
+
+    elif provider == "openai":
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            max_tokens=MAX_TOKENS,
+            temperature=0.7,
+        )
+        return resp.choices[0].message.content
+
+    elif provider == "anthropic":
+        import anthropic
+        client = anthropic.Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model=model,
+            max_tokens=MAX_TOKENS,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}],
+        )
+        return resp.content[0].text
+
+    else:
+        raise ValueError(f"Unknown provider: {provider}")
 
 # =============================================================================
 # SYSTEM PROMPTS BY TRADER STYLE
@@ -318,96 +395,119 @@ def generate_fallback_response(request: QueryRequest) -> str:
 async def query_ai(request: QueryRequest):
     """
     Query the AI assistant for trading insights.
-    
-    The AI provides context-aware responses based on:
-    - Current stock price and technical indicators
-    - Trader style preferences
-    - Specific question asked
+
+    Supports multiple LLM providers. User can pass llm_provider, llm_model,
+    and llm_api_key in the request body to use their own key.
+    Falls back to rich rule-based analysis when no LLM is available.
     """
-    client = get_groq_client()
-    
-    if client and GROQ_API_KEY:
+    provider, api_key, model = _resolve_provider_and_key(request)
+
+    if provider and api_key:
         try:
             system_prompt = get_system_prompt(request)
-            
-            response = client.chat.completions.create(
-                model=DEFAULT_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": request.question}
-                ],
-                max_tokens=MAX_TOKENS,
-                temperature=0.7
-            )
-            
+            answer = _call_llm(provider, api_key, model, system_prompt, request.question)
+
             return QueryResponse(
-                answer=response.choices[0].message.content,
-                source="groq",
-                model=DEFAULT_MODEL,
-                timestamp=datetime.now().isoformat()
+                answer=answer,
+                source=provider,
+                model=model,
+                provider=provider,
+                timestamp=datetime.now().isoformat(),
             )
-            
+        except ImportError as e:
+            logger.warning(f"{provider} library not installed: {e}")
         except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            # Fall through to fallback
-    
-    # Fallback response - now with null-safe handling
+            logger.error(f"LLM error ({provider}/{model}): {e}")
+
+    # Fallback response
     try:
         answer = generate_fallback_response(request)
     except Exception as e:
         logger.error(f"Fallback generation error: {e}")
         answer = f"I can help analyze {request.symbol or 'this stock'}. Please check the technical indicators panel for RSI, MACD, and signal recommendations."
-    
+
     return QueryResponse(
         answer=answer,
         source="fallback",
         model=None,
-        timestamp=datetime.now().isoformat()
+        provider=None,
+        timestamp=datetime.now().isoformat(),
     )
 
 @router.get("/health")
 async def genai_health():
     """Check GenAI service health."""
-    client = get_groq_client()
-    
-    if client and GROQ_API_KEY:
-        try:
-            # Quick test call
-            response = client.chat.completions.create(
-                model=DEFAULT_MODEL,
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=5
-            )
-            return {
-                "status": "healthy",
-                "provider": "groq",
-                "model": DEFAULT_MODEL,
-                "timestamp": datetime.now().isoformat()
-            }
-        except Exception as e:
-            return {
-                "status": "degraded",
-                "provider": "groq",
-                "error": str(e)[:100],
-                "fallback": "rule-based",
-                "timestamp": datetime.now().isoformat()
-            }
-    
+    configured = []
+    if GROQ_API_KEY:
+        configured.append("groq")
+    if OPENAI_API_KEY:
+        configured.append("openai")
+    if ANTHROPIC_API_KEY:
+        configured.append("anthropic")
+
     return {
-        "status": "fallback",
-        "provider": "rule-based",
-        "reason": "Groq not configured",
-        "timestamp": datetime.now().isoformat()
+        "status": "healthy" if configured else "fallback",
+        "configured_providers": configured,
+        "accepts_user_keys": True,
+        "fallback": "rule-based",
+        "timestamp": datetime.now().isoformat(),
     }
+
+
+@router.get("/providers")
+async def list_providers():
+    """List supported LLM providers and their models."""
+    return {
+        "providers": [
+            {
+                "id": "groq",
+                "name": "Groq",
+                "models": [
+                    {"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B", "recommended": True},
+                    {"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B", "fast": True},
+                ],
+                "key_prefix": "gsk_",
+                "key_url": "https://console.groq.com/keys",
+                "server_configured": bool(GROQ_API_KEY),
+            },
+            {
+                "id": "openai",
+                "name": "OpenAI",
+                "models": [
+                    {"id": "gpt-4o", "name": "GPT-4o", "recommended": True},
+                    {"id": "gpt-4o-mini", "name": "GPT-4o Mini", "fast": True},
+                    {"id": "gpt-3.5-turbo", "name": "GPT-3.5 Turbo"},
+                ],
+                "key_prefix": "sk-",
+                "key_url": "https://platform.openai.com/api-keys",
+                "server_configured": bool(OPENAI_API_KEY),
+            },
+            {
+                "id": "anthropic",
+                "name": "Anthropic",
+                "models": [
+                    {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "recommended": True},
+                    {"id": "claude-haiku-4-20250414", "name": "Claude Haiku 4", "fast": True},
+                ],
+                "key_prefix": "sk-ant-",
+                "key_url": "https://console.anthropic.com/settings/keys",
+                "server_configured": bool(ANTHROPIC_API_KEY),
+            },
+        ],
+        "default_provider": "groq" if GROQ_API_KEY else "openai" if OPENAI_API_KEY else "anthropic" if ANTHROPIC_API_KEY else None,
+    }
+
 
 @router.get("/models")
 async def list_models():
-    """List available AI models."""
+    """List available AI models (legacy endpoint)."""
     return {
         "available": [
             {"id": "llama-3.3-70b-versatile", "provider": "groq", "recommended": True},
             {"id": "llama-3.1-8b-instant", "provider": "groq", "fast": True},
+            {"id": "gpt-4o-mini", "provider": "openai"},
+            {"id": "claude-sonnet-4-20250514", "provider": "anthropic"},
         ],
-        "default": DEFAULT_MODEL,
-        "fallback": "rule-based"
+        "default": PROVIDER_DEFAULTS.get("groq"),
+        "fallback": "rule-based",
     }
