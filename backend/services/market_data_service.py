@@ -418,9 +418,9 @@ def _generate_mme_candles(
     """
     Generate interval-aware simulated candles.
 
-    The seed includes the interval so each timeframe produces
-    distinct price action, which fixes the "same data on every
-    timeframe" bug.
+    Seed includes interval + time-bucket so:
+    - Each timeframe produces distinct price action
+    - Values evolve in real-time (new candles appear at each interval boundary)
     """
     stock_info = GLOBAL_STOCKS.get(symbol.upper(), {})
     base_price = stock_info.get('basePrice', 100)
@@ -434,23 +434,30 @@ def _generate_mme_candles(
     minutes = interval_minutes.get(interval, 1440)
 
     # Shorter intervals = smaller moves (sqrt-time scaling)
-    vol_scale = (minutes / 1440) ** 0.5  # normalised to daily
+    vol_scale = (minutes / 1440) ** 0.5
 
-    # Deterministic but INTERVAL-DEPENDENT seed
-    seed = f"mme:{symbol.upper()}:{interval}:{datetime.now().strftime('%Y%m%d')}"
+    # Time-bucketed seed: rotates every interval so chart evolves
+    now = datetime.now()
+    time_bucket = int(now.timestamp()) // (minutes * 60)
+    seed = f"mme:{symbol.upper()}:{interval}:{time_bucket}"
     rng = random.Random(hashlib.md5(seed.encode()).hexdigest())
+
+    # Generate from a fixed origin anchored to wall-clock interval boundaries
+    total = count + 20  # buffer for stable windowing
+    anchor_ts = (time_bucket + 1) * minutes * 60  # end of current bucket
+    start_ts = anchor_ts - total * minutes * 60
 
     candles = []
     current_price = base_price * (0.95 + rng.random() * 0.10)
-    now = datetime.now()
 
-    for i in range(count):
-        ts = now - timedelta(minutes=minutes * (count - i))
+    for i in range(total):
+        candle_ts = start_ts + i * minutes * 60
+        ts = datetime.fromtimestamp(candle_ts)
 
         # Random walk scaled by interval
         change_pct = (rng.random() - 0.48) * 3 * vol_scale
         current_price *= (1 + change_pct / 100)
-        current_price = max(current_price, base_price * 0.5)  # floor
+        current_price = max(current_price, base_price * 0.5)
 
         spread = current_price * 0.005 * vol_scale
         open_price = current_price + (rng.random() - 0.5) * spread * 2
@@ -467,7 +474,8 @@ def _generate_mme_candles(
             'volume': int(rng.random() * 20_000_000 * vol_scale + 100_000),
         })
 
-    return candles
+    # Return the last `count` candles
+    return candles[-count:]
 
 
 # =============================================================================

@@ -108,8 +108,9 @@ def get_seed(symbol: str) -> int:
 def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
     """Generate realistic demo candles for chart.
 
-    The seed now includes the interval so each timeframe produces
-    distinct price action instead of identical data.
+    Seed includes interval + time-bucket so:
+    - Each timeframe shows distinct price action
+    - Values evolve over time (new candles appear, old ones roll off)
     """
     base_prices = {
         "AAPL": 238.47, "MSFT": 430.50, "GOOGL": 175.20, "AMZN": 220.10,
@@ -141,33 +142,44 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
     # Volatility scaling: shorter intervals → smaller moves
     vol_scale = (interval_minutes / 1440) ** 0.5
 
-    current_price = base_price
-    # CRITICAL FIX: include interval in seed so each timeframe is unique
-    seed = get_seed(f"{symbol}:{interval}")
-    random.seed(seed)
+    # Time-bucketed seed: rotates every interval so chart evolves in real-time.
+    # Anchor candles to fixed wall-clock slots (floor to interval boundary).
+    time_bucket = int(now.timestamp()) // (interval_minutes * 60)
+    seed = get_seed(f"{symbol}:{interval}:{time_bucket}")
+    rng = random.Random(seed)
 
-    for i in range(count):
-        change = random.uniform(-0.005, 0.005) * current_price * vol_scale
+    # Generate count + buffer candles from a fixed origin, then take the last `count`.
+    # This means when a new candle rolls in, only the newest one changes.
+    total = count + 20  # buffer for stable windowing
+    anchor_ts = (time_bucket + 1) * interval_minutes * 60  # end of current bucket
+    start_ts = anchor_ts - total * interval_minutes * 60
+
+    current_price = base_price
+    all_candles = []
+    for i in range(total):
+        change = rng.uniform(-0.005, 0.005) * current_price * vol_scale
         current_price = max(current_price + change, base_price * 0.8)
         current_price = min(current_price, base_price * 1.2)
 
         spread = 0.002 * vol_scale
-        open_price = current_price * random.uniform(1 - spread, 1 + spread)
-        close_price = current_price * random.uniform(1 - spread, 1 + spread)
-        high_price = max(open_price, close_price) * random.uniform(1.001, 1.001 + 0.009 * vol_scale)
-        low_price = min(open_price, close_price) * random.uniform(0.999 - 0.009 * vol_scale, 0.999)
-        volume = random.randint(100000, 5000000)
+        open_price = current_price * rng.uniform(1 - spread, 1 + spread)
+        close_price = current_price * rng.uniform(1 - spread, 1 + spread)
+        high_price = max(open_price, close_price) * rng.uniform(1.001, 1.001 + 0.009 * vol_scale)
+        low_price = min(open_price, close_price) * rng.uniform(0.999 - 0.009 * vol_scale, 0.999)
+        volume = rng.randint(100000, 5000000)
 
-        candles.append({
-            "timestamp": (now.timestamp() - (count - i) * interval_minutes * 60) * 1000,
+        candle_ts = start_ts + i * interval_minutes * 60
+        all_candles.append({
+            "timestamp": candle_ts * 1000,
             "open": round(open_price, 2),
             "high": round(high_price, 2),
             "low": round(low_price, 2),
             "close": round(close_price, 2),
-            "volume": volume
+            "volume": volume,
         })
 
-    return candles
+    # Return the last `count` candles (most recent window)
+    return all_candles[-count:]
 
 
 # =============================================================================
