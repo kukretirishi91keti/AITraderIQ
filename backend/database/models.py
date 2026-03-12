@@ -20,6 +20,11 @@ class User(Base):
     trader_style = Column(String(50), default="swing")  # day, swing, position, scalper
     risk_tolerance = Column(String(50), default="moderate")  # conservative, moderate, aggressive
     is_active = Column(Boolean, default=True)
+    tier = Column(String(20), default="free")  # free, starter, pro, unlimited
+    credits_balance = Column(Integer, default=0)
+    credits_granted_today = Column(Integer, default=0)
+    credits_grant_date = Column(String(10), default="")  # YYYY-MM-DD for daily reset tracking
+    lifetime_credits_used = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -27,6 +32,7 @@ class User(Base):
     watchlist_items = relationship("WatchlistItem", back_populates="user", cascade="all, delete-orphan")
     portfolio_items = relationship("PortfolioItem", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="user", cascade="all, delete-orphan")
+    credit_transactions = relationship("CreditTransaction", back_populates="user", cascade="all, delete-orphan")
 
 
 class WatchlistItem(Base):
@@ -74,3 +80,18 @@ class Alert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="alerts")
+
+
+class CreditTransaction(Base):
+    __tablename__ = "credit_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount = Column(Integer, nullable=False)  # positive = credit, negative = debit
+    balance_after = Column(Integer, nullable=False)
+    tx_type = Column(String(30), nullable=False)  # daily_grant, ai_query, topup, bonus, refund
+    description = Column(String(255), default="")
+    metadata_json = Column(Text, default="{}")  # provider, model, symbol, etc.
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="credit_transactions")

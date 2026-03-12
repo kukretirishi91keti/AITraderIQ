@@ -12,12 +12,17 @@ Users can select provider and supply their own API key from the UI.
 Server-side env keys are used as defaults when no user key is provided.
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
 import os
 import logging
+
+from database.engine import get_db
+from database.models import User
+from auth.security import get_current_user
 
 router = APIRouter(prefix="/api/genai", tags=["genai"])
 logger = logging.getLogger(__name__)
@@ -392,34 +397,71 @@ def generate_fallback_response(request: QueryRequest) -> str:
 # =============================================================================
 
 @router.post("/query", response_model=QueryResponse)
-async def query_ai(request: QueryRequest):
+async def query_ai(
+    request: QueryRequest,
+    user: Optional[User] = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Query the AI assistant for trading insights.
 
-    Supports multiple LLM providers. User can pass llm_provider, llm_model,
-    and llm_api_key in the request body to use their own key.
-    Falls back to rich rule-based analysis when no LLM is available.
+    Credit system:
+    - Fallback (rule-based) responses are always FREE
+    - LLM queries cost 1-5 credits depending on model
+    - User-supplied API keys bypass credit checks (they pay their own API costs)
+    - Anonymous users get fallback responses for free
     """
     provider, api_key, model = _resolve_provider_and_key(request)
+    user_supplied_key = bool((request.llm_api_key or "").strip())
 
     if provider and api_key:
-        try:
-            system_prompt = get_system_prompt(request)
-            answer = _call_llm(provider, api_key, model, system_prompt, request.question)
+        # Credit check (skip if user supplies their own key)
+        credits_used = 0
+        if user and not user_supplied_key:
+            try:
+                from services.credits_service import get_ai_cost, check_and_debit
+                cost = get_ai_cost(provider, model)
+                result = await check_and_debit(
+                    user, db, cost,
+                    tx_type="ai_query",
+                    description=f"AI query: {provider}/{model} for {request.symbol}",
+                    metadata={"provider": provider, "model": model, "symbol": request.symbol},
+                )
+                if not result["allowed"]:
+                    # Not enough credits — fall through to free fallback
+                    logger.info(f"User {user.id} out of credits, using fallback")
+                    provider = None  # force fallback
+                else:
+                    credits_used = cost
+            except Exception as e:
+                logger.warning(f"Credit check error: {e}")
+                # On credit system error, allow the query (fail open)
 
-            return QueryResponse(
-                answer=answer,
-                source=provider,
-                model=model,
-                provider=provider,
-                timestamp=datetime.now().isoformat(),
-            )
-        except ImportError as e:
-            logger.warning(f"{provider} library not installed: {e}")
-        except Exception as e:
-            logger.error(f"LLM error ({provider}/{model}): {e}")
+        if provider and api_key:
+            try:
+                system_prompt = get_system_prompt(request)
+                answer = _call_llm(provider, api_key, model, system_prompt, request.question)
 
-    # Fallback response
+                return QueryResponse(
+                    answer=answer,
+                    source=provider,
+                    model=model,
+                    provider=provider,
+                    timestamp=datetime.now().isoformat(),
+                )
+            except ImportError as e:
+                logger.warning(f"{provider} library not installed: {e}")
+            except Exception as e:
+                logger.error(f"LLM error ({provider}/{model}): {e}")
+                # Refund credits on LLM failure
+                if credits_used and user:
+                    try:
+                        from services.credits_service import add_credits
+                        await add_credits(user, db, credits_used, "refund", f"Refund: {provider} error")
+                    except Exception:
+                        pass
+
+    # Fallback response — always free, no credits needed
     try:
         answer = generate_fallback_response(request)
     except Exception as e:

@@ -31,6 +31,7 @@ const ScreenerModal = lazy(() => import('./components/modals/ScreenerModal'));
 const PortfolioModal = lazy(() => import('./components/modals/PortfolioModal'));
 const AlertsModal = lazy(() => import('./components/modals/AlertsModal'));
 const AddToPortfolioModal = lazy(() => import('./components/modals/AddToPortfolioModal'));
+const CreditsModal = lazy(() => import('./components/modals/CreditsModal'));
 
 // ============================================================
 // MAIN APP COMPONENT
@@ -112,6 +113,10 @@ export default function App() {
   const [llmProvider, setLlmProvider] = useState(() => localStorage.getItem('llm_provider') || '');
   const [llmModel, setLlmModel] = useState(() => localStorage.getItem('llm_model') || '');
   const [llmApiKey, setLlmApiKey] = useState(() => localStorage.getItem('llm_api_key') || '');
+
+  // Credits
+  const [credits, setCredits] = useState({ balance: 50, tier: 'free', daily_grant: 50 });
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
 
   // Health monitoring
   const [healthStatus, setHealthStatus] = useState('HEALTHY');
@@ -377,12 +382,19 @@ export default function App() {
         })
       });
       const data = await response.json();
-      const sourceLabel = data.source === 'fallback' ? 'AI Analysis' : data.provider || data.source || 'AI';
+      const sourceLabel = data.source === 'fallback' ? 'AI Analysis (free)' : data.provider || data.source || 'AI';
       setAiMessages(prev => [...prev, {
         role: 'assistant',
         content: data.answer || data.response || 'Unable to generate response',
         source: sourceLabel,
       }]);
+      // Refresh credits after AI query
+      try {
+        const token = localStorage.getItem('traderai_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const credRes = await fetch(`${API_BASE}/api/credits/balance`, { headers });
+        if (credRes.ok) setCredits(await credRes.json());
+      } catch { /* non-critical */ }
     } catch (err) {
       setAiMessages(prev => [...prev, { role: 'assistant', content: `AI service temporarily unavailable. Error: ${err.message}`, source: 'error' }]);
     } finally {
@@ -457,6 +469,21 @@ export default function App() {
 
   useEffect(() => { setHistory([]); setLoading(true); }, [chartInterval]);
 
+  // Fetch credits balance
+  useEffect(() => {
+    const fetchCredits = async () => {
+      try {
+        const token = localStorage.getItem('traderai_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`${API_BASE}/api/credits/balance`, { headers });
+        if (res.ok) setCredits(await res.json());
+      } catch { /* credits display is non-critical */ }
+    };
+    fetchCredits();
+    const creditsInterval = setInterval(fetchCredits, 60000); // refresh every minute
+    return () => clearInterval(creditsInterval);
+  }, [isLoggedIn]);
+
   // Filtered screener data
   const filteredScreenerData = useMemo(() => {
     let data = { ...screenerData };
@@ -527,9 +554,14 @@ export default function App() {
             <button onClick={() => setShowUserGuide(true)} className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium">📖 Guide</button>
             <button onClick={() => setShowDebug(!showDebug)} className="px-3 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium">🔧</button>
             <ConnectionStatus />
+            <button onClick={() => setShowCreditsModal(true)} className="px-3 py-2 bg-yellow-600/80 hover:bg-yellow-500 rounded-lg text-sm font-medium flex items-center gap-1" title="Credits & Pricing">
+              <span>{credits.balance ?? 50}</span>
+              <span className="text-yellow-200 text-xs">credits</span>
+            </button>
             {isLoggedIn ? (
               <div className="flex items-center gap-2">
                 <span className="text-sm text-cyan-400">{user?.username}</span>
+                <span className="text-xs text-gray-500 bg-gray-700 px-1.5 py-0.5 rounded">{credits.tier || 'free'}</span>
                 <button onClick={logout} className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm">Logout</button>
               </div>
             ) : (
@@ -982,6 +1014,9 @@ export default function App() {
         )}
         {showAddToPortfolio && (
           <AddToPortfolioModal onClose={() => setShowAddToPortfolio(false)} selectedSymbol={selectedSymbol} quote={quote} portfolioShares={portfolioShares} setPortfolioShares={setPortfolioShares} portfolioAvgPrice={portfolioAvgPrice} setPortfolioAvgPrice={setPortfolioAvgPrice} onAdd={addToPortfolio} isInPortfolio={isInPortfolio} />
+        )}
+        {showCreditsModal && (
+          <CreditsModal onClose={() => setShowCreditsModal(false)} credits={credits} setCredits={setCredits} isLoggedIn={isLoggedIn} />
         )}
       </Suspense>
 

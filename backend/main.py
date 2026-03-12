@@ -300,6 +300,13 @@ load_router(
     '(price alerts engine)'
 )
 
+# Credits system
+load_router(
+    ['routers.credits'],
+    'credits router',
+    '(balance, pricing, topup)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
