@@ -12,8 +12,8 @@ Users can select provider and supply their own API key from the UI.
 Server-side env keys are used as defaults when no user key is provided.
 """
 
-from fastapi import APIRouter, HTTPException, Header, Depends
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,15 @@ import logging
 from database.engine import get_db
 from database.models import User
 from auth.security import get_current_user
+
+try:
+    from middleware.rate_limit import limiter, AI_RATE
+
+    def _ai_rate_limit(func):
+        return limiter.limit(AI_RATE)(func)
+except ImportError:
+    def _ai_rate_limit(func):
+        return func
 
 router = APIRouter(prefix="/api/genai", tags=["genai"])
 logger = logging.getLogger(__name__)
@@ -46,7 +55,7 @@ MAX_TOKENS = 500
 # =============================================================================
 
 class QueryRequest(BaseModel):
-    question: str
+    question: str = Field(..., min_length=1, max_length=1000)
     symbol: Optional[str] = "AAPL"
     price: Optional[float] = None
     currency: Optional[str] = "$"
@@ -69,6 +78,13 @@ class QueryResponse(BaseModel):
 # =============================================================================
 # LLM CLIENT FACTORY
 # =============================================================================
+
+def _mask_key(key: str) -> str:
+    """Mask an API key for safe logging: show first 4 and last 4 chars."""
+    if not key or len(key) <= 10:
+        return "***"
+    return f"{key[:4]}...{key[-4:]}"
+
 
 def _resolve_provider_and_key(request: QueryRequest):
     """Determine which provider/key/model to use.
@@ -105,11 +121,14 @@ def _resolve_provider_and_key(request: QueryRequest):
     return provider, api_key, model
 
 
+LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+
+
 def _call_llm(provider: str, api_key: str, model: str, system_prompt: str, user_message: str) -> str:
-    """Call the selected LLM provider. Returns the response text or raises."""
+    """Call the selected LLM provider with timeout. Returns the response text or raises."""
     if provider == "groq":
         from groq import Groq
-        client = Groq(api_key=api_key)
+        client = Groq(api_key=api_key, timeout=LLM_TIMEOUT)
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -123,7 +142,7 @@ def _call_llm(provider: str, api_key: str, model: str, system_prompt: str, user_
 
     elif provider == "openai":
         from openai import OpenAI
-        client = OpenAI(api_key=api_key)
+        client = OpenAI(api_key=api_key, timeout=LLM_TIMEOUT)
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -137,7 +156,7 @@ def _call_llm(provider: str, api_key: str, model: str, system_prompt: str, user_
 
     elif provider == "anthropic":
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key)
+        client = anthropic.Anthropic(api_key=api_key, timeout=LLM_TIMEOUT)
         resp = client.messages.create(
             model=model,
             max_tokens=MAX_TOKENS,
@@ -397,7 +416,9 @@ def generate_fallback_response(request: QueryRequest) -> str:
 # =============================================================================
 
 @router.post("/query", response_model=QueryResponse)
+@_ai_rate_limit
 async def query_ai(
+    request_obj: Request,
     request: QueryRequest,
     user: Optional[User] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -452,7 +473,7 @@ async def query_ai(
             except ImportError as e:
                 logger.warning(f"{provider} library not installed: {e}")
             except Exception as e:
-                logger.error(f"LLM error ({provider}/{model}): {e}")
+                logger.error(f"LLM error ({provider}/{model}, key={_mask_key(api_key)}): {e}")
                 # Refund credits on LLM failure
                 if credits_used and user:
                     try:

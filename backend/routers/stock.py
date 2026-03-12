@@ -684,9 +684,9 @@ async def get_market_overview():
                     q = idx_batch["results"][idx["symbol"]]
                     idx["change"] = q.get("changePercent") or 0
                     idx["price"] = q.get("price")
-        except:
+        except Exception:
             pass
-        
+
         return {
             "success": True,
             "indices": indices,

@@ -3,37 +3,30 @@ Credits Service
 ================
 Manages user credit balances, daily grants, and usage tracking.
 
-Pricing Philosophy:
-- Free tier: 50 credits/day (enough to explore everything)
-- Credits are cheap: AI queries cost 1-5 credits depending on model
-- Market data, charts, signals: FREE (no credits needed)
-- Only AI queries and premium analytics consume credits
-- Way cheaper than $20/mo ChatGPT or $200/mo Bloomberg
-
 Credit Costs:
-  Groq Llama 3.1 8B (fast)    → 1 credit
-  Groq Llama 3.3 70B          → 2 credits
-  OpenAI GPT-4o-mini           → 3 credits
-  OpenAI GPT-4o                → 5 credits
-  Anthropic Claude Haiku       → 2 credits
-  Anthropic Claude Sonnet      → 4 credits
-  Fallback (rule-based)        → 0 credits (always free)
-  Advanced backtest            → 3 credits
-  AI Scanner                   → 2 credits
+  Groq Llama 3.1 8B (fast)    -> 1 credit
+  Groq Llama 3.3 70B          -> 2 credits
+  OpenAI GPT-4o-mini           -> 3 credits
+  OpenAI GPT-4o                -> 5 credits
+  Anthropic Claude Haiku       -> 2 credits
+  Anthropic Claude Sonnet      -> 4 credits
+  Fallback (rule-based)        -> 0 credits (always free)
+  Advanced backtest            -> 3 credits
+  AI Scanner                   -> 2 credits
 
 Tiers:
-  free       → 50 credits/day (auto-granted)
-  starter    → 200 credits/day + rollover up to 500
-  pro        → 1000 credits/day + rollover up to 3000
-  unlimited  → no limits
+  free       -> 50 credits/day (auto-granted)
+  starter    -> 200 credits/day + rollover up to 500
+  pro        -> 1000 credits/day + rollover up to 3000
+  unlimited  -> no limits
 """
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models import User, CreditTransaction
@@ -50,14 +43,14 @@ DAILY_GRANTS = {
 }
 
 MAX_ROLLOVER = {
-    "free": 50,       # no rollover — resets daily
+    "free": 50,       # no rollover -- resets daily
     "starter": 500,
     "pro": 3000,
     "unlimited": 999999,
 }
 
 AI_CREDIT_COSTS = {
-    # provider:model → cost
+    # provider:model -> cost
     "groq:llama-3.1-8b-instant": 1,
     "groq:llama-3.3-70b-versatile": 2,
     "openai:gpt-3.5-turbo": 2,
@@ -103,9 +96,12 @@ def get_ai_cost(provider: str, model: str) -> int:
 async def ensure_daily_grant(user: User, db: AsyncSession) -> int:
     """Grant daily free credits if not already granted today.
 
+    Uses optimistic concurrency: we UPDATE ... WHERE grant_date != today
+    so concurrent requests cannot double-grant.
+
     Returns the number of credits granted (0 if already granted).
     """
-    today = datetime.utcnow().strftime("%Y-%m-%d")
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     if user.credits_grant_date == today:
         return 0  # Already granted today
@@ -116,16 +112,29 @@ async def ensure_daily_grant(user: User, db: AsyncSession) -> int:
 
     # For free tier: reset to daily grant (no rollover)
     # For paid tiers: add daily grant, cap at max rollover
+    current_balance = user.credits_balance or 0
     if tier == "free":
         new_balance = daily
     else:
-        new_balance = min((user.credits_balance or 0) + daily, max_roll)
+        new_balance = min(current_balance + daily, max_roll)
 
-    granted = new_balance - (user.credits_balance or 0)
+    granted = new_balance - current_balance
 
-    user.credits_balance = new_balance
-    user.credits_granted_today = daily
-    user.credits_grant_date = today
+    # Atomic update with optimistic lock: only succeeds if grant_date hasn't changed
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, User.credits_grant_date != today)
+        .values(
+            credits_balance=new_balance,
+            credits_granted_today=daily,
+            credits_grant_date=today,
+        )
+    )
+
+    if result.rowcount == 0:
+        # Another request already granted — refresh and return 0
+        await db.refresh(user)
+        return 0
 
     # Record transaction
     tx = CreditTransaction(
@@ -139,7 +148,7 @@ async def ensure_daily_grant(user: User, db: AsyncSession) -> int:
     await db.commit()
     await db.refresh(user)
 
-    logger.info(f"Daily grant for user {user.id} ({tier}): +{granted} → {new_balance}")
+    logger.info(f"Daily grant for user {user.id} ({tier}): +{granted} -> {new_balance}")
     return granted
 
 
@@ -151,8 +160,9 @@ async def check_and_debit(
     description: str = "",
     metadata: Optional[Dict] = None,
 ) -> Dict[str, Any]:
-    """Check if user has enough credits and debit them.
+    """Check if user has enough credits and debit them atomically.
 
+    Uses UPDATE ... WHERE balance >= cost to prevent race conditions.
     Returns {"allowed": True/False, "balance": int, "cost": int, ...}
     """
     # Ensure daily grant first
@@ -162,24 +172,38 @@ async def check_and_debit(
 
     # Unlimited tier skips balance check
     if tier == "unlimited":
-        user.lifetime_credits_used = (user.lifetime_credits_used or 0) + cost
+        await db.execute(
+            update(User)
+            .where(User.id == user.id)
+            .values(lifetime_credits_used=(user.lifetime_credits_used or 0) + cost)
+        )
         await db.commit()
+        await db.refresh(user)
         return {"allowed": True, "balance": user.credits_balance, "cost": cost, "tier": tier}
 
-    balance = user.credits_balance or 0
+    # Atomic debit: UPDATE ... WHERE balance >= cost
+    result = await db.execute(
+        update(User)
+        .where(User.id == user.id, User.credits_balance >= cost)
+        .values(
+            credits_balance=User.credits_balance - cost,
+            lifetime_credits_used=(user.lifetime_credits_used or 0) + cost,
+        )
+    )
 
-    if balance < cost:
+    if result.rowcount == 0:
+        # Insufficient credits
+        await db.refresh(user)
         return {
             "allowed": False,
-            "balance": balance,
+            "balance": user.credits_balance or 0,
             "cost": cost,
             "tier": tier,
-            "message": f"Insufficient credits. Need {cost}, have {balance}. Buy more or wait for daily reset.",
+            "message": f"Insufficient credits. Need {cost}, have {user.credits_balance or 0}. Buy more or wait for daily reset.",
         }
 
-    # Debit
-    user.credits_balance = balance - cost
-    user.lifetime_credits_used = (user.lifetime_credits_used or 0) + cost
+    # Refresh to get the new balance
+    await db.refresh(user)
 
     tx = CreditTransaction(
         user_id=user.id,
@@ -191,7 +215,6 @@ async def check_and_debit(
     )
     db.add(tx)
     await db.commit()
-    await db.refresh(user)
 
     return {"allowed": True, "balance": user.credits_balance, "cost": cost, "tier": tier}
 
@@ -203,8 +226,14 @@ async def add_credits(
     tx_type: str = "topup",
     description: str = "",
 ) -> int:
-    """Add credits to user's balance. Returns new balance."""
-    user.credits_balance = (user.credits_balance or 0) + amount
+    """Add credits to user's balance atomically. Returns new balance."""
+    await db.execute(
+        update(User)
+        .where(User.id == user.id)
+        .values(credits_balance=User.credits_balance + amount)
+    )
+
+    await db.refresh(user)
 
     tx = CreditTransaction(
         user_id=user.id,
@@ -223,12 +252,14 @@ async def get_transaction_history(
     user_id: int,
     db: AsyncSession,
     limit: int = 50,
+    offset: int = 0,
 ) -> List[Dict]:
-    """Get recent credit transactions for a user."""
+    """Get recent credit transactions for a user with pagination."""
     result = await db.execute(
         select(CreditTransaction)
         .where(CreditTransaction.user_id == user_id)
         .order_by(desc(CreditTransaction.created_at))
+        .offset(offset)
         .limit(limit)
     )
     txns = result.scalars().all()

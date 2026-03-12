@@ -3,7 +3,9 @@ JWT authentication and password hashing.
 """
 
 import os
-from datetime import datetime, timedelta
+import sys
+import logging
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from jose import JWTError, jwt
@@ -16,8 +18,26 @@ from sqlalchemy import select
 from database.engine import get_db
 from database.models import User
 
-# Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE-THIS-IN-PRODUCTION-use-openssl-rand-hex-32")
+_logger = logging.getLogger(__name__)
+
+# Configuration — fail loud if JWT secret is insecure
+_INSECURE_DEFAULTS = {
+    "CHANGE-THIS-IN-PRODUCTION-use-openssl-rand-hex-32",
+    "change-this-in-production",
+    "",
+}
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+if SECRET_KEY in _INSECURE_DEFAULTS:
+    if os.getenv("DEMO_MODE", "true").lower() == "true":
+        # Allow insecure key in demo mode only, with a loud warning
+        SECRET_KEY = "DEMO-ONLY-insecure-key-do-not-use-in-production"
+        _logger.warning("JWT_SECRET_KEY not set — using demo-only key. DO NOT deploy to production!")
+    else:
+        print("[FATAL] JWT_SECRET_KEY is not set or uses a default value. "
+              "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\"",
+              file=sys.stderr)
+        sys.exit(1)
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 24 hours default
 
@@ -38,7 +58,7 @@ def hash_password(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 

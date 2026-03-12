@@ -20,6 +20,7 @@ def _get_client_ip(request: Request) -> str:
     """Extract client IP, respecting X-Forwarded-For behind a proxy."""
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
+        # Only trust the first IP (client IP) — proxies append to the right
         return forwarded.split(",")[0].strip()
     return get_remote_address(request)
 

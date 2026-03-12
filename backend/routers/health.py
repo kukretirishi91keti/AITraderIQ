@@ -4,7 +4,7 @@ Provides system observability metrics for production monitoring.
 """
 
 from fastapi import APIRouter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import time
 
@@ -40,7 +40,7 @@ class HealthMetrics:
         
     def record_yahoo_success(self, symbol: str):
         self.yahoo_successes += 1
-        self.last_successful_fetch = datetime.utcnow()
+        self.last_successful_fetch = datetime.now(timezone.utc)
         self.active_symbols.add(symbol)
         
     def record_yahoo_failure(self):
@@ -67,7 +67,7 @@ class HealthMetrics:
         
         # Check data freshness
         if self.last_successful_fetch:
-            age = datetime.utcnow() - self.last_successful_fetch
+            age = datetime.now(timezone.utc) - self.last_successful_fetch
             if age > timedelta(minutes=5):
                 return "degraded"
         
@@ -111,7 +111,7 @@ async def health_check() -> Dict[str, Any]:
         "markets_available": 22,
         "symbols_cached": len(metrics.active_symbols),
         "version": "4.6",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

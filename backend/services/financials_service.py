@@ -38,7 +38,7 @@ except ImportError:
     from cache_manager import get_cache_manager
     try:
         from genai_service import get_genai_service
-    except:
+    except ImportError:
         get_genai_service = None
 
 

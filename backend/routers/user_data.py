@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database.engine import get_db
 from database.models import User, WatchlistItem, PortfolioItem, Alert
@@ -55,19 +55,25 @@ class AddAlert(BaseModel):
 
 @router.get("/watchlist")
 async def get_watchlist(
+    limit: int = 100,
+    offset: int = 0,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get user's watchlist."""
+    """Get user's watchlist with pagination."""
     result = await db.execute(
         select(WatchlistItem)
         .where(WatchlistItem.user_id == user.id)
         .order_by(WatchlistItem.sort_order, WatchlistItem.added_at)
+        .offset(offset)
+        .limit(limit)
     )
     items = result.scalars().all()
 
     return {
         "count": len(items),
+        "offset": offset,
+        "limit": limit,
         "watchlist": [
             {
                 "id": item.id,
@@ -141,19 +147,25 @@ async def remove_from_watchlist(
 
 @router.get("/portfolio")
 async def get_portfolio(
+    limit: int = 100,
+    offset: int = 0,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get user's portfolio holdings."""
+    """Get user's portfolio holdings with pagination."""
     result = await db.execute(
         select(PortfolioItem)
         .where(PortfolioItem.user_id == user.id)
         .order_by(PortfolioItem.added_at)
+        .offset(offset)
+        .limit(limit)
     )
     items = result.scalars().all()
 
     return {
         "count": len(items),
+        "offset": offset,
+        "limit": limit,
         "holdings": [
             {
                 "id": item.id,
@@ -220,7 +232,7 @@ async def update_portfolio_item(
     if update.notes is not None:
         item.notes = update.notes
 
-    item.updated_at = datetime.utcnow()
+    item.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
     return {"message": "Holding updated"}
@@ -290,19 +302,25 @@ async def get_portfolio_analytics(
 
 @router.get("/alerts")
 async def get_alerts(
+    limit: int = 100,
+    offset: int = 0,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get user's alerts."""
+    """Get user's alerts with pagination."""
     result = await db.execute(
         select(Alert)
         .where(Alert.user_id == user.id)
         .order_by(Alert.created_at.desc())
+        .offset(offset)
+        .limit(limit)
     )
     items = result.scalars().all()
 
     return {
         "count": len(items),
+        "offset": offset,
+        "limit": limit,
         "alerts": [
             {
                 "id": item.id,

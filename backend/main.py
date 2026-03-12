@@ -1,18 +1,14 @@
 """
-TraderAI Pro - Main Application Entry Point v5.7.1
+TraderAI Pro - Main Application Entry Point v6.1.0
 ===================================================
-Place this file in: backend/main.py
 
-FIXES in v5.7.1:
-- Proper router loading order
-- All routers loaded with fallbacks
-- Better error handling and logging
-
-Features:
-- Demo mode toggle for reliable presentations
-- Real sentiment API integration (StockTwits, Reddit)
-- Production-hardened with circuit breaker
-- Graceful degradation to demo data
+Production-hardened with:
+- Strict CORS validation
+- Request body size limits
+- GZip compression
+- Per-endpoint rate limiting
+- DB health checks
+- Structured logging (no print statements)
 """
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,8 +18,11 @@ validate_environment()
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 import logging
 import os
 import sys
@@ -52,10 +51,27 @@ logger = logging.getLogger(__name__)
 
 # Check demo mode from environment
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
-VERSION = "6.0.0"  # Production release - March 2026
+VERSION = "6.1.0"  # Production-hardened release
 
 # Track loaded routers
 loaded_routers = []
+
+# Max request body size (1MB default, configurable)
+MAX_BODY_SIZE = int(os.getenv("MAX_BODY_SIZE_BYTES", str(1 * 1024 * 1024)))
+
+
+class RequestBodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject requests with bodies exceeding MAX_BODY_SIZE."""
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > MAX_BODY_SIZE:
+            return Response(
+                content='{"detail":"Request body too large"}',
+                status_code=413,
+                media_type="application/json",
+            )
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -78,34 +94,22 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Batch data service init failed (non-fatal): {e}")
 
-    print("\n" + "=" * 70)
-    print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
-    print("=" * 70)
-    print(f"  AI-Powered Decision Support Dashboard for Day Traders")
-    print(f"  Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"  Demo Mode: {'ENABLED' if DEMO_MODE else 'DISABLED (Live Mode)'}")
-    print("=" * 70)
+    logger.info("=" * 60)
+    logger.info(f"TraderAI Pro API v{VERSION} — {'DEMO' if DEMO_MODE else 'LIVE'} mode")
+    logger.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-    # Print loaded routers
-    print("\n  Registered Routes:")
+    # Log registered routes
     routes = []
     for route in app.routes:
         if hasattr(route, 'path') and hasattr(route, 'methods'):
             for method in route.methods:
                 if method in ['GET', 'POST', 'PUT', 'DELETE']:
-                    routes.append(f"   {method:6} {route.path}")
+                    routes.append(f"{method:6} {route.path}")
 
-    for r in sorted(routes)[:30]:
-        print(r)
-    if len(routes) > 30:
-        print(f"   ... and {len(routes) - 30} more routes")
-    print(f"\n   Total: {len(routes)} API routes registered")
-
-    print("\n" + "=" * 70)
-    print("  API Documentation: http://localhost:8000/docs")
-    print("  Health Check: http://localhost:8000/api/health")
-    print("  WebSocket: ws://localhost:8000/ws/prices")
-    print("=" * 70 + "\n")
+    logger.info(f"{len(routes)} API routes registered")
+    logger.info(f"Loaded routers: {', '.join(loaded_routers)}")
+    logger.info(f"Docs: http://localhost:8000/docs")
+    logger.info("=" * 60)
 
     yield
 
@@ -120,7 +124,7 @@ async def lifespan(app: FastAPI):
         await close_db()
     except Exception:
         pass
-    print("\n  TraderAI Pro shutting down...")
+    logger.info("TraderAI Pro shutting down...")
 
 
 # Create FastAPI app
@@ -131,12 +135,29 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration - Restrict to known frontend origins
+# ---- Middleware stack (order matters — outermost first) ----
+
+# GZip compression for responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Request body size limit
+app.add_middleware(RequestBodySizeLimitMiddleware)
+
+# CORS configuration — strict origin validation
+_raw_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://localhost:3000,http://localhost:4173"
+)
 ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173").split(",")
+    for origin in _raw_origins.split(",")
+    if origin.strip() and origin.strip() != "*"
 ]
-# In production, add your deployed frontend domain to CORS_ORIGINS env var
+if not ALLOWED_ORIGINS:
+    # Fallback: never allow empty list (would block everything)
+    ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+    logger.warning("CORS_ORIGINS was empty or wildcard-only; defaulting to localhost origins")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -158,9 +179,9 @@ if RATE_LIMITING_AVAILABLE:
     setup_rate_limiting(app)
     logger.info("Rate limiting enabled")
 else:
-    logger.warning("slowapi not installed - rate limiting disabled. Run: pip install slowapi")
+    logger.warning("slowapi not installed — rate limiting disabled. Run: pip install slowapi")
 
-# Global exception handler - never leak internal details to clients
+# Global exception handler — never leak internal details to clients
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=True)
@@ -326,11 +347,11 @@ async def root():
         "features": [
             "Multi-market quotes (22 markets)",
             "Technical analysis (RSI, MACD, VWAP, Bollinger)",
-            "AI assistant (Groq)",
+            "AI assistant (Groq, OpenAI, Anthropic)",
             "Social sentiment (StockTwits, Reddit)",
             "Screener with RSI filtering",
             "Circuit breaker protection",
-            "Demo mode for reliable demos"
+            "Credit-based monetization",
         ]
     }
 
@@ -357,6 +378,16 @@ async def status():
 async def api_health():
     """Deep health check with subsystem status."""
     subsystems = {}
+
+    # Database connectivity check
+    try:
+        from database.engine import AsyncSessionLocal
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import text
+            await session.execute(text("SELECT 1"))
+        subsystems["database"] = {"status": "healthy"}
+    except Exception as e:
+        subsystems["database"] = {"status": "unhealthy", "error": str(e)}
 
     # Market data service
     try:
@@ -403,7 +434,7 @@ async def api_health():
         subsystems["genai"] = {"status": "unknown"}
 
     overall = "healthy"
-    if any(s.get("status") in ("degraded", "critical") for s in subsystems.values()):
+    if any(s.get("status") in ("degraded", "critical", "unhealthy") for s in subsystems.values()):
         overall = "degraded"
 
     return {
@@ -423,15 +454,15 @@ async def api_health():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     port = int(os.getenv("PORT", 8000))
     host = os.getenv("HOST", "0.0.0.0")
     reload = os.getenv("RELOAD", "false").lower() == "true"
-    
-    print(f"\n🚀 Starting TraderAI Pro on {host}:{port}")
-    print(f"   Demo Mode: {'ENABLED' if DEMO_MODE else 'DISABLED'}")
-    print(f"   Hot Reload: {'ENABLED' if reload else 'DISABLED'}\n")
-    
+
+    logger.info(f"Starting TraderAI Pro on {host}:{port}")
+    logger.info(f"Demo Mode: {'ENABLED' if DEMO_MODE else 'DISABLED'}")
+    logger.info(f"Hot Reload: {'ENABLED' if reload else 'DISABLED'}")
+
     uvicorn.run(
         "main:app",
         host=host,

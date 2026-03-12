@@ -357,7 +357,7 @@ class DataService:
         # Get previous close - try fast_info first, fallback to history
         try:
             previous_close = float(fast.previous_close) if fast.previous_close else float(hist["Close"].iloc[-2])
-        except:
+        except Exception:
             previous_close = float(hist["Close"].iloc[-2]) if len(hist) > 1 else current_price
         
         change = round(current_price - previous_close, 2)
@@ -373,9 +373,9 @@ class DataService:
             try:
                 macd = float(macd_data["MACD_12_26_9"].iloc[-1])
                 macd_signal = float(macd_data["MACDs_12_26_9"].iloc[-1])
-            except:
+            except Exception:
                 pass
-        
+
         # Bollinger Bands
         bb = ta.bbands(hist["Close"], length=20)
         bb_upper = current_price * 1.02
@@ -384,9 +384,9 @@ class DataService:
             try:
                 bb_upper = float(bb["BBU_20_2.0"].iloc[-1])
                 bb_lower = float(bb["BBL_20_2.0"].iloc[-1])
-            except:
+            except Exception:
                 pass
-        
+
         # Generate recommendation based on RSI
         if rsi < 30:
             recommendation, risk = "STRONG BUY", "Low"
@@ -419,7 +419,7 @@ class DataService:
             day_low = float(fast.day_low) if fast.day_low else float(hist["Low"].iloc[-1])
             market_cap = int(fast.market_cap) if fast.market_cap else 0
             volume = int(hist["Volume"].iloc[-1]) if pd.notna(hist["Volume"].iloc[-1]) else 0
-        except:
+        except Exception:
             day_high = float(hist["High"].iloc[-1])
             day_low = float(hist["Low"].iloc[-1])
             market_cap = 0
@@ -466,7 +466,7 @@ class DataService:
                 val = float(result.iloc[-1])
                 if pd.notna(val):
                     return round(val, 2)
-        except:
+        except Exception:
             pass
         return default
     

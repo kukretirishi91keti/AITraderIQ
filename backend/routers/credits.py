@@ -102,12 +102,13 @@ async def get_balance(
 @router.get("/history")
 async def get_history(
     limit: int = 50,
+    offset: int = 0,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get credit transaction history. Requires auth."""
-    txns = await get_transaction_history(user.id, db, limit)
-    return {"transactions": txns, "count": len(txns)}
+    """Get credit transaction history with pagination. Requires auth."""
+    txns = await get_transaction_history(user.id, db, limit, offset)
+    return {"transactions": txns, "count": len(txns), "offset": offset, "limit": limit}
 
 
 @router.post("/topup")

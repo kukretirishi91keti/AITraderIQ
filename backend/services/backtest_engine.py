@@ -14,7 +14,7 @@ How it works:
 import hashlib
 import random
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Any, Optional
 
 # Optional: DB model for persisting signal records (requires SQLAlchemy)
@@ -37,7 +37,7 @@ try:
         rsi = Column(Float, nullable=True)
         macd = Column(Float, nullable=True)
         bollinger_position = Column(String(20), nullable=True)
-        created_at = Column(DateTime, default=datetime.utcnow, index=True)
+        created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
         evaluated_at = Column(DateTime, nullable=True)
 except ImportError:
     SignalRecord = None
