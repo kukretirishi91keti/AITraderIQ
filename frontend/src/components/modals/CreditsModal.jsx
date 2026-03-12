@@ -31,6 +31,11 @@ export default function CreditsModal({ onClose, credits, setCredits, isLoggedIn 
   const [buying, setBuying] = useState(false);
   const [message, setMessage] = useState('');
 
+  const authHeaders = () => {
+    const token = localStorage.getItem('traderai_token');
+    return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
+  };
+
   const handleBuyPack = async (packId) => {
     if (!isLoggedIn) {
       setMessage('Please sign in to purchase credits');
@@ -39,10 +44,9 @@ export default function CreditsModal({ onClose, credits, setCredits, isLoggedIn 
     setBuying(true);
     setMessage('');
     try {
-      const token = localStorage.getItem('traderai_token');
       const res = await fetch(`${API_BASE}/api/credits/topup`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: authHeaders(),
         body: JSON.stringify({ pack_id: packId }),
       });
       const data = await res.json();
@@ -51,6 +55,32 @@ export default function CreditsModal({ onClose, credits, setCredits, isLoggedIn 
         setMessage(data.message);
       } else {
         setMessage(data.detail || 'Purchase failed');
+      }
+    } catch (err) {
+      setMessage('Network error. Try again.');
+    }
+    setBuying(false);
+  };
+
+  const handleUpgradeTier = async (tierId) => {
+    if (!isLoggedIn) {
+      setMessage('Please sign in to change plans');
+      return;
+    }
+    setBuying(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/api/credits/upgrade`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ tier: tierId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCredits(prev => ({ ...prev, balance: data.new_balance, tier: tierId, daily_grant: data.plan?.daily_credits }));
+        setMessage(data.message);
+      } else {
+        setMessage(data.detail || 'Upgrade failed');
       }
     } catch (err) {
       setMessage('Network error. Try again.');
@@ -148,6 +178,8 @@ export default function CreditsModal({ onClose, credits, setCredits, isLoggedIn 
 
           {/* Plans Tab */}
           {tab === 'plans' && (
+            <div className="space-y-3">
+              {message && <p className={`text-sm ${message.includes('Upgraded') ? 'text-green-400' : 'text-yellow-400'}`}>{message}</p>}
             <div className="grid grid-cols-2 gap-3">
               {TIERS.map(tier => (
                 <div key={tier.id} className={`rounded-lg border p-4 ${tier.popular ? 'border-cyan-500/50 bg-cyan-900/10' : 'border-gray-700 bg-gray-700/30'} ${credits.tier === tier.id ? 'ring-2 ring-cyan-500' : ''}`}>
@@ -163,12 +195,14 @@ export default function CreditsModal({ onClose, credits, setCredits, isLoggedIn 
                   {credits.tier === tier.id ? (
                     <div className="mt-3 text-xs text-cyan-400 font-medium">Current Plan</div>
                   ) : (
-                    <button className="mt-3 w-full px-3 py-1.5 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium">
+                    <button onClick={() => handleUpgradeTier(tier.id)} disabled={buying} className={`mt-3 w-full px-3 py-1.5 rounded text-xs font-medium ${tier.id === 'free' ? 'bg-gray-600 hover:bg-gray-500' : 'bg-cyan-600 hover:bg-cyan-500'} disabled:bg-gray-600`}>
                       {tier.id === 'free' ? 'Downgrade' : 'Upgrade'}
                     </button>
                   )}
                 </div>
               ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Demo mode: tier changes apply instantly. In production, integrates with Stripe/Razorpay.</p>
             </div>
           )}
 
