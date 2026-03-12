@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 # Check demo mode from environment
 DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
-VERSION = "6.0.0"
+VERSION = "6.0.0"  # Production release - March 2026
 
 # Track loaded routers
 loaded_routers = []
@@ -68,6 +68,15 @@ async def lifespan(app: FastAPI):
         logger.info("Database initialized")
     except Exception as e:
         logger.warning(f"Database init failed (non-fatal): {e}")
+
+    # Start batch data service (pre-fetches popular symbols for 1000+ concurrent users)
+    try:
+        from services.batch_data_service import get_batch_data_service
+        batch_svc = get_batch_data_service()
+        await batch_svc.start()
+        logger.info("Batch data service started")
+    except Exception as e:
+        logger.warning(f"Batch data service init failed (non-fatal): {e}")
 
     print("\n" + "=" * 70)
     print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
@@ -102,6 +111,11 @@ async def lifespan(app: FastAPI):
 
     # Cleanup
     try:
+        from services.batch_data_service import get_batch_data_service
+        await get_batch_data_service().stop()
+    except Exception:
+        pass
+    try:
         from database.engine import close_db
         await close_db()
     except Exception:
@@ -120,8 +134,9 @@ app = FastAPI(
 # CORS configuration - Restrict to known frontend origins
 ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:4173").split(",")
 ]
+# In production, add your deployed frontend domain to CORS_ORIGINS env var
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -278,6 +293,13 @@ load_router(
     '(AI-ranked opportunities)'
 )
 
+# Phase 3: Price Alerts
+load_router(
+    ['routers.alerts'],
+    'alerts router',
+    '(price alerts engine)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
@@ -326,13 +348,65 @@ async def status():
 
 @app.get("/api/health")
 async def api_health():
-    """Health check endpoint."""
+    """Deep health check with subsystem status."""
+    subsystems = {}
+
+    # Market data service
+    try:
+        from services.market_data_service import get_market_data_service
+        svc = get_market_data_service()
+        svc_status = svc.get_service_status()
+        subsystems["market_data"] = {
+            "status": svc_status["health"].lower(),
+            "yfinance": svc_status["yfinance_available"],
+            "circuit_breaker": svc_status["circuit_breaker"]["state"],
+        }
+    except Exception:
+        subsystems["market_data"] = {"status": "unknown"}
+
+    # Batch data service
+    try:
+        from services.batch_data_service import get_batch_data_service
+        batch = get_batch_data_service()
+        batch_stats = batch.get_stats()
+        subsystems["batch_data"] = {
+            "status": "running" if batch_stats["running"] else "stopped",
+            "symbols_tracked": batch_stats["symbols_tracked"],
+            "cache_size": batch_stats["cache_size"],
+        }
+    except Exception:
+        subsystems["batch_data"] = {"status": "not_available"}
+
+    # Alerts engine
+    try:
+        from services.alerts_engine import get_alerts_engine
+        alerts = get_alerts_engine()
+        subsystems["alerts"] = alerts.get_stats()
+    except Exception:
+        subsystems["alerts"] = {"status": "not_available"}
+
+    # GenAI
+    try:
+        groq_key = bool(os.getenv("GROQ_API_KEY"))
+        subsystems["genai"] = {
+            "status": "configured" if groq_key else "fallback_mode",
+            "provider": "groq" if groq_key else "rule_based",
+        }
+    except Exception:
+        subsystems["genai"] = {"status": "unknown"}
+
+    overall = "healthy"
+    if any(s.get("status") in ("degraded", "critical") for s in subsystems.values()):
+        overall = "degraded"
+
     return {
-        "status": "healthy",
+        "status": overall,
         "version": VERSION,
         "demo_mode": DEMO_MODE,
         "timestamp": datetime.now().isoformat(),
-        "loaded_routers": loaded_routers
+        "loaded_routers": loaded_routers,
+        "subsystems": subsystems,
+        "polling_recommendation": 30 if overall == "healthy" else 60,
     }
 
 

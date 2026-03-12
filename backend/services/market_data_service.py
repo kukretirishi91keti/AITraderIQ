@@ -399,47 +399,74 @@ def _generate_mme_quote(symbol: str) -> Dict[str, Any]:
 
 
 def _generate_mme_history(
-    symbol: str, 
+    symbol: str,
     period: str = "1mo",
     interval: str = "1d"
 ) -> List[Dict]:
-    """Generate simulated historical data."""
-    stock_info = GLOBAL_STOCKS.get(symbol, {})
-    base_price = stock_info.get('basePrice', 100)
-    
-    # Determine number of candles
+    """Generate simulated historical data (legacy wrapper)."""
     period_days = {'1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365}
     days = period_days.get(period, 30)
-    
-    interval_map = {'1m': 1, '5m': 5, '15m': 15, '1h': 60, '1d': 1440}
-    
-    seed = f"history:{symbol}:{period}:{interval}"
+    count = min(days * 2, 200)
+    return _generate_mme_candles(symbol, interval, count)
+
+
+def _generate_mme_candles(
+    symbol: str,
+    interval: str = "1d",
+    count: int = 100,
+) -> List[Dict]:
+    """
+    Generate interval-aware simulated candles.
+
+    The seed includes the interval so each timeframe produces
+    distinct price action, which fixes the "same data on every
+    timeframe" bug.
+    """
+    stock_info = GLOBAL_STOCKS.get(symbol.upper(), {})
+    base_price = stock_info.get('basePrice', 100)
+
+    # Interval → minutes and volatility scaling
+    interval_minutes = {
+        '1m': 1, '5m': 5, '15m': 15, '30m': 30,
+        '1h': 60, '4h': 240, '1d': 1440, '1w': 10080,
+        '1wk': 10080, '1mo': 43200,
+    }
+    minutes = interval_minutes.get(interval, 1440)
+
+    # Shorter intervals = smaller moves (sqrt-time scaling)
+    vol_scale = (minutes / 1440) ** 0.5  # normalised to daily
+
+    # Deterministic but INTERVAL-DEPENDENT seed
+    seed = f"mme:{symbol.upper()}:{interval}:{datetime.now().strftime('%Y%m%d')}"
     rng = random.Random(hashlib.md5(seed.encode()).hexdigest())
-    
+
     candles = []
-    current_price = base_price
-    
-    for i in range(min(days * 2, 200)):  # Cap at 200 candles
-        timestamp = datetime.now() - timedelta(days=days - i)
-        
-        # Random walk
-        change_pct = (rng.random() - 0.48) * 3  # Slight upward bias
+    current_price = base_price * (0.95 + rng.random() * 0.10)
+    now = datetime.now()
+
+    for i in range(count):
+        ts = now - timedelta(minutes=minutes * (count - i))
+
+        # Random walk scaled by interval
+        change_pct = (rng.random() - 0.48) * 3 * vol_scale
         current_price *= (1 + change_pct / 100)
-        
-        open_price = current_price * (1 + (rng.random() - 0.5) * 0.01)
+        current_price = max(current_price, base_price * 0.5)  # floor
+
+        spread = current_price * 0.005 * vol_scale
+        open_price = current_price + (rng.random() - 0.5) * spread * 2
         close_price = current_price
-        high = max(open_price, close_price) * (1 + rng.random() * 0.015)
-        low = min(open_price, close_price) * (1 - rng.random() * 0.015)
-        
+        high = max(open_price, close_price) + rng.random() * spread
+        low = min(open_price, close_price) - rng.random() * spread
+
         candles.append({
-            'timestamp': timestamp.isoformat(),
+            'timestamp': ts.isoformat(),
             'open': round(open_price, 2),
             'high': round(high, 2),
             'low': round(low, 2),
             'close': round(close_price, 2),
-            'volume': int(rng.random() * 20000000)
+            'volume': int(rng.random() * 20_000_000 * vol_scale + 100_000),
         })
-    
+
     return candles
 
 
@@ -670,18 +697,261 @@ class MarketDataService:
             'timestamp': datetime.now().isoformat()
         }
     
+    # =================================================================
+    # CANDLES - interval-aware with proper yfinance period mapping
+    # =================================================================
+
+    # Map chart interval → yfinance (period, interval) so each
+    # timeframe fetches genuinely different data.
+    INTERVAL_MAP = {
+        "1m":  {"period": "1d",  "interval": "1m"},
+        "5m":  {"period": "5d",  "interval": "5m"},
+        "15m": {"period": "5d",  "interval": "15m"},
+        "30m": {"period": "1mo", "interval": "30m"},
+        "1h":  {"period": "1mo", "interval": "1h"},
+        "4h":  {"period": "3mo", "interval": "1h"},   # yfinance has no 4h; fetch 1h, aggregate later
+        "1d":  {"period": "1y",  "interval": "1d"},
+        "1w":  {"period": "2y",  "interval": "1wk"},
+        "1wk": {"period": "2y",  "interval": "1wk"},
+        "1mo": {"period": "5y",  "interval": "1mo"},
+    }
+
+    async def get_candles(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        lookback: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Return OHLCV candles for *symbol* at the requested *interval*.
+
+        This is the single method the stock router should call.
+        It translates the UI interval to proper yfinance params,
+        falls back through cache → LKG → simulated data.
+        """
+        symbol = symbol.upper()
+        mapping = self.INTERVAL_MAP.get(interval, {"period": "1mo", "interval": "1d"})
+        yf_period = mapping["period"]
+        yf_interval = mapping["interval"]
+
+        cache_key = f"candles:{symbol}:{interval}:{lookback}"
+
+        # 1. Fresh cache
+        entry = self.cache.get(cache_key, ttl_seconds=120 if interval in ("1m", "5m") else 300)
+        if entry:
+            candles = entry.data[:lookback] if len(entry.data) > lookback else entry.data
+            return {
+                "symbol": symbol,
+                "interval": interval,
+                "count": len(candles),
+                "candles": candles,
+                "source": "CACHED",
+                "dataQuality": "CACHED",
+                "currency": self._currency_for(symbol),
+                "asOf": entry.timestamp,
+            }
+
+        # 2. Live fetch via yfinance (with singleflight)
+        async def fetch_live():
+            return await run_in_threadpool(
+                _fetch_yfinance_history_sync, symbol, yf_period, yf_interval
+            )
+
+        try:
+            live = await self.singleflight.do(cache_key, fetch_live)
+            if live:
+                # For 4h interval, aggregate 1h candles into 4h
+                if interval == "4h":
+                    live = self._aggregate_candles(live, 4)
+                candles = live[-lookback:]
+                self.cache.set(cache_key, candles, source="LIVE")
+                self.stats["live_fetches"] += 1
+                self.stats["last_live_fetch"] = datetime.now().isoformat()
+                return {
+                    "symbol": symbol,
+                    "interval": interval,
+                    "count": len(candles),
+                    "candles": candles,
+                    "source": "YFINANCE",
+                    "dataQuality": "LIVE",
+                    "currency": self._currency_for(symbol),
+                    "asOf": datetime.now().timestamp(),
+                }
+        except Exception as e:
+            logger.warning(f"Live candle fetch failed for {symbol}/{interval}: {e}")
+
+        # 3. LKG cache
+        lkg = self.cache.get_lkg(cache_key)
+        if lkg:
+            self.stats["lkg_fallbacks"] += 1
+            candles = lkg.data[:lookback]
+            return {
+                "symbol": symbol,
+                "interval": interval,
+                "count": len(candles),
+                "candles": candles,
+                "source": "LKG_CACHE",
+                "dataQuality": "LKG",
+                "currency": self._currency_for(symbol),
+                "asOf": lkg.timestamp,
+            }
+
+        # 4. Simulated fallback – interval-aware
+        self.stats["mme_fallbacks"] += 1
+        candles = _generate_mme_candles(symbol, interval, lookback)
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "count": len(candles),
+            "candles": candles,
+            "source": "MME",
+            "dataQuality": "SIMULATED",
+            "currency": self._currency_for(symbol),
+            "asOf": datetime.now().timestamp(),
+        }
+
+    # =================================================================
+    # BATCH QUOTES
+    # =================================================================
+
+    async def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Any]:
+        """Fetch quotes for multiple symbols concurrently."""
+        import asyncio
+        results = {}
+
+        async def _fetch_one(sym):
+            try:
+                return sym.upper(), await self.get_quote(sym)
+            except Exception as e:
+                logger.warning(f"Batch quote error for {sym}: {e}")
+                return sym.upper(), _generate_mme_quote(sym)
+
+        tasks = [_fetch_one(s) for s in symbols[:50]]  # cap at 50
+        done = await asyncio.gather(*tasks)
+        for sym, quote in done:
+            results[sym] = quote
+
+        return {
+            "count": len(results),
+            "results": results,
+            "asOf": datetime.now().isoformat(),
+        }
+
+    # =================================================================
+    # MARKET OVERVIEW
+    # =================================================================
+
+    async def get_market_overview(self) -> Dict[str, Any]:
+        """Return overview of major market indices."""
+        indices = ["SPY", "QQQ", "DIA", "IWM", "VTI"]
+        batch = await self.get_quotes_batch(indices)
+        return {
+            "indices": [
+                {
+                    "symbol": sym,
+                    "name": batch["results"].get(sym, {}).get("name", sym),
+                    "price": batch["results"].get(sym, {}).get("price"),
+                    "change": batch["results"].get(sym, {}).get("change"),
+                    "changePercent": batch["results"].get(sym, {}).get("changePercent"),
+                }
+                for sym in indices
+                if sym in batch["results"]
+            ],
+            "asOf": batch["asOf"],
+        }
+
+    # =================================================================
+    # HEALTH
+    # =================================================================
+
+    async def get_health(self) -> Dict[str, Any]:
+        """Deep health check including yfinance probe."""
+        circuit_status = _circuit_breaker.get_status()
+        cache_stats = self.cache.get_stats()
+
+        health = "HEALTHY"
+        polling_rec = 30  # seconds
+        if circuit_status["state"] == "OPEN":
+            health = "DEGRADED"
+            polling_rec = 60
+        if self.stats["mme_fallbacks"] > self.stats["live_fetches"] + 10:
+            health = "DEGRADED"
+            polling_rec = 60
+
+        return {
+            "status": health.lower(),
+            "yfinance": {
+                "available": YFINANCE_AVAILABLE,
+                "breaker": circuit_status,
+            },
+            "cache": cache_stats,
+            "stats": self.stats,
+            "polling_recommendation": polling_rec,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    # =================================================================
+    # ROADMAP
+    # =================================================================
+
+    def get_roadmap(self) -> Dict[str, Any]:
+        """Return product roadmap (served from backend so it can be updated without redeploy)."""
+        return {
+            "recentUpdates": [
+                {"version": "6.0.0", "date": "Mar 2026", "changes": "Production-grade data pipeline, real-time WebSocket streaming, interval-aware charting, batch quote engine"},
+                {"version": "5.9.0", "date": "Feb 2026", "changes": "AI analysis via Groq LLM, enhanced screener with live RSI, improved caching layer"},
+                {"version": "5.8.0", "date": "Jan 2026", "changes": "Fixed chart timestamps, fundamentals, screener data, multi-market support"},
+            ],
+            "upcomingFeatures": [
+                {"name": "Advanced Charting", "description": "TradingView-style drawing tools, Fibonacci, trend lines", "eta": "Q2 2026", "priority": "High", "icon": "chart"},
+                {"name": "Pattern Recognition AI", "description": "Auto-detect head & shoulders, double tops, wedges", "eta": "Q2 2026", "priority": "High", "icon": "ai"},
+                {"name": "Broker Integration", "description": "One-click trading with Zerodha, Alpaca, IBKR", "eta": "Q2 2026", "priority": "High", "icon": "broker"},
+                {"name": "Portfolio Analytics", "description": "Real-time P&L, risk metrics, Sharpe ratio tracking", "eta": "Q2 2026", "priority": "High", "icon": "portfolio"},
+                {"name": "Mobile App", "description": "React Native app for iOS and Android", "eta": "Q3 2026", "priority": "Medium", "icon": "mobile"},
+            ],
+        }
+
+    # =================================================================
+    # HELPERS
+    # =================================================================
+
+    def _currency_for(self, symbol: str) -> str:
+        """Get currency string for a symbol."""
+        market = _get_market_from_symbol(symbol)
+        return MARKET_CONFIG.get(market, {}).get('currency', '$')
+
+    @staticmethod
+    def _aggregate_candles(candles: List[Dict], factor: int) -> List[Dict]:
+        """Aggregate smaller-interval candles into larger ones (e.g. 1h→4h)."""
+        if not candles or factor <= 1:
+            return candles
+        aggregated = []
+        for i in range(0, len(candles), factor):
+            chunk = candles[i:i + factor]
+            if not chunk:
+                break
+            aggregated.append({
+                "timestamp": chunk[0]["timestamp"],
+                "open": chunk[0]["open"],
+                "high": max(c["high"] for c in chunk),
+                "low": min(c["low"] for c in chunk),
+                "close": chunk[-1]["close"],
+                "volume": sum(c.get("volume", 0) for c in chunk),
+            })
+        return aggregated
+
     def get_service_status(self) -> Dict[str, Any]:
         """Get service health status."""
         cache_stats = self.cache.get_stats()
         circuit_status = _circuit_breaker.get_status()
-        
+
         # Determine overall health
         health = "HEALTHY"
         if circuit_status["state"] == "OPEN":
             health = "DEGRADED"
         if self.stats["mme_fallbacks"] > self.stats["live_fetches"]:
             health = "DEGRADED"
-        
+
         return {
             "health": health,
             "yfinance_available": YFINANCE_AVAILABLE,

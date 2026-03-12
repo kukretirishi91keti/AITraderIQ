@@ -134,59 +134,181 @@ Current Context:
 # =============================================================================
 
 def generate_fallback_response(request: QueryRequest) -> str:
-    """Generate rule-based response when LLM unavailable."""
-    # Safe defaults for None values - THIS FIXES THE BUG
+    """Generate rich, context-aware rule-based response when LLM unavailable.
+
+    Provides multi-paragraph analysis similar to what a real AI would return,
+    with specific price levels, risk management, and actionable advice.
+    """
     symbol = request.symbol or "STOCK"
     price = request.price if request.price is not None else 100.0
     currency = request.currency or "$"
-    rsi = request.rsi if request.rsi is not None else 50.0  # Default to neutral
+    rsi = request.rsi if request.rsi is not None else 50.0
     signal = request.signal or "HOLD"
-    
+    vwap = request.vwap
+    macd = request.macd
+    style = (request.trader_style or "swing").lower()
+
     question = request.question.lower()
-    
-    # Entry point questions
-    if any(word in question for word in ["entry", "buy", "enter", "position"]):
-        if rsi < 30:
-            return f"With RSI at {rsi:.0f}, {symbol} appears oversold. Consider entries near {currency}{price:.2f} with a stop below recent lows."
-        elif rsi > 70:
-            return f"RSI at {rsi:.0f} shows overbought conditions. Wait for a pullback to {currency}{price * 0.97:.2f} area before entering."
-        else:
-            return f"RSI at {rsi:.0f} is neutral. Current price {currency}{price:.2f} offers no clear edge—wait for better setup."
-    
-    # Exit/target questions
-    if any(word in question for word in ["exit", "target", "sell", "profit"]):
-        if signal == "SELL":
-            return f"The SELL signal suggests taking profits. Consider exits near {currency}{price:.2f} or scale out over {currency}{price * 1.02:.2f}."
-        elif signal == "BUY":
-            return f"With BUY signal active, let winners run. Consider partial profit at {currency}{price * 1.05:.2f}, trail stop for remainder."
-        else:
-            return f"HOLD signal active. No immediate exit needed, but watch {currency}{price * 0.95:.2f} support and {currency}{price * 1.05:.2f} resistance."
-    
-    # Risk questions
-    if any(word in question for word in ["risk", "stop", "loss"]):
-        atr_estimate = price * 0.02
-        return f"For {symbol} at {currency}{price:.2f}, consider stop-loss at {currency}{price - atr_estimate * 2:.2f} (2 ATR). Position size based on 1-2% account risk."
-    
-    # Support/Resistance questions
-    if any(word in question for word in ["support", "resistance", "levels"]):
-        support = price * 0.95
-        resistance = price * 1.05
-        return f"{symbol} key levels: Support at {currency}{support:.2f}, Resistance at {currency}{resistance:.2f}. RSI at {rsi:.0f} suggests {'oversold bounce potential' if rsi < 40 else 'overbought risk' if rsi > 60 else 'range-bound action'}."
-    
-    # Trend questions
-    if any(word in question for word in ["trend", "direction", "momentum"]):
+
+    # Compute derived levels
+    atr_est = price * 0.02
+    support_1 = round(price - atr_est * 2, 2)
+    support_2 = round(price - atr_est * 4, 2)
+    resist_1 = round(price + atr_est * 2, 2)
+    resist_2 = round(price + atr_est * 4, 2)
+    stop_loss = round(price - atr_est * 2.5, 2)
+    tp_1 = round(price + atr_est * 3, 2)
+    tp_2 = round(price + atr_est * 5, 2)
+
+    rsi_label = ("oversold" if rsi < 30 else "overbought" if rsi > 70
+                 else "slightly bearish" if rsi < 45 else "slightly bullish" if rsi > 55 else "neutral")
+    vwap_str = f"\n- **VWAP**: {currency}{vwap:.2f} — price is {'above' if price > vwap else 'below'} VWAP" if vwap else ""
+    macd_str = f"\n- **MACD**: {macd:.4f} — {'bullish' if macd and macd > 0 else 'bearish'} momentum" if macd is not None else ""
+
+    # ---- Entry questions ----
+    if any(w in question for w in ["entry", "buy", "enter", "position", "start", "accumulate"]):
+        return f"""**Entry Analysis for {symbol} ({style.title()} Trader)**
+
+**Current Setup:**
+- **Price**: {currency}{price:.2f}  |  **Signal**: {signal}
+- **RSI(14)**: {rsi:.1f} ({rsi_label}){vwap_str}{macd_str}
+
+**Entry Strategy:**
+{'- RSI is in oversold territory — this is a *high-probability* long entry zone. Consider scaling in at current levels.' if rsi < 30 else '- RSI is overbought — avoid chasing here. Wait for a pullback to ' + currency + str(support_1) + ' before entering.' if rsi > 70 else '- RSI is neutral. Best to wait for a dip toward ' + currency + str(support_1) + ' or a breakout above ' + currency + str(resist_1) + '.'}
+
+**Key Levels:**
+| Level | Price |
+|-------|-------|
+| Resistance 2 | {currency}{resist_2} |
+| Resistance 1 | {currency}{resist_1} |
+| **Current** | **{currency}{price:.2f}** |
+| Support 1 | {currency}{support_1} |
+| Support 2 | {currency}{support_2} |
+
+**Risk Management:**
+- Stop-loss: {currency}{stop_loss} (2.5 ATR below)
+- Target 1: {currency}{tp_1} (R:R ≈ 1:1.2)
+- Target 2: {currency}{tp_2} (R:R ≈ 1:2.0)
+- Position size: Max 2-3% of portfolio per trade
+
+*This is AI-generated analysis for educational purposes. Always verify with your own research.*"""
+
+    # ---- Exit questions ----
+    if any(w in question for w in ["exit", "target", "sell", "profit", "close", "take profit"]):
+        return f"""**Exit Strategy for {symbol}**
+
+**Current Position:**
+- **Price**: {currency}{price:.2f}  |  **Signal**: {signal}
+- **RSI(14)**: {rsi:.1f} ({rsi_label}){vwap_str}
+
+**Exit Recommendations:**
+{'- Strong SELL signal with overbought RSI — consider taking profits immediately or setting a tight trailing stop.' if rsi > 70 else '- Signal is bearish — scale out 50% now, trail the rest with a stop at ' + currency + str(round(price * 1.01, 2)) + '.' if 'SELL' in signal.upper() else '- No immediate exit pressure. Consider partial profit at ' + currency + str(tp_1) + ' and let the rest ride.'}
+
+**Scaling Out Plan:**
+1. Take 33% profit at {currency}{tp_1}
+2. Take 33% profit at {currency}{tp_2}
+3. Trail remaining 34% with a {currency}{round(atr_est * 2, 2)} trailing stop
+
+**Warning Signs to Exit:**
+- RSI crosses above 80 (extreme overbought)
+- Price breaks below {currency}{support_1} on high volume
+- MACD histogram turns negative after a bullish run
+
+*Protecting capital is more important than maximizing gains.*"""
+
+    # ---- Risk questions ----
+    if any(w in question for w in ["risk", "stop", "loss", "safe", "danger", "position size"]):
+        risk_level = "HIGH" if abs(rsi - 50) > 25 else "MODERATE" if abs(rsi - 50) > 10 else "LOW"
+        return f"""**Risk Assessment for {symbol}**
+
+**Risk Level: {risk_level}**
+- RSI(14): {rsi:.1f} ({rsi_label})
+- Estimated ATR: {currency}{atr_est:.2f} ({atr_est/price*100:.1f}% of price){vwap_str}
+
+**Position Sizing (Kelly-inspired):**
+- Conservative: Risk 1% of capital → Stop at {currency}{stop_loss}
+  - If portfolio = $100,000 → Max loss = $1,000 → ~{int(1000 / (atr_est * 2.5))} shares
+- Moderate: Risk 2% → ~{int(2000 / (atr_est * 2.5))} shares
+- Aggressive: Risk 3% → ~{int(3000 / (atr_est * 2.5))} shares (not recommended)
+
+**Stop-Loss Recommendations:**
+- Tight (scalp): {currency}{round(price - atr_est * 1.5, 2)}
+- Standard (swing): {currency}{stop_loss}
+- Wide (position): {currency}{round(price - atr_est * 4, 2)}
+
+**Risk Factors:**
+{'- ⚠️ Extreme RSI levels increase reversal risk' if abs(rsi - 50) > 25 else '- Moderate RSI — normal volatility expected'}
+{'- ⚠️ Price below VWAP — institutional selling pressure' if vwap and price < vwap else '- Price above VWAP — institutional support' if vwap else ''}
+
+*Never risk more than you can afford to lose. Use stop-losses on every trade.*"""
+
+    # ---- Levels questions ----
+    if any(w in question for w in ["support", "resistance", "levels", "key", "zones"]):
+        return f"""**Key Levels for {symbol}**
+
+| Zone | Level | Significance |
+|------|-------|-------------|
+| R2 | {currency}{resist_2} | Major resistance — prior swing high area |
+| R1 | {currency}{resist_1} | Minor resistance — first target for longs |
+| **Current** | **{currency}{price:.2f}** | |
+| S1 | {currency}{support_1} | First support — ideal dip-buy zone |
+| S2 | {currency}{support_2} | Strong support — breakdown below is bearish |
+{f'| VWAP | {currency}{vwap:.2f} | Institutional fair value |' if vwap else ''}
+
+**How to Trade These Levels:**
+- **Bounce play**: Buy at S1 ({currency}{support_1}) with stop below S2
+- **Breakout play**: Buy above R1 ({currency}{resist_1}) targeting R2
+- **Breakdown short**: Sell below S1 with target at S2
+
+**RSI Context**: {rsi:.1f} ({rsi_label}) — {'favors buying dips' if rsi < 40 else 'suggests caution on new longs' if rsi > 60 else 'no directional bias'}"""
+
+    # ---- Trend / momentum ----
+    if any(w in question for w in ["trend", "direction", "momentum", "outlook"]):
         if rsi < 40:
-            return f"{symbol} showing bearish momentum with RSI at {rsi:.0f}. Watch for reversal signals near {currency}{price * 0.95:.2f} support."
+            trend = "bearish"
+            outlook = f"Momentum is to the downside. Watch for support at {currency}{support_1}. A bounce from oversold RSI could offer a counter-trend long."
         elif rsi > 60:
-            return f"{symbol} showing bullish momentum with RSI at {rsi:.0f}. Trend continuation likely toward {currency}{price * 1.05:.2f}."
+            trend = "bullish"
+            outlook = f"Momentum is to the upside. Trend continuation likely toward {currency}{resist_1}. Buy dips to VWAP if available."
         else:
-            return f"{symbol} in consolidation phase with RSI at {rsi:.0f}. Wait for breakout above {currency}{price * 1.02:.2f} or breakdown below {currency}{price * 0.98:.2f}."
-    
-    # General analysis (catch-all)
-    rsi_status = "oversold" if rsi < 30 else "overbought" if rsi > 70 else "neutral"
-    action = "Consider entries" if rsi < 40 else "Exercise caution" if rsi > 60 else "Wait for clearer setup"
-    
-    return f"{symbol} at {currency}{price:.2f} with RSI {rsi:.0f} ({rsi_status}). Current signal: {signal}. {action}."
+            trend = "neutral/range-bound"
+            outlook = f"No clear trend. Price is range-bound between {currency}{support_1} and {currency}{resist_1}. Wait for a decisive breakout."
+
+        return f"""**Trend Analysis for {symbol}**
+
+**Overall Trend: {trend.upper()}**
+
+{outlook}
+
+**Indicators:**
+- RSI(14): {rsi:.1f} — {rsi_label}{vwap_str}{macd_str}
+- Signal: {signal}
+
+**For {style.title()} Traders:**
+{'- Look for quick intraday reversals at support/resistance' if style == 'day' else '- Position for 2-5 day swings from key levels' if style == 'swing' else '- Consider weekly chart for broader context' if style == 'position' else '- Focus on 1m/5m timeframes for micro-moves'}
+
+*Markets can remain irrational longer than you can remain solvent. Use stops.*"""
+
+    # ---- General catch-all ----
+    return f"""**Analysis for {symbol}**
+
+**Quick Summary:**
+- **Price**: {currency}{price:.2f}  |  **Signal**: {signal}
+- **RSI(14)**: {rsi:.1f} ({rsi_label}){vwap_str}{macd_str}
+
+**Technical Picture:**
+{'RSI in oversold territory — potential bounce opportunity.' if rsi < 30 else 'RSI in overbought territory — exercise caution on new longs.' if rsi > 70 else 'RSI neutral — no strong edge. Wait for setup.'}
+
+**Key Levels:**
+- Support: {currency}{support_1} / {currency}{support_2}
+- Resistance: {currency}{resist_1} / {currency}{resist_2}
+
+**Action Plan ({style.title()} Style):**
+{'- Watch for intraday momentum shifts at key levels' if style == 'day' else '- Look for swing entry near support with tight stop' if style == 'swing' else '- Evaluate weekly trend before committing capital' if style == 'position' else '- Quick in/out at support/resistance bounces'}
+- Stop-loss: {currency}{stop_loss}
+- Target: {currency}{tp_1} (conservative) / {currency}{tp_2} (extended)
+
+*AI-generated analysis. Not financial advice. Always do your own research.*"""
 
 # =============================================================================
 # API ENDPOINTS

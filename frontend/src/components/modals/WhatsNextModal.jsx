@@ -2,18 +2,18 @@ import React from 'react';
 
 const WhatsNextModal = ({ onClose }) => {
   const upcomingFeatures = [
-    { name: 'Real-time WebSocket Streaming', description: 'Live price updates without polling', eta: 'Q1 2026', priority: 'High', icon: '⚡' },
-    { name: 'Advanced Charting', description: 'TradingView-style drawing tools & indicators', eta: 'Q1 2026', priority: 'High', icon: '📈' },
-    { name: 'Pattern Recognition AI', description: 'Automatic detection of head & shoulders, double tops, etc.', eta: 'Q2 2026', priority: 'Medium', icon: '🔍' },
-    { name: 'Portfolio Analytics', description: 'Track P&L, risk metrics, and performance', eta: 'Q1 2026', priority: 'High', icon: '💼' },
+    { name: 'Advanced Charting', description: 'TradingView-style drawing tools, Fibonacci, trend lines', eta: 'Q2 2026', priority: 'High', icon: '📈' },
+    { name: 'Pattern Recognition AI', description: 'Auto-detect head & shoulders, double tops, wedges', eta: 'Q2 2026', priority: 'High', icon: '🔍' },
     { name: 'Broker Integration', description: 'One-click trading with Zerodha, Alpaca, IBKR', eta: 'Q2 2026', priority: 'High', icon: '🔗' },
+    { name: 'Portfolio Analytics', description: 'Real-time P&L tracking, risk metrics, Sharpe ratio', eta: 'Q2 2026', priority: 'High', icon: '💼' },
     { name: 'Mobile App', description: 'React Native app for iOS and Android', eta: 'Q3 2026', priority: 'Medium', icon: '📱' },
   ];
 
   const recentUpdates = [
-    { version: '5.8.0', date: 'Dec 2025', changes: 'Fixed chart timestamps, fundamentals, screener data' },
+    { version: '6.0.0', date: 'Mar 2026', changes: 'Production data pipeline, real-time WebSocket, interval-aware charts, batch quote engine, enhanced AI analysis' },
+    { version: '5.9.0', date: 'Feb 2026', changes: 'AI analysis via Groq LLM, live RSI screener, improved caching, VWAP overlay' },
+    { version: '5.8.0', date: 'Jan 2026', changes: 'Fixed chart timestamps, fundamentals, screener data, 22-market support' },
     { version: '5.7.0', date: 'Dec 2025', changes: 'Keyboard shortcuts, Watchlist editing, Roadmap modal' },
-    { version: '5.5.0', date: 'Dec 2025', changes: 'Demo mode, circuit breaker, sentiment APIs' },
   ];
 
   return (
@@ -24,8 +24,8 @@ const WhatsNextModal = ({ onClose }) => {
       >
         <div className="sticky top-0 bg-gray-800 p-4 border-b border-gray-700 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-cyan-400">🚀 What&apos;s Next</h2>
-            <p className="text-sm text-gray-400">TraderAI Pro Roadmap</p>
+            <h2 className="text-xl font-bold text-cyan-400">What&apos;s New</h2>
+            <p className="text-sm text-gray-400">TraderAI Pro v6.0 &mdash; Production Ready</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>

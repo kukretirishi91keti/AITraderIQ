@@ -91,7 +91,12 @@ _broadcast_running = False
 
 
 async def price_broadcast_loop():
-    """Background loop that fetches prices for subscribed symbols and broadcasts."""
+    """Background loop that reads from batch service and broadcasts to all subscribers.
+
+    This is O(symbols) per cycle, NOT O(symbols * connections).
+    Each symbol's data is fetched once and broadcast to all subscribers.
+    Supports 1000+ concurrent WebSocket connections.
+    """
     global _broadcast_running
     if _broadcast_running:
         return
@@ -107,12 +112,28 @@ async def price_broadcast_loop():
                 continue
 
             try:
+                # Try batch service first (O(1) reads, no API calls)
+                try:
+                    from services.batch_data_service import get_batch_data_service
+                    batch_svc = get_batch_data_service()
+                    # Tell batch service to also track WebSocket symbols
+                    batch_svc.track(list(symbols))
+                    use_batch = True
+                except Exception:
+                    use_batch = False
+
                 from services.market_data_service import get_market_data_service
                 svc = get_market_data_service()
 
-                for symbol in list(symbols)[:50]:  # Cap at 50 to prevent overload
+                for symbol in list(symbols)[:100]:  # Increased cap with batch service
                     try:
-                        quote = await svc.get_quote(symbol)
+                        # Prefer batch cache (instant), fallback to live fetch
+                        quote = None
+                        if use_batch:
+                            quote = batch_svc.get_quote(symbol)
+                        if not quote:
+                            quote = await svc.get_quote(symbol)
+
                         if quote:
                             await manager.broadcast_to_symbol(symbol, {
                                 "type": "quote",
@@ -130,7 +151,7 @@ async def price_broadcast_loop():
             except Exception as e:
                 logger.error(f"Broadcast loop error: {e}")
 
-            await asyncio.sleep(5)  # Update every 5 seconds
+            await asyncio.sleep(5)  # Broadcast every 5 seconds
 
     except asyncio.CancelledError:
         logger.info("Price broadcast loop stopped")

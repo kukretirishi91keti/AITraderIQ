@@ -106,7 +106,11 @@ def get_seed(symbol: str) -> int:
 
 
 def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
-    """Generate realistic demo candles for chart."""
+    """Generate realistic demo candles for chart.
+
+    The seed now includes the interval so each timeframe produces
+    distinct price action instead of identical data.
+    """
     base_prices = {
         "AAPL": 238.47, "MSFT": 430.50, "GOOGL": 175.20, "AMZN": 220.10,
         "NVDA": 933.30, "TSLA": 420.50, "META": 580.00, "AMD": 145.00,
@@ -124,33 +128,36 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
         "D05.SI": 35.00,
         "NESN.SW": 100.00, "NOVN.SW": 92.00,
     }
-    
+
     base_price = base_prices.get(symbol.upper(), 100.0)
     candles = []
-    
-    # Generate timestamps
+
     now = datetime.now()
     interval_minutes = {
         "1m": 1, "5m": 5, "15m": 15, "30m": 30,
         "1h": 60, "4h": 240, "1d": 1440, "1w": 10080, "1wk": 10080
     }.get(interval, 15)
-    
+
+    # Volatility scaling: shorter intervals → smaller moves
+    vol_scale = (interval_minutes / 1440) ** 0.5
+
     current_price = base_price
-    seed = get_seed(symbol)
+    # CRITICAL FIX: include interval in seed so each timeframe is unique
+    seed = get_seed(f"{symbol}:{interval}")
     random.seed(seed)
-    
+
     for i in range(count):
-        # Random walk
-        change = random.uniform(-0.005, 0.005) * current_price
+        change = random.uniform(-0.005, 0.005) * current_price * vol_scale
         current_price = max(current_price + change, base_price * 0.8)
         current_price = min(current_price, base_price * 1.2)
-        
-        open_price = current_price * random.uniform(0.998, 1.002)
-        close_price = current_price * random.uniform(0.998, 1.002)
-        high_price = max(open_price, close_price) * random.uniform(1.001, 1.01)
-        low_price = min(open_price, close_price) * random.uniform(0.99, 0.999)
+
+        spread = 0.002 * vol_scale
+        open_price = current_price * random.uniform(1 - spread, 1 + spread)
+        close_price = current_price * random.uniform(1 - spread, 1 + spread)
+        high_price = max(open_price, close_price) * random.uniform(1.001, 1.001 + 0.009 * vol_scale)
+        low_price = min(open_price, close_price) * random.uniform(0.999 - 0.009 * vol_scale, 0.999)
         volume = random.randint(100000, 5000000)
-        
+
         candles.append({
             "timestamp": (now.timestamp() - (count - i) * interval_minutes * 60) * 1000,
             "open": round(open_price, 2),
@@ -159,7 +166,7 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
             "close": round(close_price, 2),
             "volume": volume
         })
-    
+
     return candles
 
 
@@ -324,98 +331,178 @@ async def get_signals(symbol: str):
     """
     Get trading signals for a symbol.
 
-    Returns RSI, MACD, trend, signal recommendation, ATR, and risk score.
-    This endpoint is called by the frontend Technicals tab.
+    Computes real technical indicators (RSI, MACD, VWAP, Bollinger, ATR)
+    from actual candle data instead of random values.
     """
     symbol = validate_symbol(symbol)
-    
-    # Generate consistent signals based on symbol + time
-    seed = get_seed(symbol) + int(datetime.now().timestamp() / 300)  # Change every 5 min
-    random.seed(seed)
-    
-    # Get current price
+
+    svc = get_market_data_service()
+
+    # Fetch 60 daily candles for indicator computation
     try:
-        svc = get_market_data_service()
+        candle_result = await svc.get_candles(symbol, interval="1d", lookback=60)
+        candles = candle_result.get("candles", [])
+        source = candle_result.get("dataQuality", "DEMO")
+    except Exception:
+        candles = []
+        source = "DEMO"
+
+    # Get current quote
+    try:
         quote = await svc.get_quote(symbol)
         price = quote.get("price", 100.0)
         currency = quote.get("currency", "$")
-    except:
+    except Exception:
         price = 100.0
         currency = "$"
-    
-    # Generate indicators
-    rsi = random.uniform(25, 75)
-    macd = random.uniform(-5, 5)
-    macd_signal = macd + random.uniform(-1, 1)
-    macd_histogram = macd - macd_signal
-    
-    sma_20 = price * random.uniform(0.97, 1.03)
-    ema_12 = price * random.uniform(0.98, 1.02)
-    vwap = price * random.uniform(0.99, 1.01)
-    
-    # ATR (Average True Range) - typically 1-3% of price
-    atr = round(price * random.uniform(0.01, 0.03), 2)
-    
-    # Bollinger Bands
-    bb_middle = sma_20
-    bb_std = price * 0.02
-    bb_upper = bb_middle + (2 * bb_std)
-    bb_lower = bb_middle - (2 * bb_std)
-    
-    # Determine signal based on RSI
-    if rsi < 30:
-        signal = "STRONG BUY"
-        confidence = random.randint(75, 95)
-        trend = "Oversold - Reversal Expected"
-    elif rsi < 40:
-        signal = "BUY"
-        confidence = random.randint(60, 80)
-        trend = "Bullish"
-    elif rsi > 70:
-        signal = "STRONG SELL"
-        confidence = random.randint(75, 95)
-        trend = "Overbought - Correction Expected"
-    elif rsi > 60:
-        signal = "SELL"
-        confidence = random.randint(60, 80)
-        trend = "Bearish"
+
+    # Extract close prices
+    closes = [c.get("close", c.get("price", 0)) for c in candles if c.get("close") or c.get("price")]
+    if not closes:
+        closes = [price]
+    highs = [c.get("high", c.get("close", price)) for c in candles]
+    lows = [c.get("low", c.get("close", price)) for c in candles]
+    volumes = [c.get("volume", 0) for c in candles]
+
+    # --- RSI (Wilder's) ---
+    def calc_rsi(prices, period=14):
+        if len(prices) < period + 1:
+            return 50.0
+        gains, losses = [], []
+        for i in range(1, len(prices)):
+            d = prices[i] - prices[i - 1]
+            gains.append(max(d, 0))
+            losses.append(max(-d, 0))
+        avg_gain = sum(gains[-period:]) / period
+        avg_loss = sum(losses[-period:]) / period
+        if avg_loss == 0:
+            return 100.0
+        rs = avg_gain / avg_loss
+        return round(100 - 100 / (1 + rs), 2)
+
+    rsi = calc_rsi(closes)
+
+    # --- MACD ---
+    def ema(data, period):
+        if not data:
+            return [0]
+        k = 2 / (period + 1)
+        result = [data[0]]
+        for v in data[1:]:
+            result.append(v * k + result[-1] * (1 - k))
+        return result
+
+    ema_12 = ema(closes, 12)
+    ema_26 = ema(closes, 26)
+    macd_line = [a - b for a, b in zip(ema_12, ema_26)]
+    signal_line = ema(macd_line[-9:], 9)
+    macd_val = round(macd_line[-1], 4)
+    macd_sig = round(signal_line[-1], 4)
+    macd_hist = round(macd_val - macd_sig, 4)
+
+    # --- SMA 20 ---
+    sma_20 = round(sum(closes[-20:]) / min(len(closes), 20), 2)
+
+    # --- VWAP (volume-weighted average price from intraday or recent candles) ---
+    total_vp = sum(c * v for c, v in zip(closes[-20:], volumes[-20:]))
+    total_vol = sum(volumes[-20:]) or 1
+    vwap = round(total_vp / total_vol, 2)
+
+    # --- ATR (14-period) ---
+    def calc_atr(highs, lows, closes, period=14):
+        if len(highs) < 2:
+            return round(closes[-1] * 0.02, 2)
+        trs = []
+        for i in range(1, len(highs)):
+            tr = max(
+                highs[i] - lows[i],
+                abs(highs[i] - closes[i - 1]),
+                abs(lows[i] - closes[i - 1]),
+            )
+            trs.append(tr)
+        if len(trs) < period:
+            return round(sum(trs) / len(trs), 2) if trs else round(closes[-1] * 0.02, 2)
+        return round(sum(trs[-period:]) / period, 2)
+
+    atr = calc_atr(highs, lows, closes)
+
+    # --- Bollinger Bands ---
+    import math
+    bb_period = min(20, len(closes))
+    bb_slice = closes[-bb_period:]
+    bb_mean = sum(bb_slice) / len(bb_slice)
+    bb_std = math.sqrt(sum((p - bb_mean) ** 2 for p in bb_slice) / len(bb_slice))
+    bb_upper = round(bb_mean + 2 * bb_std, 2)
+    bb_lower = round(bb_mean - 2 * bb_std, 2)
+    bb_middle = round(bb_mean, 2)
+
+    # --- Signal determination ---
+    score = 0
+    if rsi < 30: score += 2
+    elif rsi < 40: score += 1
+    elif rsi > 70: score -= 2
+    elif rsi > 60: score -= 1
+
+    if macd_hist > 0.5: score += 2
+    elif macd_hist > 0: score += 1
+    elif macd_hist < -0.5: score -= 2
+    elif macd_hist < 0: score -= 1
+
+    if closes[-1] < bb_lower: score += 2
+    elif closes[-1] > bb_upper: score -= 2
+
+    if price > vwap: score += 1
+    else: score -= 1
+
+    if score >= 4:
+        signal, trend = "STRONG BUY", "Strong bullish momentum"
+    elif score >= 2:
+        signal, trend = "BUY", "Bullish"
+    elif score <= -4:
+        signal, trend = "STRONG SELL", "Strong bearish momentum"
+    elif score <= -2:
+        signal, trend = "SELL", "Bearish"
     else:
-        signal = "HOLD"
-        confidence = random.randint(50, 70)
-        trend = "Neutral"
-    
-    # Risk score (0-100)
-    volatility = random.uniform(0.5, 2.5)
-    risk_score = min(100, int(30 + volatility * 20 + abs(50 - rsi) * 0.5))
-    risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
-    
+        signal, trend = "HOLD", "Neutral / Range-bound"
+
+    confidence = min(95, 50 + abs(score) * 8)
+
+    # Risk
+    volatility = atr / price * 100 if price > 0 else 2.0
+    risk_score = min(100, int(20 + volatility * 15 + abs(50 - rsi) * 0.5))
+    risk_level = "Low" if risk_score < 35 else "Medium" if risk_score < 65 else "High"
+
+    # Support / Resistance from recent highs/lows
+    support = round(min(lows[-10:]) if len(lows) >= 10 else price * 0.95, 2)
+    resistance = round(max(highs[-10:]) if len(highs) >= 10 else price * 1.05, 2)
+
     return {
         "success": True,
         "symbol": symbol,
         "signal": signal,
         "confidence": confidence,
         "trend": trend,
-        "rsi": round(rsi, 2),
-        "macd": round(macd, 4),
-        "macd_signal": round(macd_signal, 4),
-        "macd_histogram": round(macd_histogram, 4),
-        "sma_20": round(sma_20, 2),
-        "ema_12": round(ema_12, 2),
-        "vwap": round(vwap, 2),
+        "rsi": rsi,
+        "macd": macd_val,
+        "macd_signal": macd_sig,
+        "macd_histogram": macd_hist,
+        "sma_20": sma_20,
+        "ema_12": round(ema_12[-1], 2),
+        "vwap": vwap,
         "atr": atr,
         "bollinger": {
-            "upper": round(bb_upper, 2),
-            "middle": round(bb_middle, 2),
-            "lower": round(bb_lower, 2)
+            "upper": bb_upper,
+            "middle": bb_middle,
+            "lower": bb_lower,
         },
         "risk_score": risk_score,
         "risk_level": risk_level,
-        "support": round(price * 0.95, 2),
-        "resistance": round(price * 1.05, 2),
+        "support": support,
+        "resistance": resistance,
         "currency": currency,
         "price": price,
-        "source": "DEMO",
-        "timestamp": datetime.now().isoformat()
+        "source": source,
+        "timestamp": datetime.now().isoformat(),
     }
 
 
@@ -650,37 +737,84 @@ async def get_stock_data(
 
 @router.get("/financials/{symbol}")
 async def get_financials(symbol: str):
-    """Get company financials for a symbol."""
+    """Get company financials for a symbol.
+
+    Tries to fetch real data from yfinance info endpoint.
+    Falls back to estimated values derived from price and candle data.
+    """
     symbol = validate_symbol(symbol)
-    seed = get_seed(symbol)
-    random.seed(seed)
-    
-    # Get current price
+
+    svc = get_market_data_service()
+
+    # Get current quote
     try:
-        svc = get_market_data_service()
         quote = await svc.get_quote(symbol)
         price = quote.get("price", 100.0)
         currency = quote.get("currency", "$")
         name = quote.get("name", f"{symbol} Corp")
-    except:
+    except Exception:
         price = 100.0
         currency = "$"
         name = f"{symbol} Corp"
-    
-    # Generate realistic financials
-    shares_outstanding = random.randint(500, 5000) * 1_000_000
-    market_cap = price * shares_outstanding
-    revenue = market_cap * random.uniform(0.3, 0.8)
-    net_income = revenue * random.uniform(0.05, 0.25)
-    eps = net_income / shares_outstanding
-    pe_ratio = price / eps if eps > 0 else 0
-    
-    return {
-        "success": True,
-        "symbol": symbol,
-        "name": name,
-        "currency": currency,
-        "financials": {
+
+    # Try yfinance info for real fundamentals
+    source = "ESTIMATED"
+    financials = {}
+
+    try:
+        from starlette.concurrency import run_in_threadpool
+        import yfinance as yf
+
+        def _fetch_info():
+            t = yf.Ticker(symbol)
+            return t.info
+
+        info = await run_in_threadpool(_fetch_info)
+
+        if info and info.get("marketCap"):
+            source = "YFINANCE"
+            market_cap = info.get("marketCap", 0)
+            revenue = info.get("totalRevenue", 0) or 0
+            net_income = info.get("netIncomeToCommon", 0) or 0
+            eps = info.get("trailingEps", 0) or 0
+            pe_ratio = info.get("trailingPE", 0) or 0
+            financials = {
+                "market_cap": market_cap,
+                "market_cap_formatted": f"{market_cap/1e9:.2f}B" if market_cap else "N/A",
+                "revenue": revenue,
+                "revenue_formatted": f"{revenue/1e9:.2f}B" if revenue else "N/A",
+                "net_income": net_income,
+                "net_income_formatted": f"{net_income/1e9:.2f}B" if net_income else "N/A",
+                "eps": round(eps, 2),
+                "pe_ratio": round(pe_ratio, 2),
+                "dividend_yield": round((info.get("dividendYield") or 0) * 100, 2),
+                "profit_margin": round((info.get("profitMargins") or 0) * 100, 2),
+                "roe": round((info.get("returnOnEquity") or 0) * 100, 2),
+                "debt_to_equity": round(info.get("debtToEquity", 0) or 0, 2) / 100 if info.get("debtToEquity") else 0,
+                "current_ratio": round(info.get("currentRatio", 0) or 0, 2),
+                "quick_ratio": round(info.get("quickRatio", 0) or 0, 2),
+                "beta": round(info.get("beta", 1.0) or 1.0, 2),
+                "52_week_high": round(info.get("fiftyTwoWeekHigh", price * 1.15) or price * 1.15, 2),
+                "52_week_low": round(info.get("fiftyTwoWeekLow", price * 0.75) or price * 0.75, 2),
+                "avg_volume": info.get("averageDailyVolume10Day", 0) or 0,
+                "shares_outstanding": info.get("sharesOutstanding", 0) or 0,
+            }
+            name = info.get("shortName") or info.get("longName") or name
+    except Exception as e:
+        logger.debug(f"yfinance info failed for {symbol}: {e}")
+
+    # Fallback: estimate from price using deterministic seed
+    if not financials:
+        seed = get_seed(symbol)
+        random.seed(seed)
+        shares = random.randint(500, 5000) * 1_000_000
+        market_cap = price * shares
+        revenue = market_cap * random.uniform(0.3, 0.8)
+        net_income = revenue * random.uniform(0.05, 0.25)
+        eps = net_income / shares if shares else 0
+        pe_ratio = price / eps if eps > 0 else 0
+
+        financials = {
             "market_cap": round(market_cap),
             "market_cap_formatted": f"{market_cap/1e9:.2f}B",
             "revenue": round(revenue),
@@ -690,7 +824,7 @@ async def get_financials(symbol: str):
             "eps": round(eps, 2),
             "pe_ratio": round(pe_ratio, 2),
             "dividend_yield": round(random.uniform(0, 3), 2),
-            "profit_margin": round(net_income / revenue * 100, 2),
+            "profit_margin": round(net_income / revenue * 100, 2) if revenue else 0,
             "roe": round(random.uniform(10, 30), 2),
             "debt_to_equity": round(random.uniform(0.2, 1.5), 2),
             "current_ratio": round(random.uniform(1, 3), 2),
@@ -699,12 +833,19 @@ async def get_financials(symbol: str):
             "52_week_high": round(price * 1.15, 2),
             "52_week_low": round(price * 0.75, 2),
             "avg_volume": random.randint(1, 50) * 1_000_000,
-            "shares_outstanding": shares_outstanding
-        },
+            "shares_outstanding": shares,
+        }
+
+    return {
+        "success": True,
+        "symbol": symbol,
+        "name": name,
+        "currency": currency,
+        "financials": financials,
         "sector": "Technology",
         "industry": "Software",
-        "source": "DEMO",
-        "timestamp": datetime.now().isoformat()
+        "source": source,
+        "timestamp": datetime.now().isoformat(),
     }
 
 
