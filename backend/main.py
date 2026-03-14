@@ -328,6 +328,20 @@ load_router(
     '(balance, pricing, topup)'
 )
 
+# Paper Trading
+load_router(
+    ['routers.paper_trading'],
+    'paper trading router',
+    '(virtual orders, P&L, stats)'
+)
+
+# Strategy Builder
+load_router(
+    ['routers.strategy'],
+    'strategy router',
+    '(no-code algo rules, scanning)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
@@ -350,6 +364,8 @@ async def root():
             "AI assistant (Groq, OpenAI, Anthropic)",
             "Social sentiment (StockTwits, Reddit)",
             "Screener with RSI filtering",
+            "Paper trading simulator ($100K virtual)",
+            "Strategy builder (no-code algo rules)",
             "Circuit breaker protection",
             "Credit-based monetization",
         ]

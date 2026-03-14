@@ -6,6 +6,8 @@ import SentimentDashboard from './components/SentimentDashboard';
 import MarketCommentary from './components/MarketCommentary';
 import AIScanner from './components/AIScanner';
 import ChartPanel from './components/ChartPanel';
+import PaperTradingPanel from './components/PaperTradingPanel';
+import StrategyBuilder from './components/StrategyBuilder';
 import { getPriceStream } from './services/websocket';
 
 // Constants
@@ -780,7 +782,7 @@ export default function App() {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner'].map(tab => (
+            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner', 'paper trade', 'strategies'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}>
                 {tab}
               </button>
@@ -909,6 +911,8 @@ export default function App() {
             {activeTab === 'backtest' && <BacktestPanel symbol={selectedSymbol} traderStyle={traderStyle?.toLowerCase()} />}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
             {activeTab === 'AI scanner' && <AIScanner traderStyle={traderStyle?.toLowerCase()} onSymbolSelect={handleSymbolSelect} />}
+            {activeTab === 'paper trade' && <PaperTradingPanel symbol={selectedSymbol} price={quote?.price} currency={quote?.currency || '$'} onSymbolSelect={handleSymbolSelect} />}
+            {activeTab === 'strategies' && <StrategyBuilder onSymbolSelect={handleSymbolSelect} />}
           </div>
         </main>
 

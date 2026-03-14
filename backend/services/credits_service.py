@@ -67,6 +67,8 @@ FEATURE_COSTS = {
     "ai_query": None,        # varies by model (see AI_CREDIT_COSTS)
     "backtest": 3,
     "ai_scanner": 2,
+    "strategy_scan": 2,      # scan strategy against universe
+    "paper_trade": 0,        # paper trades are free
     "export_report": 1,
 }
 

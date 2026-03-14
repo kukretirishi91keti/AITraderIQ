@@ -37,6 +37,8 @@ class User(Base):
     portfolio_items = relationship("PortfolioItem", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="user", cascade="all, delete-orphan")
     credit_transactions = relationship("CreditTransaction", back_populates="user", cascade="all, delete-orphan")
+    paper_trades = relationship("PaperTrade", back_populates="user", cascade="all, delete-orphan")
+    strategies = relationship("Strategy", back_populates="user", cascade="all, delete-orphan")
 
 
 class WatchlistItem(Base):
@@ -99,3 +101,45 @@ class CreditTransaction(Base):
     created_at = Column(DateTime, default=_utcnow)
 
     user = relationship("User", back_populates="credit_transactions")
+
+
+class PaperTrade(Base):
+    __tablename__ = "paper_trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    symbol = Column(String(20), nullable=False)
+    side = Column(String(10), nullable=False)       # BUY, SELL, SHORT
+    quantity = Column(Float, nullable=False)
+    entry_price = Column(Float, nullable=False)
+    exit_price = Column(Float, nullable=True)
+    currency = Column(String(10), default="$")
+    status = Column(String(10), default="open")     # open, closed
+    pnl = Column(Float, nullable=True)
+    pnl_pct = Column(Float, nullable=True)
+    stop_loss = Column(Float, nullable=True)
+    take_profit = Column(Float, nullable=True)
+    notes = Column(Text, default="")
+    opened_at = Column(DateTime, default=_utcnow)
+    closed_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="paper_trades")
+
+
+class Strategy(Base):
+    __tablename__ = "strategies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, default="")
+    rules_json = Column(Text, nullable=False)       # JSON array of conditions
+    action = Column(String(10), default="BUY")      # BUY, SELL
+    universe = Column(Text, default="US_TECH")      # comma-separated market categories
+    is_active = Column(Boolean, default=True)
+    last_scan_at = Column(DateTime, nullable=True)
+    matches_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    user = relationship("User", back_populates="strategies")
