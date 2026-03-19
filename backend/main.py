@@ -240,6 +240,13 @@ load_router(
     '(movers, universe, signals)'
 )
 
+# Load screener universe (22 market categories)
+load_router(
+    ['routers.screener_universe'],
+    'screener universe router',
+    '(/api/screener/universe)'
+)
+
 # Load health router
 load_router(
     ['routers.health', 'health'],
