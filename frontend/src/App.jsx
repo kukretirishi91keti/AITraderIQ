@@ -463,13 +463,15 @@ export default function App() {
   }, [selectedMarket]);
 
   useEffect(() => {
+    // Clear stale chart data immediately when interval changes
+    setHistory([]);
+    setLoading(true);
+
     const controller = new AbortController();
     fetchAllData(controller.signal);
     intervalRef.current = setInterval(() => fetchAllData(null), pollingInterval);
     return () => { controller.abort(); if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [fetchAllData, pollingInterval]);
-
-  useEffect(() => { setHistory([]); setLoading(true); }, [chartInterval]);
 
   // Fetch credits balance
   useEffect(() => {

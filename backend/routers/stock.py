@@ -139,8 +139,8 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
         "1h": 60, "4h": 240, "1d": 1440, "1w": 10080, "1wk": 10080
     }.get(interval, 15)
 
-    # Volatility scaling: shorter intervals → smaller moves
-    vol_scale = (interval_minutes / 1440) ** 0.5
+    # Volatility scaling: shorter intervals → smaller moves, longer → bigger swings
+    vol_scale = max(0.15, (interval_minutes / 1440) ** 0.4)
 
     # Time-bucketed seed: rotates every interval so chart evolves in real-time.
     # Anchor candles to fixed wall-clock slots (floor to interval boundary).
@@ -154,18 +154,25 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
     anchor_ts = (time_bucket + 1) * interval_minutes * 60  # end of current bucket
     start_ts = anchor_ts - total * interval_minutes * 60
 
-    current_price = base_price
+    # Add a trend component so charts don't look flat
+    trend_direction = rng.choice([-1, 1])
+    trend_strength = rng.uniform(0.0001, 0.0005) * vol_scale
+
+    current_price = base_price * rng.uniform(0.92, 1.08)  # start offset per interval
     all_candles = []
     for i in range(total):
-        change = rng.uniform(-0.005, 0.005) * current_price * vol_scale
-        current_price = max(current_price + change, base_price * 0.8)
-        current_price = min(current_price, base_price * 1.2)
+        # Trend + random walk
+        trend = trend_direction * trend_strength * current_price
+        noise = rng.uniform(-0.008, 0.008) * current_price * vol_scale
+        current_price += trend + noise
+        current_price = max(current_price, base_price * 0.7)
+        current_price = min(current_price, base_price * 1.3)
 
-        spread = 0.002 * vol_scale
+        spread = 0.003 + 0.005 * vol_scale
         open_price = current_price * rng.uniform(1 - spread, 1 + spread)
         close_price = current_price * rng.uniform(1 - spread, 1 + spread)
-        high_price = max(open_price, close_price) * rng.uniform(1.001, 1.001 + 0.009 * vol_scale)
-        low_price = min(open_price, close_price) * rng.uniform(0.999 - 0.009 * vol_scale, 0.999)
+        high_price = max(open_price, close_price) * rng.uniform(1.002, 1.002 + 0.012 * vol_scale)
+        low_price = min(open_price, close_price) * rng.uniform(0.998 - 0.012 * vol_scale, 0.998)
         volume = rng.randint(100000, 5000000)
 
         candle_ts = start_ts + i * interval_minutes * 60
