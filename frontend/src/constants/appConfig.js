@@ -4,7 +4,7 @@
  */
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-export const APP_VERSION = 'F';
+export const APP_VERSION = '6.1.0';
 
 export const POLLING_INTERVALS = {
   HEALTHY: 60000,

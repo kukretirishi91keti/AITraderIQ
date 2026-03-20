@@ -19,7 +19,7 @@ function PaperTradingPanel({ symbol, price, currency = '$', onSymbolSelect }) {
   const [stopLoss, setStopLoss] = useState('');
   const [takeProfit, setTakeProfit] = useState('');
 
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('traderai_token');
 
   const headers = {
     'Content-Type': 'application/json',

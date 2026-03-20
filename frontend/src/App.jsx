@@ -828,33 +828,6 @@ export default function App() {
               </div>
             )}
 
-            {activeTab === 'sentiment' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-700/50 rounded-lg">
-                    <h4 className="text-sm text-gray-400 mb-2">Reddit Sentiment</h4>
-                    <div className="flex items-center gap-4">
-                      <div className="text-3xl font-bold">{sentiment?.sentiment?.bullish || sentiment?.bullish_percent || 50}%</div>
-                      <div className="flex-1">
-                        <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
-                          <div className="h-full bg-green-500" style={{ width: `${sentiment?.sentiment?.bullish || sentiment?.bullish_percent || 50}%` }} />
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1"><span>Bearish</span><span>Bullish</span></div>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-400 mt-2">{sentiment?.mentions || 0} mentions • {sentiment?.sentiment?.label || 'N/A'}</p>
-                  </div>
-                  <div className="p-4 bg-gray-700/50 rounded-lg">
-                    <h4 className="text-sm text-gray-400 mb-2">Overall Sentiment</h4>
-                    <div className="text-xl font-bold text-cyan-400">
-                      {(sentiment?.sentiment?.bullish || 50) > 60 ? '🚀 Bullish' : (sentiment?.sentiment?.bullish || 50) < 40 ? '🐻 Bearish' : '😐 Neutral'}
-                    </div>
-                    <p className="text-sm text-gray-400 mt-2">Bullish: {sentiment?.sentiment?.bullish || 50}% • Bearish: {sentiment?.sentiment?.bearish || 30}%</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'fundamentals' && (
               <div>
                 {financialsLoading ? (
