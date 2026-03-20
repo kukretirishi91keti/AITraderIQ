@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { TrendingUp, TrendingDown, DollarSign, BarChart3, RefreshCw, X, Plus, History } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -153,7 +152,7 @@ function PaperTradingPanel({ symbol, price, currency = '$', onSymbolSelect }) {
   if (!token) {
     return (
       <div className="bg-gray-800/60 rounded-lg p-6 text-center">
-        <DollarSign className="w-10 h-10 text-cyan-400 mx-auto mb-3" />
+        <span className="text-3xl block mb-3">&#36;</span>
         <p className="text-gray-300 text-sm">Login to start paper trading with $100K virtual cash</p>
       </div>
     );
@@ -166,7 +165,7 @@ function PaperTradingPanel({ symbol, price, currency = '$', onSymbolSelect }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <DollarSign className="w-5 h-5 text-cyan-400" />
+          <span className="text-cyan-400">$</span>
           Paper Trading
         </h3>
         <div className="flex gap-1">
@@ -298,7 +297,7 @@ function PaperTradingPanel({ symbol, price, currency = '$', onSymbolSelect }) {
           ))}
           <div className="text-center pt-2">
             <button onClick={fetchPositions} className="text-xs text-gray-500 hover:text-cyan-400">
-              <RefreshCw className="w-3 h-3 inline mr-1" /> Refresh
+              &#8635; Refresh
             </button>
           </div>
         </div>

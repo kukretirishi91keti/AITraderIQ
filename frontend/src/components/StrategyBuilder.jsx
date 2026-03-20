@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, memo } from 'react';
-import { Cpu, Plus, Trash2, Play, Zap, ChevronDown, ChevronUp, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
@@ -157,7 +156,7 @@ function StrategyBuilder({ onSymbolSelect }) {
   if (!token) {
     return (
       <div className="bg-gray-800/60 rounded-lg p-6 text-center">
-        <Cpu className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+        <span className="text-3xl block mb-3">&#9881;</span>
         <p className="text-gray-300 text-sm">Login to build no-code trading strategies</p>
       </div>
     );
@@ -168,7 +167,7 @@ function StrategyBuilder({ onSymbolSelect }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-          <Cpu className="w-5 h-5 text-purple-400" />
+          <span className="text-purple-400">&#9881;</span>
           Strategy Builder
         </h3>
         <div className="flex gap-1">
@@ -178,7 +177,7 @@ function StrategyBuilder({ onSymbolSelect }) {
           </button>
           <button onClick={() => setView('create')}
             className={`px-3 py-1 text-xs rounded ${view === 'create' ? 'bg-purple-600 text-white' : 'bg-gray-700 text-gray-400'}`}>
-            <Plus className="w-3 h-3 inline" /> New
+            + New
           </button>
         </div>
       </div>
@@ -197,7 +196,7 @@ function StrategyBuilder({ onSymbolSelect }) {
               <p className="text-gray-500 text-sm mb-3">No strategies yet</p>
               <button onClick={() => setView('create')}
                 className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded text-sm">
-                <Plus className="w-4 h-4 inline mr-1" /> Create First Strategy
+                + Create First Strategy
               </button>
             </div>
           ) : strategies.map(s => (
@@ -206,8 +205,8 @@ function StrategyBuilder({ onSymbolSelect }) {
                 <div className="flex items-center gap-2">
                   <button onClick={() => toggleActive(s.id, s.is_active)} title={s.is_active ? 'Active' : 'Paused'}>
                     {s.is_active
-                      ? <ToggleRight className="w-5 h-5 text-green-400" />
-                      : <ToggleLeft className="w-5 h-5 text-gray-600" />}
+                      ? <span className="text-green-400 text-lg leading-none">&#9679;</span>
+                      : <span className="text-gray-600 text-lg leading-none">&#9675;</span>}
                   </button>
                   <div>
                     <span className="text-white font-semibold text-sm">{s.name}</span>
@@ -225,14 +224,14 @@ function StrategyBuilder({ onSymbolSelect }) {
                   )}
                   <button onClick={() => runScan(s.id)} disabled={loading}
                     className="bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded text-xs" title="Scan Now">
-                    <Play className="w-3 h-3 inline" /> Scan
+                    &#9654; Scan
                   </button>
                   <button onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
                     className="text-gray-500 hover:text-white p-1">
-                    {expandedId === s.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {expandedId === s.id ? '\u25B2' : '\u25BC'}
                   </button>
                   <button onClick={() => deleteStrategy(s.id)} className="text-gray-600 hover:text-red-400 p-1">
-                    <Trash2 className="w-3 h-3" />
+                    &#10005;
                   </button>
                 </div>
               </div>
@@ -303,7 +302,7 @@ function StrategyBuilder({ onSymbolSelect }) {
               <label className="text-[10px] text-gray-500">Rules (all must match)</label>
               <button onClick={addCondition} disabled={conditions.length >= 10}
                 className="text-xs text-purple-400 hover:text-purple-300 disabled:text-gray-600">
-                <Plus className="w-3 h-3 inline" /> Add Rule
+                + Add Rule
               </button>
             </div>
 
@@ -345,7 +344,7 @@ function StrategyBuilder({ onSymbolSelect }) {
 
                     {conditions.length > 1 && (
                       <button onClick={() => removeCondition(i)} className="text-gray-600 hover:text-red-400">
-                        <Trash2 className="w-3 h-3" />
+                        &#10005;
                       </button>
                     )}
                   </div>
@@ -423,7 +422,7 @@ function StrategyBuilder({ onSymbolSelect }) {
                       </span>
                     </div>
                   </div>
-                  <Zap className="w-4 h-4 text-purple-400" />
+                  <span className="text-purple-400">&#9889;</span>
                 </div>
               ))}
             </div>

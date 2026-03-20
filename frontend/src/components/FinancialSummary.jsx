@@ -10,7 +10,6 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Building2, TrendingUp, DollarSign, PieChart, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -53,11 +52,11 @@ function DataBadge({ quality }) {
 /**
  * Metric Card Component
  */
-function MetricCard({ label, value, icon: Icon, subValue }) {
+function MetricCard({ label, value, icon, subValue }) {
   return (
     <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
       <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
-        {Icon && <Icon className="w-3.5 h-3.5" />}
+        {icon && <span>{icon}</span>}
         {label}
       </div>
       <div className="text-lg font-semibold text-white">
@@ -129,7 +128,7 @@ export default function FinancialSummary({ symbol, onError }) {
     return (
       <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
         <div className="flex items-center gap-2 text-gray-400">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="animate-spin inline-block">&#8635;</span>
           Loading financials for {symbol}...
         </div>
       </div>
@@ -141,7 +140,7 @@ export default function FinancialSummary({ symbol, onError }) {
     return (
       <div className="bg-gray-900 rounded-xl p-4 border border-gray-800">
         <div className="flex items-center gap-2 text-red-400">
-          <AlertCircle className="w-4 h-4" />
+          <span>&#9888;</span>
           {error}
         </div>
       </div>
@@ -162,7 +161,7 @@ export default function FinancialSummary({ symbol, onError }) {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-blue-400" />
+          <span className="text-blue-400">&#127970;</span>
           <h3 className="font-semibold text-white">
             {financials.name || symbol}
           </h3>
@@ -173,7 +172,7 @@ export default function FinancialSummary({ symbol, onError }) {
           className="p-1.5 hover:bg-gray-800 rounded-lg transition-colors"
           title="Refresh"
         >
-          <RefreshCw className="w-4 h-4 text-gray-400" />
+          <span className="text-gray-400">&#8635;</span>
         </button>
       </div>
       
@@ -191,24 +190,24 @@ export default function FinancialSummary({ symbol, onError }) {
         <MetricCard
           label="Market Cap"
           value={financials.marketCapFormatted}
-          icon={DollarSign}
+          icon="$"
         />
         <MetricCard
           label="P/E Ratio"
           value={financials.peFormatted}
-          icon={PieChart}
+          icon="&#9678;"
           subValue={financials.forwardPe ? `Forward: ${financials.forwardPeFormatted}` : null}
         />
         <MetricCard
           label="Revenue"
           value={financials.revenueFormatted}
-          icon={TrendingUp}
+          icon="&#9650;"
           subValue={financials.revenueGrowthFormatted ? `Growth: ${financials.revenueGrowthFormatted}` : null}
         />
         <MetricCard
           label="Profit Margin"
           value={financials.profitMarginFormatted}
-          icon={TrendingUp}
+          icon="&#9650;"
         />
       </div>
       
