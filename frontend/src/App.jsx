@@ -31,6 +31,7 @@ const ScreenerModal = lazy(() => import('./components/modals/ScreenerModal'));
 const PortfolioModal = lazy(() => import('./components/modals/PortfolioModal'));
 const AlertsModal = lazy(() => import('./components/modals/AlertsModal'));
 const AddToPortfolioModal = lazy(() => import('./components/modals/AddToPortfolioModal'));
+const StrategyIntelligence = lazy(() => import('./components/StrategyIntelligence'));
 
 // ============================================================
 // MAIN APP COMPONENT
@@ -71,6 +72,7 @@ export default function App() {
   const [portfolioShares, setPortfolioShares] = useState('');
   const [portfolioAvgPrice, setPortfolioAvgPrice] = useState('');
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  const [showStrategyIntelligence, setShowStrategyIntelligence] = useState(false);
 
   // Screener filters
   const [screenerFilter, setScreenerFilter] = useState('all');
@@ -147,7 +149,7 @@ export default function App() {
         return;
       }
       const anyModalOpen = showScreener || showPortfolio || showAddToPortfolio || showAlerts ||
-                          showUserGuide || showWhatsNext || showWatchlistEdit || showKeyboardHelp;
+                          showUserGuide || showWhatsNext || showWatchlistEdit || showKeyboardHelp || showStrategyIntelligence;
       switch (e.key) {
         case '/': e.preventDefault(); searchInputRef.current?.focus(); break;
         case '1': e.preventDefault(); setChartInterval('1m'); break;
@@ -169,6 +171,7 @@ export default function App() {
           setShowScreener(false); setShowPortfolio(false); setShowAddToPortfolio(false);
           setShowAlerts(false); setShowUserGuide(false); setShowWhatsNext(false);
           setShowWatchlistEdit(false); setShowKeyboardHelp(false); setShowDebug(false);
+          setShowStrategyIntelligence(false);
           break;
         default: break;
       }
@@ -509,6 +512,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => setShowStrategyIntelligence(true)} className="px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-bold shadow-lg shadow-cyan-500/20">Strategy AI</button>
             <button onClick={() => { setShowScreener(true); fetchScreenerData(); }} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-medium">Screener</button>
             <button onClick={() => setShowPortfolio(true)} className="px-3 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium">💰 Portfolio</button>
             <button onClick={() => setShowAlerts(true)} className="px-3 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium relative">
@@ -944,6 +948,9 @@ export default function App() {
         )}
         {showAddToPortfolio && (
           <AddToPortfolioModal onClose={() => setShowAddToPortfolio(false)} selectedSymbol={selectedSymbol} quote={quote} portfolioShares={portfolioShares} setPortfolioShares={setPortfolioShares} portfolioAvgPrice={portfolioAvgPrice} setPortfolioAvgPrice={setPortfolioAvgPrice} onAdd={addToPortfolio} isInPortfolio={isInPortfolio} />
+        )}
+        {showStrategyIntelligence && (
+          <StrategyIntelligence symbol={selectedSymbol} onClose={() => setShowStrategyIntelligence(false)} />
         )}
       </Suspense>
 

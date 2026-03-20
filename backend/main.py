@@ -278,6 +278,13 @@ load_router(
     '(AI-ranked opportunities)'
 )
 
+# Load strategy intelligence router
+load_router(
+    ['routers.strategy'],
+    'strategy router',
+    '(strategy intelligence, growth projections)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
