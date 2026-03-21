@@ -261,9 +261,10 @@ async def query_ai(request: QueryRequest):
         logger.error(f"Fallback generation error: {e}")
         answer = f"I can help analyze {request.symbol or 'this stock'}. Please check the technical indicators panel for RSI, MACD, and signal recommendations."
     
+    reason = "GROQ_API_KEY not configured" if not GROQ_API_KEY else "Groq client error"
     return QueryResponse(
         answer=answer,
-        source="fallback",
+        source=f"rule-based ({reason})",
         model=None,
         timestamp=datetime.now().isoformat()
     )

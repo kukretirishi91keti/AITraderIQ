@@ -16,3 +16,5 @@ services:
         value: sqlite+aiosqlite:///./traderai.db
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: GROQ_API_KEY
+        sync: false  # Set manually in Render dashboard - get free key at console.groq.com
