@@ -44,6 +44,7 @@ class QueryRequest(BaseModel):
     trader_style: Optional[str] = "swing"
     vwap: Optional[float] = None
     macd: Optional[float] = None
+    model: Optional[str] = None  # User-selected model override
 
 class QueryResponse(BaseModel):
     answer: str
@@ -230,9 +231,10 @@ async def query_ai(request: QueryRequest):
     if client and GROQ_API_KEY:
         try:
             system_prompt = get_system_prompt(request)
-            
+            selected_model = request.model or DEFAULT_MODEL
+
             response = client.chat.completions.create(
-                model=DEFAULT_MODEL,
+                model=selected_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": request.question}
@@ -240,11 +242,11 @@ async def query_ai(request: QueryRequest):
                 max_tokens=MAX_TOKENS,
                 temperature=0.7
             )
-            
+
             return QueryResponse(
                 answer=response.choices[0].message.content,
                 source="groq",
-                model=DEFAULT_MODEL,
+                model=selected_model,
                 timestamp=datetime.now().isoformat()
             )
             
@@ -306,8 +308,10 @@ async def list_models():
     """List available AI models."""
     return {
         "available": [
-            {"id": "llama-3.3-70b-versatile", "provider": "groq", "recommended": True},
-            {"id": "llama-3.1-8b-instant", "provider": "groq", "fast": True},
+            {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B", "provider": "groq", "recommended": True, "description": "Best quality, deeper analysis"},
+            {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B", "provider": "groq", "fast": True, "description": "Fastest responses"},
+            {"id": "mixtral-8x7b-32768", "label": "Mixtral 8x7B", "provider": "groq", "description": "Great balance of speed & quality"},
+            {"id": "gemma2-9b-it", "label": "Gemma 2 9B", "provider": "groq", "description": "Google's compact model"},
         ],
         "default": DEFAULT_MODEL,
         "fallback": "rule-based"
