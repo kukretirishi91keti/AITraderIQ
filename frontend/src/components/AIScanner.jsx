@@ -29,7 +29,7 @@ function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
     }
   };
 
-  const filtered = (data?.rankings || []).filter(r => {
+  const filtered = (data?.rankings || []).filter((r) => {
     if (filter === 'all') return true;
     return r.direction.includes(filter);
   });
@@ -39,7 +39,7 @@ function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-cyan-400">AI Scanner</h3>
         <div className="flex gap-1">
-          {['all', 'BULLISH', 'BEARISH'].map(f => (
+          {['all', 'BULLISH', 'BEARISH'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -68,15 +68,18 @@ function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
                 <div>
                   <span className="font-medium text-cyan-400 text-sm">{r.symbol}</span>
                   <div className="flex gap-2 mt-0.5">
-                    <span className={`text-[10px] font-medium ${
-                      r.signal.includes('BUY') ? 'text-green-400' :
-                      r.signal.includes('SELL') ? 'text-red-400' : 'text-gray-400'
-                    }`}>
+                    <span
+                      className={`text-[10px] font-medium ${
+                        r.signal.includes('BUY')
+                          ? 'text-green-400'
+                          : r.signal.includes('SELL')
+                            ? 'text-red-400'
+                            : 'text-gray-400'
+                      }`}
+                    >
                       {r.signal}
                     </span>
-                    <span className="text-[10px] text-gray-500">
-                      RSI {r.rsi?.toFixed(0)}
-                    </span>
+                    <span className="text-[10px] text-gray-500">RSI {r.rsi?.toFixed(0)}</span>
                   </div>
                 </div>
               </div>
@@ -84,14 +87,20 @@ function AIScanner({ traderStyle = 'swing', onSymbolSelect }) {
               <div className="flex items-center gap-3">
                 <div className="text-right">
                   <div className="text-xs text-gray-400">
-                    {r.win_rate}% win | Sent: {r.sentiment_score > 0 ? '+' : ''}{r.sentiment_score}
+                    {r.win_rate}% win | Sent: {r.sentiment_score > 0 ? '+' : ''}
+                    {r.sentiment_score}
                   </div>
                 </div>
                 <div className="w-10 text-center">
-                  <div className={`text-lg font-bold ${
-                    r.ai_score >= 65 ? 'text-green-400' :
-                    r.ai_score >= 45 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
+                  <div
+                    className={`text-lg font-bold ${
+                      r.ai_score >= 65
+                        ? 'text-green-400'
+                        : r.ai_score >= 45
+                          ? 'text-yellow-400'
+                          : 'text-red-400'
+                    }`}
+                  >
                     {r.ai_score}
                   </div>
                   <div className="text-[8px] text-gray-500">SCORE</div>

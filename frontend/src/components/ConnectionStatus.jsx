@@ -24,9 +24,7 @@ export default function ConnectionStatus() {
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded ${
-        connected
-          ? 'bg-green-900/30 text-green-400'
-          : 'bg-yellow-900/30 text-yellow-400'
+        connected ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
       }`}
       title={connected ? 'Real-time stream connected' : 'Connecting to real-time stream...'}
     >

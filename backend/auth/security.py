@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,24 +20,26 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE-THIS-IN-PRODUCTION-use-openssl-
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "1440"))  # 24 hours default
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing - use bcrypt directly to handle 72-byte truncation
+import bcrypt as _bcrypt
 
 # OAuth2 scheme - tokenUrl must match the login endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
-def _truncate_password(password: str) -> str:
-    """Truncate password to 72 bytes (bcrypt limit)."""
-    return password.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+def hash_password(password: str) -> str:
+    """Hash password with bcrypt, truncating to 72-byte limit."""
+    pw_bytes = password.encode("utf-8")[:72]
+    return _bcrypt.hashpw(pw_bytes, _bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(_truncate_password(plain_password), hashed_password)
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(_truncate_password(password))
+    """Verify password against bcrypt hash."""
+    pw_bytes = plain_password.encode("utf-8")[:72]
+    try:
+        return _bcrypt.checkpw(pw_bytes, hashed_password.encode("utf-8"))
+    except Exception:
+        return False
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

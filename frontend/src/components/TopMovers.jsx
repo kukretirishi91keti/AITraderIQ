@@ -2,7 +2,7 @@
  * TopMovers.jsx - ENHANCED
  * ========================
  * Location: frontend/src/components/TopMovers.jsx
- * 
+ *
  * Shows top gainers and losers with real data from backend
  */
 import React, { useState, useEffect } from 'react';
@@ -20,49 +20,47 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      
+
       try {
         const response = await fetch(`${API_BASE}/api/v4/top-movers/${market}?limit=${limit}`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
+
         // Handle different response formats
         const gainersList = data.gainers || [];
         const losersList = data.losers || [];
-        
+
         setGainers(gainersList.slice(0, limit));
         setLosers(losersList.slice(0, limit));
-        
       } catch (err) {
         console.error('TopMovers fetch error:', err);
         setError(err.message);
-        
+
         // Fallback mock data for demo
         setGainers([
-          { symbol: 'NVDA', ticker: 'NVDA', price: 142.50, changePercent: 5.2 },
-          { symbol: 'TSLA', ticker: 'TSLA', price: 248.30, changePercent: 3.8 },
-          { symbol: 'AMD', ticker: 'AMD', price: 125.60, changePercent: 2.9 },
+          { symbol: 'NVDA', ticker: 'NVDA', price: 142.5, changePercent: 5.2 },
+          { symbol: 'TSLA', ticker: 'TSLA', price: 248.3, changePercent: 3.8 },
+          { symbol: 'AMD', ticker: 'AMD', price: 125.6, changePercent: 2.9 },
         ]);
         setLosers([
-          { symbol: 'INTC', ticker: 'INTC', price: 45.20, changePercent: -2.5 },
-          { symbol: 'BA', ticker: 'BA', price: 178.90, changePercent: -1.8 },
-          { symbol: 'DIS', ticker: 'DIS', price: 92.40, changePercent: -1.2 },
+          { symbol: 'INTC', ticker: 'INTC', price: 45.2, changePercent: -2.5 },
+          { symbol: 'BA', ticker: 'BA', price: 178.9, changePercent: -1.8 },
+          { symbol: 'DIS', ticker: 'DIS', price: 92.4, changePercent: -1.2 },
         ]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
-    
+
     // Refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-    
   }, [market, limit]);
 
   const handleClick = (symbol) => {
@@ -85,7 +83,7 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
       {/* Top Gainers */}
       <div>
         <button
-          onClick={() => setExpanded(e => ({ ...e, gainers: !e.gainers }))}
+          onClick={() => setExpanded((e) => ({ ...e, gainers: !e.gainers }))}
           className="flex items-center justify-between w-full text-left mb-2"
         >
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
@@ -94,7 +92,7 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
           </span>
           <span className="text-gray-600">{expanded.gainers ? '▼' : '▶'}</span>
         </button>
-        
+
         {expanded.gainers && (
           <div className="space-y-1">
             {gainers.length === 0 ? (
@@ -127,7 +125,7 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
       {/* Top Losers */}
       <div>
         <button
-          onClick={() => setExpanded(e => ({ ...e, losers: !e.losers }))}
+          onClick={() => setExpanded((e) => ({ ...e, losers: !e.losers }))}
           className="flex items-center justify-between w-full text-left mb-2"
         >
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
@@ -136,7 +134,7 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
           </span>
           <span className="text-gray-600">{expanded.losers ? '▼' : '▶'}</span>
         </button>
-        
+
         {expanded.losers && (
           <div className="space-y-1">
             {losers.length === 0 ? (
@@ -167,11 +165,7 @@ const TopMovers = ({ market = 'US', onSelectStock, limit = 5 }) => {
       </div>
 
       {/* Error indicator */}
-      {error && (
-        <div className="text-xs text-yellow-500 italic">
-          ⚠️ Using cached data
-        </div>
-      )}
+      {error && <div className="text-xs text-yellow-500 italic">⚠️ Using cached data</div>}
     </div>
   );
 };

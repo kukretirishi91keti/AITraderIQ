@@ -10,42 +10,42 @@ export const POLLING_INTERVALS = {
   HEALTHY: 60000,
   DEGRADED: 120000,
   CRITICAL: 300000,
-  ERROR: 180000
+  ERROR: 180000,
 };
 
 export const TRADING_STYLES = {
-  'Day': {
+  Day: {
     name: 'Day Trader',
     focus: 'intraday momentum, quick entries/exits, scalping opportunities',
     timeframe: '1-minute to 15-minute charts',
-    riskProfile: 'aggressive, tight stop-losses, multiple trades per day'
+    riskProfile: 'aggressive, tight stop-losses, multiple trades per day',
   },
-  'Swing': {
+  Swing: {
     name: 'Swing Trader',
     focus: 'multi-day trends, support/resistance levels, chart patterns',
     timeframe: '1-hour to daily charts',
-    riskProfile: 'moderate, wider stops, 2-10 day holds'
+    riskProfile: 'moderate, wider stops, 2-10 day holds',
   },
-  'Position': {
+  Position: {
     name: 'Position Trader',
     focus: 'long-term trends, fundamental analysis, sector rotation',
     timeframe: 'daily to weekly charts',
-    riskProfile: 'conservative, wide stops, weeks to months holds'
+    riskProfile: 'conservative, wide stops, weeks to months holds',
   },
-  'Scalper': {
+  Scalper: {
     name: 'Scalper',
     focus: 'micro-movements, bid-ask spreads, rapid execution',
     timeframe: 'tick to 5-minute charts',
-    riskProfile: 'very aggressive, very tight stops, dozens of trades daily'
-  }
+    riskProfile: 'very aggressive, very tight stops, dozens of trades daily',
+  },
 };
 
 export const AI_PROMPTS = [
   "What's the best entry point?",
-  "Give me support/resistance levels",
-  "Risk/reward analysis",
-  "Should I buy or sell now?",
-  "Technical outlook summary"
+  'Give me support/resistance levels',
+  'Risk/reward analysis',
+  'Should I buy or sell now?',
+  'Technical outlook summary',
 ];
 
 export const KEYBOARD_SHORTCUTS = [

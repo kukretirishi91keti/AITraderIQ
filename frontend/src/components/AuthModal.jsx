@@ -44,10 +44,7 @@ export default function AuthModal() {
       className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
       onClick={() => setShowAuthModal(false)}
     >
-      <div
-        className="bg-gray-800 rounded-lg max-w-md w-full"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="bg-gray-800 rounded-lg max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold text-cyan-400">
             {mode === 'login' ? 'Login' : 'Create Account'}
@@ -140,11 +137,7 @@ export default function AuthModal() {
             disabled={loading}
             className="w-full py-2 bg-cyan-600 hover:bg-cyan-500 disabled:bg-gray-600 rounded font-medium"
           >
-            {loading
-              ? 'Please wait...'
-              : mode === 'login'
-              ? 'Login'
-              : 'Create Account'}
+            {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
           </button>
 
           <p className="text-center text-gray-400 text-sm">
@@ -153,7 +146,10 @@ export default function AuthModal() {
                 No account?{' '}
                 <button
                   type="button"
-                  onClick={() => { setMode('register'); setError(''); }}
+                  onClick={() => {
+                    setMode('register');
+                    setError('');
+                  }}
                   className="text-cyan-400 hover:underline"
                 >
                   Register
@@ -164,7 +160,10 @@ export default function AuthModal() {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  onClick={() => { setMode('login'); setError(''); }}
+                  onClick={() => {
+                    setMode('login');
+                    setError('');
+                  }}
                   className="text-cyan-400 hover:underline"
                 >
                   Login

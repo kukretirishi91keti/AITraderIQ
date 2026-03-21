@@ -1,9 +1,9 @@
 /**
  * InvestorProfile.jsx
- * 
+ *
  * A collapsible investor profile panel that allows users to set their
  * trading preferences, risk tolerance, and investment goals.
- * 
+ *
  * Add this to your App.jsx imports and render in the sidebar.
  */
 
@@ -19,7 +19,7 @@ const InvestorProfile = ({ onProfileChange }) => {
     preferredMarkets: ['US'],
     capitalRange: 'medium',
     experience: 'intermediate',
-    goals: []
+    goals: [],
   });
 
   // Load saved profile on mount
@@ -38,13 +38,13 @@ const InvestorProfile = ({ onProfileChange }) => {
   };
 
   const updateProfile = (key, value) => {
-    setProfile(prev => ({ ...prev, [key]: value }));
+    setProfile((prev) => ({ ...prev, [key]: value }));
   };
 
   const riskColors = {
     conservative: 'bg-green-500/20 text-green-400 border-green-500/30',
     moderate: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-    aggressive: 'bg-red-500/20 text-red-400 border-red-500/30'
+    aggressive: 'bg-red-500/20 text-red-400 border-red-500/30',
   };
 
   return (
@@ -59,7 +59,9 @@ const InvestorProfile = ({ onProfileChange }) => {
           <span className="font-medium text-white">Investor Profile</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-xs px-2 py-0.5 rounded border ${riskColors[profile.riskTolerance]}`}>
+          <span
+            className={`text-xs px-2 py-0.5 rounded border ${riskColors[profile.riskTolerance]}`}
+          >
             {profile.riskTolerance.toUpperCase()}
           </span>
           <span className={`transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
@@ -87,7 +89,7 @@ const InvestorProfile = ({ onProfileChange }) => {
           <div>
             <label className="block text-xs text-gray-400 mb-2">Risk Tolerance</label>
             <div className="grid grid-cols-3 gap-2">
-              {['conservative', 'moderate', 'aggressive'].map(level => (
+              {['conservative', 'moderate', 'aggressive'].map((level) => (
                 <button
                   key={level}
                   onClick={() => updateProfile('riskTolerance', level)}
@@ -113,7 +115,7 @@ const InvestorProfile = ({ onProfileChange }) => {
               {[
                 { key: 'short', label: 'Short', desc: '< 1 year' },
                 { key: 'medium', label: 'Medium', desc: '1-5 years' },
-                { key: 'long', label: 'Long', desc: '5+ years' }
+                { key: 'long', label: 'Long', desc: '5+ years' },
               ].map(({ key, label, desc }) => (
                 <button
                   key={key}
@@ -169,13 +171,13 @@ const InvestorProfile = ({ onProfileChange }) => {
                 { key: 'income', label: '💰 Income', icon: '💰' },
                 { key: 'growth', label: '📈 Growth', icon: '📈' },
                 { key: 'preservation', label: '🛡️ Preservation', icon: '🛡️' },
-                { key: 'speculation', label: '🎲 Speculation', icon: '🎲' }
+                { key: 'speculation', label: '🎲 Speculation', icon: '🎲' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => {
                     const goals = profile.goals.includes(key)
-                      ? profile.goals.filter(g => g !== key)
+                      ? profile.goals.filter((g) => g !== key)
                       : [...profile.goals, key];
                     updateProfile('goals', goals);
                   }}
@@ -202,7 +204,7 @@ const InvestorProfile = ({ onProfileChange }) => {
           {/* Profile Summary */}
           {profile.name && (
             <div className="p-3 bg-gray-700/30 rounded text-xs text-gray-400">
-              <strong className="text-white">{profile.name}</strong> • {profile.experience} trader • 
+              <strong className="text-white">{profile.name}</strong> • {profile.experience} trader •
               {profile.riskTolerance} risk • {profile.investmentHorizon}-term horizon
             </div>
           )}

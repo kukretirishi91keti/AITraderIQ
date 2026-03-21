@@ -2,7 +2,7 @@
  * api.js
  * ======
  * Location: frontend/src/services/api.js
- * 
+ *
  * Centralized API service for all backend calls.
  */
 
@@ -34,16 +34,12 @@ async function apiFetch(url, options = {}) {
 
   try {
     const response = await fetch(url, { ...defaultOptions, ...options });
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new APIError(
-        errorData.detail || `HTTP ${response.status}`,
-        response.status,
-        errorData
-      );
+      throw new APIError(errorData.detail || `HTTP ${response.status}`, response.status, errorData);
     }
-    
+
     return await response.json();
   } catch (error) {
     if (error instanceof APIError) {

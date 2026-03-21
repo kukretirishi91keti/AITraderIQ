@@ -10,9 +10,10 @@
  *   stream.subscribe(['AAPL', 'MSFT']);
  */
 
-const WS_BASE = import.meta.env.VITE_WS_BASE_URL ||
+const WS_BASE =
+  import.meta.env.VITE_WS_BASE_URL ||
   (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
-  (import.meta.env.VITE_API_BASE_URL || window.location.host).replace(/^https?:\/\//, '');
+    (import.meta.env.VITE_API_BASE_URL || window.location.host).replace(/^https?:\/\//, '');
 
 export class PriceStream {
   constructor() {
@@ -90,7 +91,7 @@ export class PriceStream {
    * Subscribe to price updates for symbols.
    */
   subscribe(symbols) {
-    symbols.forEach(s => this._subscriptions.add(s.toUpperCase()));
+    symbols.forEach((s) => this._subscriptions.add(s.toUpperCase()));
     this._send({ action: 'subscribe', symbols });
   }
 
@@ -98,7 +99,7 @@ export class PriceStream {
    * Unsubscribe from symbols.
    */
   unsubscribe(symbols) {
-    symbols.forEach(s => this._subscriptions.delete(s.toUpperCase()));
+    symbols.forEach((s) => this._subscriptions.delete(s.toUpperCase()));
     this._send({ action: 'unsubscribe', symbols });
   }
 
@@ -108,7 +109,7 @@ export class PriceStream {
   onQuote(callback) {
     this._listeners.quote.push(callback);
     return () => {
-      this._listeners.quote = this._listeners.quote.filter(cb => cb !== callback);
+      this._listeners.quote = this._listeners.quote.filter((cb) => cb !== callback);
     };
   }
 
@@ -118,7 +119,7 @@ export class PriceStream {
   onConnectionChange(callback) {
     this._listeners.connected.push(callback);
     return () => {
-      this._listeners.connected = this._listeners.connected.filter(cb => cb !== callback);
+      this._listeners.connected = this._listeners.connected.filter((cb) => cb !== callback);
     };
   }
 
@@ -145,8 +146,12 @@ export class PriceStream {
   }
 
   _emit(type, data) {
-    (this._listeners[type] || []).forEach(cb => {
-      try { cb(data); } catch (e) { console.error('[WS] Listener error:', e); }
+    (this._listeners[type] || []).forEach((cb) => {
+      try {
+        cb(data);
+      } catch (e) {
+        console.error('[WS] Listener error:', e);
+      }
     });
   }
 }

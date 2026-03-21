@@ -2,7 +2,14 @@
  * AuthContext - Manages authentication state across the app.
  */
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { login as apiLogin, register as apiRegister, logout as apiLogout, getUser, isAuthenticated, getToken } from '../services/auth';
+import {
+  login as apiLogin,
+  register as apiRegister,
+  logout as apiLogout,
+  getUser,
+  isAuthenticated,
+  getToken,
+} from '../services/auth';
 
 const AuthContext = createContext(undefined);
 
@@ -34,8 +41,12 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const value = {
-    user, isLoggedIn, showAuthModal,
-    login, register, logout,
+    user,
+    isLoggedIn,
+    showAuthModal,
+    login,
+    register,
+    logout,
     setShowAuthModal,
     token: getToken,
   };

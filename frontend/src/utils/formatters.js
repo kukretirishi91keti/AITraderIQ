@@ -15,7 +15,12 @@ export const formatTimestamp = (timestamp, interval = '1d') => {
         return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       }
       if (interval === '1h') {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
       }
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     }
@@ -37,7 +42,12 @@ export const formatTimestamp = (timestamp, interval = '1d') => {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   }
   if (interval === '1h') {
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
   if (['1d', '1wk'].includes(interval)) {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -85,7 +95,8 @@ export const getRsiColor = (rsi) => {
 };
 
 const SUFFIX_TO_FLAG = {
-  '.NS': '\u{1F1EE}\u{1F1F3}', '.BO': '\u{1F1EE}\u{1F1F3}',
+  '.NS': '\u{1F1EE}\u{1F1F3}',
+  '.BO': '\u{1F1EE}\u{1F1F3}',
   '.L': '\u{1F1EC}\u{1F1E7}',
   '.DE': '\u{1F1E9}\u{1F1EA}',
   '.PA': '\u{1F1EB}\u{1F1F7}',

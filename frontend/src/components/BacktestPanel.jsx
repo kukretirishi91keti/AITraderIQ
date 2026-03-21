@@ -20,9 +20,7 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
   const fetchBacktest = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/api/backtest/run/${symbol}?trader_type=${traderStyle}`
-      );
+      const res = await fetch(`${API_BASE}/api/backtest/run/${symbol}?trader_type=${traderStyle}`);
       const json = await res.json();
       if (json.success) setData(json);
     } catch (e) {
@@ -35,9 +33,7 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
   const fetchComparison = async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API_BASE}/api/backtest/compare?symbol=${symbol}`
-      );
+      const res = await fetch(`${API_BASE}/api/backtest/compare?symbol=${symbol}`);
       const json = await res.json();
       if (json.success) setComparison(json);
       setView('compare');
@@ -49,18 +45,12 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
   };
 
   if (loading) {
-    return (
-      <div className="p-4 text-center text-gray-400">
-        Running backtest for {symbol}...
-      </div>
-    );
+    return <div className="p-4 text-center text-gray-400">Running backtest for {symbol}...</div>;
   }
 
   if (!data) {
     return (
-      <div className="p-4 text-center text-gray-500">
-        Select a symbol to see backtest results
-      </div>
+      <div className="p-4 text-center text-gray-500">Select a symbol to see backtest results</div>
     );
   }
 
@@ -68,9 +58,7 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-cyan-400">
-          Signal Backtest: {symbol}
-        </h3>
+        <h3 className="text-lg font-semibold text-cyan-400">Signal Backtest: {symbol}</h3>
         <div className="flex gap-2">
           <button
             onClick={() => setView('single')}
@@ -98,7 +86,13 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
             <MetricCard
               label="Win Rate"
               value={`${data.win_rate}%`}
-              color={data.win_rate >= 55 ? 'text-green-400' : data.win_rate >= 45 ? 'text-yellow-400' : 'text-red-400'}
+              color={
+                data.win_rate >= 55
+                  ? 'text-green-400'
+                  : data.win_rate >= 45
+                    ? 'text-yellow-400'
+                    : 'text-red-400'
+              }
             />
             <MetricCard
               label="Avg Return"
@@ -108,13 +102,15 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
             <MetricCard
               label="Sharpe Ratio"
               value={data.sharpe_ratio.toFixed(2)}
-              color={data.sharpe_ratio > 1 ? 'text-green-400' : data.sharpe_ratio > 0 ? 'text-yellow-400' : 'text-red-400'}
+              color={
+                data.sharpe_ratio > 1
+                  ? 'text-green-400'
+                  : data.sharpe_ratio > 0
+                    ? 'text-yellow-400'
+                    : 'text-red-400'
+              }
             />
-            <MetricCard
-              label="Total Signals"
-              value={data.total_signals}
-              color="text-cyan-400"
-            />
+            <MetricCard label="Total Signals" value={data.total_signals} color="text-cyan-400" />
           </div>
 
           {/* Signal Breakdown */}
@@ -123,10 +119,15 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
             <div className="space-y-2">
               {Object.entries(data.signal_breakdown || {}).map(([sig, stats]) => (
                 <div key={sig} className="flex items-center justify-between text-sm">
-                  <span className={`font-medium ${
-                    sig.includes('BUY') ? 'text-green-400' :
-                    sig.includes('SELL') ? 'text-red-400' : 'text-gray-400'
-                  }`}>
+                  <span
+                    className={`font-medium ${
+                      sig.includes('BUY')
+                        ? 'text-green-400'
+                        : sig.includes('SELL')
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                    }`}
+                  >
                     {sig}
                   </span>
                   <div className="flex gap-4 text-gray-300">
@@ -135,7 +136,8 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
                       {stats.win_rate}% win
                     </span>
                     <span className={stats.avg_return > 0 ? 'text-green-400' : 'text-red-400'}>
-                      {stats.avg_return > 0 ? '+' : ''}{stats.avg_return}%
+                      {stats.avg_return > 0 ? '+' : ''}
+                      {stats.avg_return}%
                     </span>
                   </div>
                 </div>
@@ -158,28 +160,39 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(data.recent_signals || []).slice(-10).reverse().map((s, i) => (
-                    <tr key={i} className="border-b border-gray-800">
-                      <td className={`py-1 font-medium ${
-                        s.signal.includes('BUY') ? 'text-green-400' :
-                        s.signal.includes('SELL') ? 'text-red-400' : 'text-gray-400'
-                      }`}>
-                        {s.signal}
-                      </td>
-                      <td className="py-1 text-right text-gray-300">${s.price}</td>
-                      <td className="py-1 text-right text-gray-300">${s.outcome_price}</td>
-                      <td className={`py-1 text-right ${s.return_pct > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {s.return_pct > 0 ? '+' : ''}{s.return_pct}%
-                      </td>
-                      <td className="py-1 text-center">
-                        {s.correct ? (
-                          <span className="text-green-400">W</span>
-                        ) : (
-                          <span className="text-red-400">L</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {(data.recent_signals || [])
+                    .slice(-10)
+                    .reverse()
+                    .map((s, i) => (
+                      <tr key={i} className="border-b border-gray-800">
+                        <td
+                          className={`py-1 font-medium ${
+                            s.signal.includes('BUY')
+                              ? 'text-green-400'
+                              : s.signal.includes('SELL')
+                                ? 'text-red-400'
+                                : 'text-gray-400'
+                          }`}
+                        >
+                          {s.signal}
+                        </td>
+                        <td className="py-1 text-right text-gray-300">${s.price}</td>
+                        <td className="py-1 text-right text-gray-300">${s.outcome_price}</td>
+                        <td
+                          className={`py-1 text-right ${s.return_pct > 0 ? 'text-green-400' : 'text-red-400'}`}
+                        >
+                          {s.return_pct > 0 ? '+' : ''}
+                          {s.return_pct}%
+                        </td>
+                        <td className="py-1 text-center">
+                          {s.correct ? (
+                            <span className="text-green-400">W</span>
+                          ) : (
+                            <span className="text-red-400">L</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

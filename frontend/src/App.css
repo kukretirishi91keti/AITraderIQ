@@ -3,15 +3,15 @@
 
 :root {
   --bg-main: #000000;
-  --bg-card: #131722;       /* TradingView Card BG */
-  --bg-secondary: #1E222D;  /* Hover/Secondary */
-  --border: #2A2E39;
-  --text-primary: #D1D4DC;
-  --text-secondary: #787B86;
-  --accent: #2962FF;        /* TradingView Blue */
-  --up: #089981;            /* TradingView Green */
-  --down: #F23645;          /* TradingView Red */
-  --warning: #F57C00;
+  --bg-card: #131722; /* TradingView Card BG */
+  --bg-secondary: #1e222d; /* Hover/Secondary */
+  --border: #2a2e39;
+  --text-primary: #d1d4dc;
+  --text-secondary: #787b86;
+  --accent: #2962ff; /* TradingView Blue */
+  --up: #089981; /* TradingView Green */
+  --down: #f23645; /* TradingView Red */
+  --warning: #f57c00;
 }
 
 body {
@@ -68,10 +68,20 @@ body {
   border-radius: 4px;
 }
 
-.text-up { color: var(--up); }
-.text-down { color: var(--down); }
-.bg-up-dim { background: rgba(8, 153, 129, 0.15); color: var(--up); }
-.bg-down-dim { background: rgba(242, 54, 69, 0.15); color: var(--down); }
+.text-up {
+  color: var(--up);
+}
+.text-down {
+  color: var(--down);
+}
+.bg-up-dim {
+  background: rgba(8, 153, 129, 0.15);
+  color: var(--up);
+}
+.bg-down-dim {
+  background: rgba(242, 54, 69, 0.15);
+  color: var(--down);
+}
 
 /* --- COMPONENTS --- */
 .navbar {
@@ -105,8 +115,13 @@ body {
 }
 
 /* Scrollbars */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: #363A45; border-radius: 3px; }
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #363a45;
+  border-radius: 3px;
+}
 
 /* ============================================================
    v4.9 ADDITIONS - AI Loading & Data Quality Badges
@@ -114,8 +129,12 @@ body {
 
 /* AI Loading Spinner Animation */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-spin {
@@ -124,8 +143,13 @@ body {
 
 /* Data Quality Badge Pulse */
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .badge-live {
@@ -134,17 +158,29 @@ body {
 
 /* AI Thinking Dots Animation */
 @keyframes thinking {
-  0%, 80%, 100% { opacity: 0.3; }
-  40% { opacity: 1; }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
 }
 
 .thinking-dot {
   animation: thinking 1.4s ease-in-out infinite;
 }
 
-.thinking-dot:nth-child(1) { animation-delay: 0s; }
-.thinking-dot:nth-child(2) { animation-delay: 0.2s; }
-.thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+.thinking-dot:nth-child(1) {
+  animation-delay: 0s;
+}
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.thinking-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 /* Smooth transitions for modals */
 .modal-overlay {
@@ -152,7 +188,9 @@ body {
 }
 
 .modal-content {
-  transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+  transition:
+    transform 0.2s ease-in-out,
+    opacity 0.2s ease-in-out;
 }
 
 /* Line clamp utility */
@@ -170,8 +208,13 @@ body {
 
 /* Chart gradient animation */
 @keyframes chartPulse {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.5; }
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .chart-gradient-animated {

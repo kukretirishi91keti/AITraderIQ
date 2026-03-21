@@ -6,7 +6,7 @@ const WatchlistEditModal = ({
   setWatchlist,
   onSelectSymbol,
   setAlerts,
-  currentSymbol
+  currentSymbol,
 }) => {
   const [newSymbol, setNewSymbol] = useState('');
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -14,17 +14,17 @@ const WatchlistEditModal = ({
   const handleAdd = () => {
     const symbol = newSymbol.trim().toUpperCase();
     if (symbol && !watchlist.includes(symbol)) {
-      setWatchlist(prev => [...prev, symbol]);
+      setWatchlist((prev) => [...prev, symbol]);
       setNewSymbol('');
     }
   };
 
   const handleRemove = (symbol) => {
-    setWatchlist(prev => prev.filter(s => s !== symbol));
+    setWatchlist((prev) => prev.filter((s) => s !== symbol));
   };
 
   const handleAddAlert = (symbol) => {
-    setAlerts(prev => [...prev, { symbol, condition: 'above', price: 0 }]);
+    setAlerts((prev) => [...prev, { symbol, condition: 'above', price: 0 }]);
   };
 
   const handleDragStart = (e, index) => {
@@ -50,14 +50,19 @@ const WatchlistEditModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
       <div
         className="bg-gray-800 rounded-lg max-w-md w-full max-h-[80vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h2 className="text-xl font-bold text-yellow-400">⭐ Edit Watchlist</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">
+            &times;
+          </button>
         </div>
 
         <div className="p-4 border-b border-gray-700">
@@ -98,7 +103,10 @@ const WatchlistEditModal = ({
                 <div className="flex items-center gap-3">
                   <span className="text-gray-500 cursor-grab">⋮⋮</span>
                   <button
-                    onClick={() => { onSelectSymbol(symbol); onClose(); }}
+                    onClick={() => {
+                      onSelectSymbol(symbol);
+                      onClose();
+                    }}
                     className="text-cyan-400 font-medium hover:underline"
                   >
                     {symbol}
