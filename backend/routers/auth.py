@@ -2,12 +2,13 @@
 Authentication Router - Register, Login, Profile.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+from typing import Annotated
 
 from database.engine import get_db
 from database.models import User
@@ -48,7 +49,7 @@ class ProfileUpdate(BaseModel):
 # =============================================================================
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(request: RegisterRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     """Register a new user."""
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == request.email))
@@ -88,7 +89,8 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login")
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request,
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: AsyncSession = Depends(get_db),
 ):
     """Login with username/email and password."""
@@ -127,7 +129,7 @@ async def login(
 
 
 @router.get("/me")
-async def get_profile(user: User = Depends(require_auth)):
+async def get_profile(user: Annotated[User, Depends(require_auth)]):
     """Get current user profile."""
     return {
         "id": user.id,
@@ -143,8 +145,8 @@ async def get_profile(user: User = Depends(require_auth)):
 @router.put("/me")
 async def update_profile(
     update: ProfileUpdate,
-    user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db),
+    user: Annotated[User, Depends(require_auth)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update user profile."""
     if update.full_name is not None:
