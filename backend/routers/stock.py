@@ -26,7 +26,7 @@ All endpoints:
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import random
 import hashlib
@@ -151,8 +151,10 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
         low_price = min(open_price, close_price) * random.uniform(0.99, 0.999)
         volume = random.randint(100000, 5000000)
         
+        candle_time = now - timedelta(minutes=(count - i) * interval_minutes)
         candles.append({
-            "timestamp": (now.timestamp() - (count - i) * interval_minutes * 60) * 1000,
+            "timestamp": candle_time.isoformat(),
+            "date": candle_time.isoformat(),
             "open": round(open_price, 2),
             "high": round(high_price, 2),
             "low": round(low_price, 2),
@@ -633,10 +635,10 @@ async def get_stock_data(
                 "source": candles["source"],
             },
             "metadata": {
-                "quoteSource": quote["source"],
+                "quoteSource": quote.get("source", "UNKNOWN"),
                 "chartSource": candles["source"],
-                "dataQuality": quote["dataQuality"],
-                "asOf": quote["asOf"],
+                "dataQuality": quote.get("dataQuality", "UNKNOWN"),
+                "asOf": quote.get("asOf", quote.get("timestamp", datetime.now().isoformat())),
             }
         }
     except Exception as e:
@@ -765,8 +767,9 @@ async def get_roadmap():
 async def reset_circuit_breaker():
     """Reset circuit breaker (admin use)."""
     try:
-        svc = get_market_data_service()
-        svc._yf_quote_breaker.reset()
+        from services.market_data_service import _circuit_breaker
+        _circuit_breaker.failures = 0
+        _circuit_breaker.is_open = False
         return {"success": True, "message": "Circuit breaker reset"}
     except Exception as e:
         logger.error(f"Reset breaker error: {e}")

@@ -670,6 +670,142 @@ class MarketDataService:
             'timestamp': datetime.now().isoformat()
         }
     
+    async def get_quotes_batch(self, symbols: List[str]) -> Dict[str, Any]:
+        """
+        Fetch quotes for multiple symbols at once.
+
+        Returns: {results: {SYMBOL: quote_data, ...}, asOf: timestamp}
+        """
+        results = {}
+        for symbol in symbols:
+            sym = symbol.upper().strip()
+            if not sym:
+                continue
+            try:
+                quote = await self.get_quote(sym)
+                # Add asOf field that some callers expect
+                quote['asOf'] = quote.get('timestamp', datetime.now().isoformat())
+                results[sym] = quote
+            except Exception as e:
+                logger.warning(f"Batch quote failed for {sym}: {e}")
+
+        return {
+            "results": results,
+            "count": len(results),
+            "asOf": datetime.now().isoformat()
+        }
+
+    async def get_candles(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        lookback: int = 100
+    ) -> Dict[str, Any]:
+        """
+        Get OHLCV candles for a symbol.
+
+        Maps interval/lookback to period for get_history().
+        Returns: {symbol, interval, count, candles, source, dataQuality}
+        """
+        symbol = symbol.upper()
+
+        # Map lookback + interval to a yfinance-compatible period
+        if interval in ("1m", "5m", "15m", "30m"):
+            period = "5d"
+        elif interval in ("1h", "4h"):
+            period = "1mo"
+        elif interval == "1d":
+            if lookback <= 30:
+                period = "1mo"
+            elif lookback <= 90:
+                period = "3mo"
+            elif lookback <= 180:
+                period = "6mo"
+            else:
+                period = "1y"
+        elif interval in ("1w", "1wk"):
+            period = "1y"
+        else:
+            period = "1mo"
+
+        candles, source = await self.get_history(symbol, period=period, interval=interval)
+
+        # Trim to lookback
+        candles = candles[-lookback:] if len(candles) > lookback else candles
+
+        market = _get_market_from_symbol(symbol)
+        currency = get_currency_symbol(market)
+
+        return {
+            "symbol": symbol,
+            "interval": interval,
+            "count": len(candles),
+            "candles": candles,
+            "source": source,
+            "dataQuality": source,
+            "currency": currency,
+        }
+
+    async def get_market_overview(self) -> Dict[str, Any]:
+        """Get a broad market overview across key indices and sectors."""
+        overview_symbols = ["SPY", "QQQ", "DIA", "IWM", "BTC-USD", "GC=F"]
+
+        results = {}
+        for sym in overview_symbols:
+            try:
+                quote = await self.get_quote(sym)
+                results[sym] = {
+                    "symbol": sym,
+                    "name": quote.get("name", sym),
+                    "price": quote["price"],
+                    "change": quote["change"],
+                    "changePercent": quote["changePercent"],
+                    "dataQuality": quote.get("dataQuality", "UNKNOWN"),
+                }
+            except Exception as e:
+                logger.warning(f"Overview fetch failed for {sym}: {e}")
+
+        return {
+            "overview": results,
+            "timestamp": datetime.now().isoformat()
+        }
+
+    async def get_health(self) -> Dict[str, Any]:
+        """Get detailed service health including circuit breaker state."""
+        status = self.get_service_status()
+
+        return {
+            "status": status["health"],
+            "yfinance": {
+                "available": status["yfinance_available"],
+                "breaker": status["circuit_breaker"],
+            },
+            "cache": status["cache"],
+            "stats": status["stats"],
+            "timestamp": status["timestamp"]
+        }
+
+    def get_roadmap(self) -> Dict[str, Any]:
+        """Get product roadmap / feature status."""
+        return {
+            "version": "4.9",
+            "features": {
+                "live_quotes": {"status": "GA", "description": "Real-time quotes via yfinance"},
+                "historical_data": {"status": "GA", "description": "OHLCV history with caching"},
+                "top_movers": {"status": "GA", "description": "18 global markets"},
+                "signals": {"status": "GA", "description": "RSI, MACD, Bollinger, ATR"},
+                "strategy_intelligence": {"status": "GA", "description": "AI-powered strategy ranking"},
+                "sentiment": {"status": "GA", "description": "Multi-source sentiment aggregation"},
+                "ai_chatbot": {"status": "GA", "description": "Groq Llama 3.3 70B with fallback"},
+                "payments_stripe": {"status": "GA", "description": "Stripe checkout integration"},
+                "payments_razorpay": {"status": "GA", "description": "Razorpay for India/INR"},
+                "websockets": {"status": "BETA", "description": "Real-time price streaming"},
+                "portfolio_tracking": {"status": "PLANNED", "description": "Track user portfolios"},
+                "alerts": {"status": "PLANNED", "description": "Price and signal alerts"},
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
     def get_service_status(self) -> Dict[str, Any]:
         """Get service health status."""
         cache_stats = self.cache.get_stats()
