@@ -1,49 +1,20 @@
-# Netlify deployment configuration for TraderAI Pro Frontend
-# Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
+# Netlify deployment config (also at repo root)
 
 [build]
-  # Build from the frontend directory
-  base = "frontend"
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# IMPORTANT: Redirect order matters — specific rules MUST come before the catch-all
-
-# Proxy API calls to backend (avoids CORS entirely)
-# Set BACKEND_URL in Netlify Dashboard > Site Settings > Environment Variables
-# e.g., https://traderai-backend.up.railway.app
-[[redirects]]
-  from = "/api/*"
-  to = "${BACKEND_URL}/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/ws/*"
-  to = "${BACKEND_URL}/ws/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/ping"
-  to = "${BACKEND_URL}/ping"
-  status = 200
-  force = true
-
-# SPA catch-all — MUST be last (serves index.html for all frontend routes)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Security headers
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

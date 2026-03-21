@@ -9,27 +9,7 @@
 [build.environment]
   NODE_VERSION = "20"
 
-# API proxy to backend — set BACKEND_URL in Netlify environment variables
-# Example: BACKEND_URL = https://traderai-backend.up.railway.app
-[[redirects]]
-  from = "/api/*"
-  to = "${BACKEND_URL}/api/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/ws/*"
-  to = "${BACKEND_URL}/ws/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/ping"
-  to = "${BACKEND_URL}/ping"
-  status = 200
-  force = true
-
-# SPA catch-all (MUST be last)
+# SPA catch-all — serves index.html for all frontend routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
