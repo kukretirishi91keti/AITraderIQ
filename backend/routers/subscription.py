@@ -1,15 +1,15 @@
 """
-Subscription & Payment Router v1.0
+Subscription & Payment Router v2.0
 ====================================
 Location: backend/routers/subscription.py
 
 Manages user subscription tiers and payment processing.
-Supports Stripe integration for Pro/Premium upgrades.
+Supports both Stripe (international) and Razorpay (India) payment gateways.
 
 Tiers:
   - Free:    5 AI queries/day, basic signals, 1 watchlist
-  - Pro:     100 AI queries/day, strategy intelligence, unlimited watchlists ($9.99/mo)
-  - Premium: Unlimited AI, real-time data, priority support ($29.99/mo)
+  - Pro:     100 AI queries/day, strategy intelligence, unlimited watchlists ($9.99/mo | INR 799/mo)
+  - Premium: Unlimited AI, real-time data, priority support ($29.99/mo | INR 2499/mo)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -17,8 +17,12 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 import logging
 import os
+import json
+import hmac
+import hashlib
 
 from database.engine import get_db
 from database.models import User
@@ -27,7 +31,11 @@ from auth.security import get_current_user, require_auth
 router = APIRouter(prefix="/api/subscription", tags=["subscription"])
 logger = logging.getLogger(__name__)
 
-# Stripe configuration
+# =============================================================================
+# PAYMENT GATEWAY CONFIGURATION
+# =============================================================================
+
+# Stripe (international)
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 
@@ -38,6 +46,20 @@ try:
 except ImportError:
     STRIPE_AVAILABLE = False
 
+# Razorpay (India)
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
+
+try:
+    import razorpay
+    _razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET)) if RAZORPAY_KEY_ID else None
+    RAZORPAY_AVAILABLE = bool(RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET)
+except ImportError:
+    _razorpay_client = None
+    RAZORPAY_AVAILABLE = False
+
+
 # =============================================================================
 # PLAN DEFINITIONS
 # =============================================================================
@@ -45,7 +67,8 @@ except ImportError:
 PLANS = {
     "free": {
         "name": "Free",
-        "price_monthly": 0,
+        "price_usd": 0,
+        "price_inr": 0,
         "ai_queries_per_day": 5,
         "features": [
             "Basic technical signals (RSI, MACD)",
@@ -64,8 +87,10 @@ PLANS = {
     },
     "pro": {
         "name": "Pro",
-        "price_monthly": 9.99,
+        "price_usd": 9.99,
+        "price_inr": 799,
         "stripe_price_id": os.getenv("STRIPE_PRICE_PRO", ""),
+        "razorpay_plan_id": os.getenv("RAZORPAY_PLAN_PRO", ""),
         "ai_queries_per_day": 100,
         "features": [
             "All Free features",
@@ -86,8 +111,10 @@ PLANS = {
     },
     "premium": {
         "name": "Premium",
-        "price_monthly": 29.99,
+        "price_usd": 29.99,
+        "price_inr": 2499,
         "stripe_price_id": os.getenv("STRIPE_PRICE_PREMIUM", ""),
+        "razorpay_plan_id": os.getenv("RAZORPAY_PLAN_PREMIUM", ""),
         "ai_queries_per_day": -1,  # unlimited
         "features": [
             "All Pro features",
@@ -110,7 +137,7 @@ PLANS = {
 
 
 # =============================================================================
-# HELPER: CHECK PLAN LIMITS
+# HELPERS
 # =============================================================================
 
 
@@ -119,10 +146,9 @@ def check_ai_query_limit(user: User) -> dict:
     plan = PLANS.get(user.plan or "free", PLANS["free"])
     daily_limit = plan["ai_queries_per_day"]
 
-    if daily_limit == -1:  # unlimited
+    if daily_limit == -1:
         return {"allowed": True, "remaining": -1, "limit": -1}
 
-    # Reset counter if new day
     now = datetime.utcnow()
     if user.ai_queries_reset_at is None or user.ai_queries_reset_at.date() < now.date():
         user.ai_queries_today = 0
@@ -131,12 +157,7 @@ def check_ai_query_limit(user: User) -> dict:
     used = user.ai_queries_today or 0
     remaining = max(0, daily_limit - used)
 
-    return {
-        "allowed": remaining > 0,
-        "remaining": remaining,
-        "limit": daily_limit,
-        "used": used,
-    }
+    return {"allowed": remaining > 0, "remaining": remaining, "limit": daily_limit, "used": used}
 
 
 def get_plan_limits(user: User) -> dict:
@@ -148,32 +169,45 @@ def get_plan_limits(user: User) -> dict:
         "plan_name": plan["name"],
         "limits": plan["limits"],
         "ai_queries_per_day": plan["ai_queries_per_day"],
-        "price_monthly": plan["price_monthly"],
+        "price_usd": plan["price_usd"],
+        "price_inr": plan["price_inr"],
     }
 
 
+async def _activate_plan(user: User, plan_key: str, db: AsyncSession):
+    """Activate a plan for a user."""
+    user.plan = plan_key
+    user.plan_expires_at = datetime.utcnow() + timedelta(days=30)
+    user.ai_queries_today = 0
+    await db.commit()
+    await db.refresh(user)
+
+
 # =============================================================================
-# ENDPOINTS
+# PLAN ENDPOINTS
 # =============================================================================
 
 
 @router.get("/plans")
 async def list_plans():
-    """List all available subscription plans with features and pricing."""
+    """List all subscription plans with pricing in USD and INR."""
     return {
         "plans": [
             {
                 "key": key,
                 "name": plan["name"],
-                "price_monthly": plan["price_monthly"],
+                "price_usd": plan["price_usd"],
+                "price_inr": plan["price_inr"],
                 "ai_queries_per_day": plan["ai_queries_per_day"],
                 "features": plan["features"],
                 "limits": plan["limits"],
-                "stripe_available": STRIPE_AVAILABLE and bool(plan.get("stripe_price_id")),
             }
             for key, plan in PLANS.items()
         ],
-        "stripe_configured": STRIPE_AVAILABLE,
+        "payment_gateways": {
+            "stripe": {"available": STRIPE_AVAILABLE, "currencies": ["USD", "EUR", "GBP"]},
+            "razorpay": {"available": RAZORPAY_AVAILABLE, "currencies": ["INR"]},
+        },
     }
 
 
@@ -193,44 +227,54 @@ async def get_my_plan(user: User = Depends(require_auth)):
     }
 
 
-class CreateCheckoutRequest(BaseModel):
+# =============================================================================
+# STRIPE CHECKOUT
+# =============================================================================
+
+
+class CheckoutRequest(BaseModel):
     plan: str = Field(..., pattern="^(pro|premium)$")
+    gateway: str = Field(default="stripe", pattern="^(stripe|razorpay)$")
     success_url: str = Field(default="")
     cancel_url: str = Field(default="")
 
 
 @router.post("/checkout")
 async def create_checkout(
-    request: CreateCheckoutRequest,
+    request: CheckoutRequest,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a Stripe Checkout session for plan upgrade.
+    """Create a payment checkout session.
 
-    Returns a checkout URL to redirect the user to Stripe's hosted payment page.
-    If Stripe is not configured, returns instructions for manual setup.
+    Supports both Stripe (international) and Razorpay (India).
+    If neither is configured, returns setup instructions.
     """
+    plan = PLANS.get(request.plan)
+    if not plan:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    if request.gateway == "razorpay":
+        return await _create_razorpay_order(request, plan, user, db)
+    else:
+        return await _create_stripe_checkout(request, plan, user, db)
+
+
+async def _create_stripe_checkout(request, plan, user, db):
+    """Create Stripe Checkout session."""
     if not STRIPE_AVAILABLE:
         return {
-            "status": "stripe_not_configured",
-            "message": "Payment processing requires Stripe configuration.",
-            "setup_instructions": {
-                "step_1": "Create account at https://stripe.com",
-                "step_2": "Get API keys from https://dashboard.stripe.com/apikeys",
-                "step_3": "Create products/prices in Stripe Dashboard",
-                "step_4": "Set environment variables: STRIPE_SECRET_KEY, STRIPE_PRICE_PRO, STRIPE_PRICE_PREMIUM",
-                "step_5": "Set STRIPE_WEBHOOK_SECRET for payment confirmations",
-            },
-            "demo_mode": True,
-            "demo_action": f"In demo mode, use POST /api/subscription/demo-upgrade?plan={request.plan} to simulate upgrade",
+            "status": "not_configured",
+            "gateway": "stripe",
+            "message": "Stripe not configured. Set STRIPE_SECRET_KEY in .env",
+            "setup_url": "https://dashboard.stripe.com/apikeys",
+            "demo_action": f"POST /api/subscription/demo-upgrade?plan={request.plan}",
         }
 
-    plan = PLANS.get(request.plan)
-    if not plan or not plan.get("stripe_price_id"):
-        raise HTTPException(status_code=400, detail="Invalid plan or price not configured")
+    if not plan.get("stripe_price_id"):
+        raise HTTPException(status_code=400, detail="Stripe price not configured for this plan")
 
     try:
-        # Create or reuse Stripe customer
         if not user.stripe_customer_id:
             customer = stripe.Customer.create(
                 email=user.email,
@@ -249,52 +293,184 @@ async def create_checkout(
             metadata={"user_id": str(user.id), "plan": request.plan},
         )
 
-        return {
-            "checkout_url": session.url,
-            "session_id": session.id,
-        }
+        return {"gateway": "stripe", "checkout_url": session.url, "session_id": session.id}
     except Exception as e:
         logger.error(f"Stripe checkout error: {e}")
-        raise HTTPException(status_code=500, detail="Payment processing failed")
+        raise HTTPException(status_code=500, detail="Stripe payment processing failed")
 
 
-@router.post("/demo-upgrade")
-async def demo_upgrade(
-    plan: str = "pro",
+# =============================================================================
+# RAZORPAY CHECKOUT
+# =============================================================================
+
+
+async def _create_razorpay_order(request, plan, user, db):
+    """Create Razorpay order for payment."""
+    if not RAZORPAY_AVAILABLE or not _razorpay_client:
+        return {
+            "status": "not_configured",
+            "gateway": "razorpay",
+            "message": "Razorpay not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env",
+            "setup_url": "https://dashboard.razorpay.com/app/keys",
+            "demo_action": f"POST /api/subscription/demo-upgrade?plan={request.plan}",
+        }
+
+    try:
+        # Create Razorpay order (amount in paise = INR * 100)
+        amount_paise = int(plan["price_inr"] * 100)
+
+        order_data = {
+            "amount": amount_paise,
+            "currency": "INR",
+            "receipt": f"order_{user.id}_{request.plan}_{int(datetime.utcnow().timestamp())}",
+            "notes": {
+                "user_id": str(user.id),
+                "plan": request.plan,
+                "username": user.username,
+            },
+        }
+
+        order = _razorpay_client.order.create(data=order_data)
+
+        return {
+            "gateway": "razorpay",
+            "order_id": order["id"],
+            "amount": amount_paise,
+            "currency": "INR",
+            "key_id": RAZORPAY_KEY_ID,
+            "plan": request.plan,
+            "plan_name": plan["name"],
+            "price_display": f"INR {plan['price_inr']}/month",
+            "user_email": user.email,
+            "user_name": user.full_name or user.username,
+            "description": f"TraderAI Pro - {plan['name']} Plan (Monthly)",
+            "notes": {
+                "Frontend integration": "Use razorpay_key_id and order_id with Razorpay Checkout.js",
+                "docs": "https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/",
+            },
+        }
+    except Exception as e:
+        logger.error(f"Razorpay order error: {e}")
+        raise HTTPException(status_code=500, detail="Razorpay payment processing failed")
+
+
+@router.post("/razorpay/verify")
+async def verify_razorpay_payment(
+    request: Request,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Demo/test endpoint to simulate plan upgrade (no real payment).
+    """Verify Razorpay payment signature and activate plan.
 
-    For development and demo purposes only. In production, upgrades happen
-    via Stripe webhook after successful payment.
+    Called by frontend after successful Razorpay Checkout.
+    Expects: razorpay_order_id, razorpay_payment_id, razorpay_signature, plan
     """
-    if plan not in ("pro", "premium"):
-        raise HTTPException(status_code=400, detail="Plan must be 'pro' or 'premium'")
+    if not RAZORPAY_AVAILABLE:
+        raise HTTPException(status_code=400, detail="Razorpay not configured")
 
-    user.plan = plan
-    user.plan_expires_at = datetime.utcnow() + timedelta(days=30)
-    user.ai_queries_today = 0
-    await db.commit()
-    await db.refresh(user)
+    body = await request.json()
+    order_id = body.get("razorpay_order_id", "")
+    payment_id = body.get("razorpay_payment_id", "")
+    signature = body.get("razorpay_signature", "")
+    plan_key = body.get("plan", "pro")
+
+    if not all([order_id, payment_id, signature]):
+        raise HTTPException(status_code=400, detail="Missing payment verification fields")
+
+    # Verify signature
+    message = f"{order_id}|{payment_id}"
+    expected_signature = hmac.new(
+        RAZORPAY_KEY_SECRET.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected_signature, signature):
+        raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    # Payment verified — activate plan
+    if plan_key not in ("pro", "premium"):
+        plan_key = "pro"
+
+    await _activate_plan(user, plan_key, db)
 
     return {
-        "status": "upgraded",
-        "plan": plan,
-        "plan_name": PLANS[plan]["name"],
+        "status": "verified",
+        "payment_id": payment_id,
+        "plan": plan_key,
+        "plan_name": PLANS[plan_key]["name"],
         "expires_at": user.plan_expires_at.isoformat(),
-        "message": f"Demo upgrade to {PLANS[plan]['name']} plan successful. Expires in 30 days.",
+        "message": f"Payment verified! {PLANS[plan_key]['name']} plan activated for 30 days.",
     }
 
 
-@router.post("/webhook")
-async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    """Stripe webhook handler for payment events.
+# =============================================================================
+# RAZORPAY WEBHOOK
+# =============================================================================
 
-    Handles: checkout.session.completed, invoice.paid, customer.subscription.deleted
-    """
+
+@router.post("/razorpay/webhook")
+async def razorpay_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Razorpay webhook for server-to-server payment notifications."""
+    if not RAZORPAY_AVAILABLE or not RAZORPAY_WEBHOOK_SECRET:
+        raise HTTPException(status_code=400, detail="Razorpay webhooks not configured")
+
+    payload = await request.body()
+    sig_header = request.headers.get("x-razorpay-signature", "")
+
+    # Verify webhook signature
+    expected = hmac.new(
+        RAZORPAY_WEBHOOK_SECRET.encode("utf-8"),
+        payload,
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not hmac.compare_digest(expected, sig_header):
+        raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    event = json.loads(payload)
+    event_type = event.get("event", "")
+
+    if event_type == "payment.captured":
+        payment = event.get("payload", {}).get("payment", {}).get("entity", {})
+        notes = payment.get("notes", {})
+        user_id = int(notes.get("user_id", 0))
+        plan_key = notes.get("plan", "pro")
+
+        if user_id:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if user:
+                await _activate_plan(user, plan_key, db)
+                logger.info(f"Razorpay: User {user_id} upgraded to {plan_key}")
+
+    elif event_type == "subscription.cancelled":
+        subscription = event.get("payload", {}).get("subscription", {}).get("entity", {})
+        notes = subscription.get("notes", {})
+        user_id = int(notes.get("user_id", 0))
+
+        if user_id:
+            result = await db.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if user:
+                user.plan = "free"
+                user.plan_expires_at = None
+                await db.commit()
+                logger.info(f"Razorpay: User {user_id} downgraded to free")
+
+    return {"received": True}
+
+
+# =============================================================================
+# STRIPE WEBHOOK
+# =============================================================================
+
+
+@router.post("/stripe/webhook")
+async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """Stripe webhook handler for payment events."""
     if not STRIPE_AVAILABLE or not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=400, detail="Webhooks not configured")
+        raise HTTPException(status_code=400, detail="Stripe webhooks not configured")
 
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
@@ -302,30 +478,25 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     try:
         event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
     except Exception as e:
-        logger.error(f"Webhook verification failed: {e}")
+        logger.error(f"Stripe webhook verification failed: {e}")
         raise HTTPException(status_code=400, detail="Invalid webhook signature")
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         user_id = int(session["metadata"].get("user_id", 0))
-        plan = session["metadata"].get("plan", "pro")
+        plan_key = session["metadata"].get("plan", "pro")
 
         if user_id:
-            from sqlalchemy import select
             result = await db.execute(select(User).where(User.id == user_id))
             user = result.scalar_one_or_none()
             if user:
-                user.plan = plan
-                user.plan_expires_at = datetime.utcnow() + timedelta(days=30)
-                user.ai_queries_today = 0
-                await db.commit()
-                logger.info(f"User {user_id} upgraded to {plan}")
+                await _activate_plan(user, plan_key, db)
+                logger.info(f"Stripe: User {user_id} upgraded to {plan_key}")
 
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         customer_id = subscription.get("customer")
         if customer_id:
-            from sqlalchemy import select
             result = await db.execute(
                 select(User).where(User.stripe_customer_id == customer_id)
             )
@@ -334,6 +505,32 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 user.plan = "free"
                 user.plan_expires_at = None
                 await db.commit()
-                logger.info(f"User {user.id} downgraded to free (subscription cancelled)")
+                logger.info(f"Stripe: User {user.id} downgraded to free")
 
     return {"received": True}
+
+
+# =============================================================================
+# DEMO UPGRADE (for testing without payment gateway)
+# =============================================================================
+
+
+@router.post("/demo-upgrade")
+async def demo_upgrade(
+    plan: str = "pro",
+    user: User = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """Simulate plan upgrade without payment (development/demo only)."""
+    if plan not in ("pro", "premium"):
+        raise HTTPException(status_code=400, detail="Plan must be 'pro' or 'premium'")
+
+    await _activate_plan(user, plan, db)
+
+    return {
+        "status": "upgraded",
+        "plan": plan,
+        "plan_name": PLANS[plan]["name"],
+        "expires_at": user.plan_expires_at.isoformat(),
+        "message": f"Demo upgrade to {PLANS[plan]['name']} plan. Expires in 30 days.",
+    }
