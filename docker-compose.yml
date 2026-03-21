@@ -10,8 +10,12 @@ services:
       - DEMO_MODE=${DEMO_MODE:-true}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-in-production}
-      - DATABASE_URL=sqlite+aiosqlite:///./traderai.db
-      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///./traderai.db}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
+      - STRIPE_PRICE_PRO=${STRIPE_PRICE_PRO:-}
+      - STRIPE_PRICE_PREMIUM=${STRIPE_PRICE_PREMIUM:-}
       - RATE_LIMIT_DEFAULT=60/minute
       - RATE_LIMIT_AI=10/minute
       - RATE_LIMIT_AUTH=5/minute
@@ -40,7 +44,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: ""
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-}"
     container_name: traderai-frontend
     ports:
       - "80:80"

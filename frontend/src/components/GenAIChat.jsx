@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import "./GenAIChat.css";
 
-// API Base URL - Update this for production deployment
-// For production: const API_BASE = import.meta.env.VITE_API_BASE || window.location.origin;
-const API_BASE = "http://localhost:8000";
+// API Base URL - uses env variable or falls back to same-origin for production
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 // Currency detection based on ticker suffix
 const getCurrencySymbol = (ticker) => {
@@ -47,11 +46,11 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
 
   const quickPrompts = [
     `Should I ${signal?.includes('BUY') ? 'buy' : 'hold'} ${currentTicker}?`,
+    `Best strategy for ${currentTicker} right now`,
     `Risk analysis for ${currentTicker}`,
     `Entry & exit points`,
-    `Technical outlook`,
-    `Compare to sector peers`,
-    `News sentiment summary`
+    `What AI models power this analysis?`,
+    `How does the intelligence engine work?`
   ];
 
   const sendMessage = async (customMessage = null) => {
@@ -121,7 +120,7 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
           <div className="chat-empty">
             <div className="empty-icon">💬</div>
             <h4>Ask about {currentTicker}</h4>
-            <p>Get AI-powered analysis, risk assessment, entry/exit points, and trading strategies.</p>
+            <p>Powered by <strong>Groq Llama 3.3 70B</strong> AI with real-time technical indicators, sentiment data, and strategy intelligence. Ask about strategies, risk, entry/exit points, or how the AI engine works.</p>
             <div className="quick-prompts">
               {quickPrompts.map((p, i) => (
                 <button key={i} onClick={() => sendMessage(p)} className="quick-btn">{p}</button>

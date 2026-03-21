@@ -285,6 +285,13 @@ load_router(
     '(strategy intelligence, growth projections)'
 )
 
+# Load subscription/payment router
+load_router(
+    ['routers.subscription'],
+    'subscription router',
+    '(plans, checkout, billing)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
