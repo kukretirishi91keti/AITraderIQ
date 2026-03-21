@@ -12,7 +12,7 @@
 
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL ||
   (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
-  (import.meta.env.VITE_API_BASE_URL || 'localhost:8000').replace(/^https?:\/\//, '');
+  (import.meta.env.VITE_API_BASE_URL || window.location.host).replace(/^https?:\/\//, '');
 
 export class PriceStream {
   constructor() {

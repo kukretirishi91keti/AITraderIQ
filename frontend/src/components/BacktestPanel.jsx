@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, memo } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 function BacktestPanel({ symbol, traderStyle = 'swing' }) {
   const [data, setData] = useState(null);

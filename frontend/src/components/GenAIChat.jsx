@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import "./GenAIChat.css";
 
 // API Base URL - uses env variable or falls back to same-origin for production
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 // Currency detection based on ticker suffix
 const getCurrencySymbol = (ticker) => {
