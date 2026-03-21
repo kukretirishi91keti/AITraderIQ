@@ -12,14 +12,19 @@ const ScreenerModal = ({
   filteredScreenerData,
   onSymbolSelect,
 }) => (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+  <div
+    className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+    onClick={onClose}
+  >
     <div
       className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[80vh] flex flex-col"
-      onClick={e => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
     >
       <div className="p-4 border-b border-gray-700 flex justify-between items-center">
         <h2 className="text-xl font-bold text-cyan-400">📊 Stock Screener</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">
+          &times;
+        </button>
       </div>
 
       <div className="p-4 border-b border-gray-700 flex gap-4 flex-wrap">
@@ -29,13 +34,15 @@ const ScreenerModal = ({
           className="bg-gray-700 text-white px-3 py-1 rounded text-sm"
         >
           <option value="all">All Categories</option>
-          {screenerCategories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
+          {screenerCategories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
 
         <div className="flex gap-2">
-          {['all', 'oversold', 'overbought', 'buy'].map(filter => (
+          {['all', 'oversold', 'overbought', 'buy'].map((filter) => (
             <button
               key={filter}
               onClick={() => setScreenerFilter(filter)}
@@ -43,9 +50,13 @@ const ScreenerModal = ({
                 screenerFilter === filter ? 'bg-cyan-600' : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              {filter === 'all' ? 'All' :
-               filter === 'oversold' ? 'RSI < 30' :
-               filter === 'overbought' ? 'RSI > 70' : 'Buy Signal'}
+              {filter === 'all'
+                ? 'All'
+                : filter === 'oversold'
+                  ? 'RSI < 30'
+                  : filter === 'overbought'
+                    ? 'RSI > 70'
+                    : 'Buy Signal'}
             </button>
           ))}
         </div>
@@ -68,23 +79,33 @@ const ScreenerModal = ({
                 <div key={category}>
                   <h3 className="text-cyan-400 font-medium mb-2">{category}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                    {stocks.map(stock => {
+                    {stocks.map((stock) => {
                       const rsi = stock.rsi;
-                      const rsiColor = rsi < 30 ? 'text-green-400' : rsi > 70 ? 'text-red-400' : 'text-yellow-400';
+                      const rsiColor =
+                        rsi < 30 ? 'text-green-400' : rsi > 70 ? 'text-red-400' : 'text-yellow-400';
 
                       return (
                         <button
                           key={stock.symbol}
-                          onClick={() => { onSymbolSelect(stock.symbol); onClose(); }}
+                          onClick={() => {
+                            onSymbolSelect(stock.symbol);
+                            onClose();
+                          }}
                           className="p-3 bg-gray-700/50 rounded text-left hover:bg-gray-700 transition-colors border border-transparent hover:border-cyan-500/50"
                         >
                           <div className="flex justify-between items-center mb-1">
                             <span className="text-cyan-400 font-bold text-sm">
-                              {stock.symbol.replace('.NS', '').replace('.KS', '').replace('.AS', '')}
+                              {stock.symbol
+                                .replace('.NS', '')
+                                .replace('.KS', '')
+                                .replace('.AS', '')}
                             </span>
                             <span className="text-xs">{stock.flag}</span>
                           </div>
-                          <div className="text-sm text-white">{stock.currency}{stock.price?.toFixed(2) || '-'}</div>
+                          <div className="text-sm text-white">
+                            {stock.currency}
+                            {stock.price?.toFixed(2) || '-'}
+                          </div>
                           <div className="flex justify-between text-xs mt-1">
                             <span className={rsiColor}>RSI: {rsi?.toFixed(0) || '-'}</span>
                             <span className={getSignalColor(stock.signal)}>{stock.signal}</span>

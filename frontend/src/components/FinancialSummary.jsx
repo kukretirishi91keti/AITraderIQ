@@ -2,7 +2,7 @@
  * Financial Summary Component v4.9
  * ================================
  * Location: frontend/src/components/FinancialSummary.jsx
- * 
+ *
  * Displays company financial data including:
  * - Key metrics (Market Cap, P/E, Revenue)
  * - AI-generated summary
@@ -10,7 +10,15 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Building2, TrendingUp, DollarSign, PieChart, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import {
+  Building2,
+  TrendingUp,
+  DollarSign,
+  PieChart,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 
 // API Configuration
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
@@ -38,11 +46,11 @@ function DataBadge({ quality }) {
     CACHED: { color: 'bg-blue-500', text: 'Cached' },
     LKG: { color: 'bg-yellow-500', text: 'Last Known' },
     SIMULATED: { color: 'bg-orange-500', text: 'Demo' },
-    FALLBACK: { color: 'bg-orange-500', text: 'Fallback' }
+    FALLBACK: { color: 'bg-orange-500', text: 'Fallback' },
   };
-  
+
   const badge = badges[quality] || badges.SIMULATED;
-  
+
   return (
     <span className={`px-2 py-0.5 text-xs rounded-full ${badge.color} text-white`}>
       {badge.text}
@@ -60,12 +68,8 @@ function MetricCard({ label, value, icon: Icon, subValue }) {
         {Icon && <Icon className="w-3.5 h-3.5" />}
         {label}
       </div>
-      <div className="text-lg font-semibold text-white">
-        {value || 'N/A'}
-      </div>
-      {subValue && (
-        <div className="text-xs text-gray-500 mt-0.5">{subValue}</div>
-      )}
+      <div className="text-lg font-semibold text-white">{value || 'N/A'}</div>
+      {subValue && <div className="text-xs text-gray-500 mt-0.5">{subValue}</div>}
     </div>
   );
 }
@@ -78,22 +82,22 @@ export default function FinancialSummary({ symbol, onError }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  
+
   // Fetch financials when symbol changes
   useEffect(() => {
     if (!symbol) return;
-    
+
     let cancelled = false;
-    
+
     async function load() {
       setLoading(true);
       setError(null);
-      
+
       try {
         const data = await fetchFinancials(symbol);
-        
+
         if (cancelled) return;
-        
+
         if (data) {
           setFinancials(data);
         } else {
@@ -109,12 +113,14 @@ export default function FinancialSummary({ symbol, onError }) {
         if (!cancelled) setLoading(false);
       }
     }
-    
+
     load();
-    
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [symbol, onError]);
-  
+
   // Refresh handler
   const handleRefresh = async () => {
     if (!symbol) return;
@@ -123,7 +129,7 @@ export default function FinancialSummary({ symbol, onError }) {
     if (data) setFinancials(data);
     setLoading(false);
   };
-  
+
   // Loading state
   if (loading) {
     return (
@@ -135,7 +141,7 @@ export default function FinancialSummary({ symbol, onError }) {
       </div>
     );
   }
-  
+
   // Error state
   if (error) {
     return (
@@ -147,7 +153,7 @@ export default function FinancialSummary({ symbol, onError }) {
       </div>
     );
   }
-  
+
   // No data state
   if (!financials) {
     return (
@@ -156,16 +162,14 @@ export default function FinancialSummary({ symbol, onError }) {
       </div>
     );
   }
-  
+
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building2 className="w-5 h-5 text-blue-400" />
-          <h3 className="font-semibold text-white">
-            {financials.name || symbol}
-          </h3>
+          <h3 className="font-semibold text-white">{financials.name || symbol}</h3>
           <DataBadge quality={financials.dataQuality || financials.source} />
         </div>
         <button
@@ -176,7 +180,7 @@ export default function FinancialSummary({ symbol, onError }) {
           <RefreshCw className="w-4 h-4 text-gray-400" />
         </button>
       </div>
-      
+
       {/* Sector/Industry */}
       {(financials.sector || financials.industry) && (
         <div className="px-4 py-2 text-sm text-gray-400 border-b border-gray-800">
@@ -185,14 +189,10 @@ export default function FinancialSummary({ symbol, onError }) {
           {financials.industry}
         </div>
       )}
-      
+
       {/* Key Metrics Grid */}
       <div className="p-4 grid grid-cols-2 gap-3">
-        <MetricCard
-          label="Market Cap"
-          value={financials.marketCapFormatted}
-          icon={DollarSign}
-        />
+        <MetricCard label="Market Cap" value={financials.marketCapFormatted} icon={DollarSign} />
         <MetricCard
           label="P/E Ratio"
           value={financials.peFormatted}
@@ -203,7 +203,11 @@ export default function FinancialSummary({ symbol, onError }) {
           label="Revenue"
           value={financials.revenueFormatted}
           icon={TrendingUp}
-          subValue={financials.revenueGrowthFormatted ? `Growth: ${financials.revenueGrowthFormatted}` : null}
+          subValue={
+            financials.revenueGrowthFormatted
+              ? `Growth: ${financials.revenueGrowthFormatted}`
+              : null
+          }
         />
         <MetricCard
           label="Profit Margin"
@@ -211,7 +215,7 @@ export default function FinancialSummary({ symbol, onError }) {
           icon={TrendingUp}
         />
       </div>
-      
+
       {/* Expandable Details */}
       {expanded && (
         <div className="px-4 pb-4 grid grid-cols-2 gap-3 border-t border-gray-800 pt-3">
@@ -223,19 +227,15 @@ export default function FinancialSummary({ symbol, onError }) {
           <MetricCard label="Recommendation" value={financials.recommendation?.toUpperCase()} />
         </div>
       )}
-      
+
       {/* AI Summary */}
       {financials.summary && (
         <div className="px-4 py-3 bg-gray-800/30 border-t border-gray-800">
-          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-            🤖 AI Analysis
-          </div>
-          <p className="text-sm text-gray-300 leading-relaxed">
-            {financials.summary}
-          </p>
+          <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">🤖 AI Analysis</div>
+          <p className="text-sm text-gray-300 leading-relaxed">{financials.summary}</p>
         </div>
       )}
-      
+
       {/* Expand/Collapse Button */}
       <button
         onClick={() => setExpanded(!expanded)}
@@ -243,11 +243,10 @@ export default function FinancialSummary({ symbol, onError }) {
       >
         {expanded ? 'Show Less' : 'Show More Details'}
       </button>
-      
+
       {/* Source Attribution */}
       <div className="px-4 py-2 text-xs text-gray-600 border-t border-gray-800">
-        Data: {financials.source || 'TraderAI'} • 
-        {financials.cached ? ' Cached' : ' Fresh'} • 
+        Data: {financials.source || 'TraderAI'} •{financials.cached ? ' Cached' : ' Fresh'} •
         {new Date(financials.timestamp).toLocaleTimeString()}
       </div>
     </div>
@@ -260,26 +259,22 @@ export default function FinancialSummary({ symbol, onError }) {
 export function FinancialSummaryCompact({ symbol }) {
   const [financials, setFinancials] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     if (!symbol) return;
-    
-    fetchFinancials(symbol).then(data => {
+
+    fetchFinancials(symbol).then((data) => {
       setFinancials(data);
       setLoading(false);
     });
   }, [symbol]);
-  
+
   if (loading) {
-    return (
-      <div className="text-gray-400 text-sm py-2">
-        Loading financials...
-      </div>
-    );
+    return <div className="text-gray-400 text-sm py-2">Loading financials...</div>;
   }
-  
+
   if (!financials) return null;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex justify-between text-sm">
@@ -297,10 +292,15 @@ export function FinancialSummaryCompact({ symbol }) {
       {financials.recommendation && (
         <div className="flex justify-between text-sm">
           <span className="text-gray-400">Analyst</span>
-          <span className={`uppercase ${
-            financials.recommendation === 'buy' ? 'text-green-400' :
-            financials.recommendation === 'sell' ? 'text-red-400' : 'text-yellow-400'
-          }`}>
+          <span
+            className={`uppercase ${
+              financials.recommendation === 'buy'
+                ? 'text-green-400'
+                : financials.recommendation === 'sell'
+                  ? 'text-red-400'
+                  : 'text-yellow-400'
+            }`}
+          >
             {financials.recommendation}
           </span>
         </div>

@@ -58,7 +58,8 @@ function SentimentDashboard({ symbol }) {
       <div className={`rounded-lg p-4 text-center ${SCORE_BG[data.label] || 'bg-gray-800/50'}`}>
         <div className="text-3xl font-bold">
           <span className={SCORE_COLORS[data.label] || 'text-white'}>
-            {data.composite_score > 0 ? '+' : ''}{data.composite_score}
+            {data.composite_score > 0 ? '+' : ''}
+            {data.composite_score}
           </span>
         </div>
         <div className={`text-sm font-medium ${SCORE_COLORS[data.label] || 'text-gray-400'}`}>
@@ -81,12 +82,19 @@ function SentimentDashboard({ symbol }) {
       <div className="bg-gray-800/50 rounded-lg p-3">
         <h4 className="text-sm font-medium text-gray-400 mb-2">Latest Chatter</h4>
         <div className="space-y-2 max-h-40 overflow-y-auto">
-          {Object.values(data.sources || {}).flatMap(s =>
+          {Object.values(data.sources || {}).flatMap((s) =>
             (s.sample_posts || []).map((post, i) => (
-              <div key={`${s.source}-${i}`} className="text-xs text-gray-300 p-2 bg-gray-900/50 rounded">
-                <span className={`inline-block mr-1 px-1 py-0.5 rounded text-[10px] uppercase ${
-                  post.sentiment === 'bullish' ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
-                }`}>
+              <div
+                key={`${s.source}-${i}`}
+                className="text-xs text-gray-300 p-2 bg-gray-900/50 rounded"
+              >
+                <span
+                  className={`inline-block mr-1 px-1 py-0.5 rounded text-[10px] uppercase ${
+                    post.sentiment === 'bullish'
+                      ? 'bg-green-900/50 text-green-400'
+                      : 'bg-red-900/50 text-red-400'
+                  }`}
+                >
                   {s.source}
                 </span>
                 {post.text}
@@ -107,7 +115,8 @@ function SourceCard({ name, source }) {
     <div className="bg-gray-800/50 rounded-lg p-3">
       <div className="text-xs text-gray-500 capitalize mb-1">{name}</div>
       <div className={`text-xl font-bold ${color}`}>
-        {source.score > 0 ? '+' : ''}{source.score}
+        {source.score > 0 ? '+' : ''}
+        {source.score}
       </div>
       <div className={`text-xs ${color}`}>{source.label?.replace('_', ' ')}</div>
       {source.bullish_pct !== undefined && (

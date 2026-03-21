@@ -2,7 +2,7 @@
  * StockContext.jsx - ENHANCED VERSION
  * ====================================
  * Location: frontend/src/context/StockContext.jsx
- * 
+ *
  * Added: Market overview, indices ticker, full quote fields
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -10,8 +10,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const REFRESH_INTERVALS = {
-  QUOTE: 30000,     // 30 seconds (was 5s - too aggressive for demo data)
-  CANDLES: 60000,   // 60 seconds
+  QUOTE: 30000, // 30 seconds (was 5s - too aggressive for demo data)
+  CANDLES: 60000, // 60 seconds
   OVERVIEW: 120000, // 2 minutes
 };
 
@@ -24,26 +24,29 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
   const [candles, setCandles] = useState([]);
   const [marketOverview, setMarketOverview] = useState(null);
   const [health, setHealth] = useState(null);
-  
+
   // Resilience Metadata
   const [dataQuality, setDataQuality] = useState('UNKNOWN');
   const [dataSource, setDataSource] = useState('unknown');
   const [dataAge, setDataAge] = useState(0);
   const [isAnchored, setIsAnchored] = useState(false);
-  
+
   // UI State
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [chartInterval, setChartInterval] = useState('1d');
 
   // Set symbol
-  const setSymbol = useCallback((newSymbol) => {
-    const normalized = newSymbol.toUpperCase().trim();
-    if (normalized && normalized !== symbol) {
-      setSymbolState(normalized);
-      setIsLoading(true);
-    }
-  }, [symbol]);
+  const setSymbol = useCallback(
+    (newSymbol) => {
+      const normalized = newSymbol.toUpperCase().trim();
+      if (normalized && normalized !== symbol) {
+        setSymbolState(normalized);
+        setIsLoading(true);
+      }
+    },
+    [symbol]
+  );
 
   // Fetch Quote
   const refreshQuote = useCallback(async () => {
@@ -51,7 +54,7 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
       const res = await fetch(`${API_BASE}/api/v4/quote/${symbol}`);
       if (!res.ok) throw new Error('Quote fetch failed');
       const data = await res.json();
-      
+
       // Normalize quote data - handle different field names
       const normalizedQuote = {
         symbol: data.symbol || symbol,
@@ -75,9 +78,9 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
         isStale: data.isStale,
         isAnchored: data.isAnchored,
       };
-      
+
       setQuote(normalizedQuote);
-      
+
       // Update resilience status
       setDataQuality(data.dataQuality || 'LIVE');
       setDataSource(data.source || 'yfinance');
@@ -86,9 +89,8 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
         setDataAge(Math.floor(Date.now() / 1000) - data.asOf);
       }
       setError(null);
-      
     } catch (err) {
-      console.error("Quote Error:", err);
+      console.error('Quote Error:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
@@ -98,13 +100,15 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
   // Fetch Candles
   const refreshCandles = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/v4/candles/${symbol}?interval=${chartInterval}&lookback=100`);
+      const res = await fetch(
+        `${API_BASE}/api/v4/candles/${symbol}?interval=${chartInterval}&lookback=100`
+      );
       if (!res.ok) throw new Error('Candles fetch failed');
       const data = await res.json();
       // Handle both 'results' and 'candles' field names
       setCandles(data.results || data.candles || []);
     } catch (err) {
-      console.error("Candle Error:", err);
+      console.error('Candle Error:', err);
     }
   }, [symbol, chartInterval]);
 
@@ -117,7 +121,7 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
         setMarketOverview(data);
       }
     } catch (e) {
-      console.warn("Market Overview failed", e);
+      console.warn('Market Overview failed', e);
     }
   }, []);
 
@@ -129,7 +133,7 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
         setHealth(await res.json());
       }
     } catch (e) {
-      console.warn("Health check failed", e);
+      console.warn('Health check failed', e);
     }
   }, []);
 
@@ -167,31 +171,31 @@ export const StockProvider = ({ children, initialSymbol = 'AAPL' }) => {
 
   const value = {
     // Data
-    symbol, 
+    symbol,
     setSymbol,
-    quote, 
-    candles, 
-    marketOverview, 
+    quote,
+    candles,
+    marketOverview,
     health,
-    
+
     // UI State
-    isLoading, 
+    isLoading,
     error,
-    chartInterval, 
+    chartInterval,
     setChartInterval,
-    
+
     // Resilience (for badges)
-    dataQuality, 
-    dataSource, 
-    dataAge, 
+    dataQuality,
+    dataSource,
+    dataAge,
     isAnchored,
-    
+
     // Actions
-    refreshAll: () => { 
-      refreshQuote(); 
-      refreshCandles(); 
-      refreshMarketOverview(); 
-    }
+    refreshAll: () => {
+      refreshQuote();
+      refreshCandles();
+      refreshMarketOverview();
+    },
   };
 
   return <StockContext.Provider value={value}>{children}</StockContext.Provider>;

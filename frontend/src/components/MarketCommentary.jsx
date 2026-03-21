@@ -62,10 +62,13 @@ function MarketCommentary() {
         >
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-cyan-400 text-sm">{item.symbol}</span>
-            <span className={`text-xs font-medium ${
-              item.price_change_pct > 0 ? 'text-green-400' : 'text-red-400'
-            }`}>
-              {item.price_change_pct > 0 ? '+' : ''}{item.price_change_pct}%
+            <span
+              className={`text-xs font-medium ${
+                item.price_change_pct > 0 ? 'text-green-400' : 'text-red-400'
+              }`}
+            >
+              {item.price_change_pct > 0 ? '+' : ''}
+              {item.price_change_pct}%
             </span>
             {item.severity === 'high' && (
               <span className="text-[10px] px-1.5 py-0.5 bg-red-900/50 text-red-400 rounded">
