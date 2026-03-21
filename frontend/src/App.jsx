@@ -41,6 +41,13 @@ const AlertsModal = lazy(() => import('./components/modals/AlertsModal'));
 const AddToPortfolioModal = lazy(() => import('./components/modals/AddToPortfolioModal'));
 const StrategyIntelligence = lazy(() => import('./components/StrategyIntelligence'));
 
+const AI_MODEL_OPTIONS = [
+  { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
+  { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', tag: 'Fast' },
+  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', tag: '' },
+  { id: 'gemma2-9b-it', label: 'Gemma 2 9B', tag: '' },
+];
+
 // ============================================================
 // MAIN APP COMPONENT
 // ============================================================
@@ -124,6 +131,9 @@ export default function App() {
   const [aiMessages, setAiMessages] = useState([]);
   const [aiInput, setAiInput] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('llama-3.3-70b-versatile');
+  const [showModelPicker, setShowModelPicker] = useState(false);
+  const modelPickerRef = useRef(null);
 
   // Health monitoring
   const [healthStatus, setHealthStatus] = useState('HEALTHY');
@@ -133,6 +143,17 @@ export default function App() {
   // Refs
   const intervalRef = useRef(null);
   const searchInputRef = useRef(null);
+
+  // Close model picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target)) {
+        setShowModelPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // WebSocket real-time price updates
   useEffect(() => {
@@ -512,6 +533,7 @@ export default function App() {
           trader_type: traderStyle.toLowerCase(),
           rsi: getSignalValue(signals?.rsi),
           signal: signals?.signal || signals?.overall_signal,
+          model: selectedModel,
         }),
       });
       const data = await response.json();
@@ -1355,6 +1377,52 @@ export default function App() {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-cyan-400">AI Assistant</h3>
               <span className="text-xs text-green-400">● Active</span>
+            </div>
+            <div className="mt-2 relative" ref={modelPickerRef}>
+              <button
+                onClick={() => setShowModelPicker(!showModelPicker)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors w-full"
+              >
+                <span>🧠</span>
+                <span className="flex-1 text-left">
+                  {AI_MODEL_OPTIONS.find((m) => m.id === selectedModel)?.label || 'Select Model'}
+                </span>
+                <span className="text-gray-500 text-[10px]">▼</span>
+              </button>
+              {showModelPicker && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg p-1 z-50 shadow-xl">
+                  {AI_MODEL_OPTIONS.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => {
+                        setSelectedModel(m.id);
+                        setShowModelPicker(false);
+                      }}
+                      className={`flex items-center justify-between w-full px-3 py-2 rounded text-xs transition-colors ${
+                        selectedModel === m.id
+                          ? 'bg-cyan-600/20 text-cyan-400'
+                          : 'text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      <span>
+                        {selectedModel === m.id ? '✓ ' : ''}
+                        {m.label}
+                      </span>
+                      {m.tag && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded ${
+                            m.tag === 'Best'
+                              ? 'bg-green-500/20 text-green-400'
+                              : 'bg-yellow-500/20 text-yellow-400'
+                          }`}
+                        >
+                          {m.tag}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
