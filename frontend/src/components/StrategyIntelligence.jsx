@@ -10,7 +10,12 @@ import { API_BASE } from '../config';
 //   Step 3: "What's the best strategy?" (ranked recommendations)
 
 const RISK_OPTIONS = [
-  { value: 'conservative', label: 'Conservative', icon: '🛡️', desc: 'Preserve capital, steady growth' },
+  {
+    value: 'conservative',
+    label: 'Conservative',
+    icon: '🛡️',
+    desc: 'Preserve capital, steady growth',
+  },
   { value: 'moderate', label: 'Moderate', icon: '⚖️', desc: 'Balanced risk and reward' },
   { value: 'aggressive', label: 'Aggressive', icon: '🔥', desc: 'Higher risk for higher returns' },
 ];
@@ -98,7 +103,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white">Strategy Intelligence</h2>
-        <p className="text-gray-400 mt-1">Tell us your goals — we&apos;ll find the winning strategy for <span className="text-cyan-400 font-semibold">{symbol}</span></p>
+        <p className="text-gray-400 mt-1">
+          Tell us your goals — we&apos;ll find the winning strategy for{' '}
+          <span className="text-cyan-400 font-semibold">{symbol}</span>
+        </p>
       </div>
 
       {/* Capital Input */}
@@ -118,7 +126,7 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
           />
         </div>
         <div className="flex gap-2 mt-2">
-          {[1000, 5000, 10000, 25000, 50000, 100000].map(amt => (
+          {[1000, 5000, 10000, 25000, 50000, 100000].map((amt) => (
             <button
               key={amt}
               onClick={() => setCapital(amt)}
@@ -137,8 +145,12 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
       {/* Growth Target */}
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          How much do you want to grow? <span className="text-cyan-400 font-bold">{growthTarget}%</span>
-          <span className="text-gray-500 ml-2">(${capital.toLocaleString()} → ${targetAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })})</span>
+          How much do you want to grow?{' '}
+          <span className="text-cyan-400 font-bold">{growthTarget}%</span>
+          <span className="text-gray-500 ml-2">
+            (${capital.toLocaleString()} → $
+            {targetAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+          </span>
         </label>
         <input
           type="range"
@@ -160,7 +172,7 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Risk tolerance</label>
         <div className="grid grid-cols-3 gap-3">
-          {RISK_OPTIONS.map(opt => (
+          {RISK_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setRiskTolerance(opt.value)}
@@ -187,8 +199,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             onChange={(e) => setTimeHorizon(e.target.value)}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2.5 text-white focus:border-cyan-500 outline-none"
           >
-            {HORIZON_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {HORIZON_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
             ))}
           </select>
         </div>
@@ -199,8 +213,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             onChange={(e) => setTraderStyle(e.target.value)}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2.5 text-white focus:border-cyan-500 outline-none"
           >
-            {STYLE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label} — {opt.desc}</option>
+            {STYLE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label} — {opt.desc}
+              </option>
             ))}
           </select>
         </div>
@@ -215,8 +231,20 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
         {loading ? (
           <>
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+                fill="none"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
             </svg>
             Analyzing market intelligence...
           </>
@@ -261,19 +289,26 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
         <div className="grid grid-cols-4 gap-3">
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
             <div className="text-xs text-gray-400 uppercase">Trend</div>
-            <div className={`text-lg font-bold ${
-              ma.trend === 'trending_up' ? 'text-green-400' :
-              ma.trend === 'trending_down' ? 'text-red-400' : 'text-yellow-400'
-            }`}>
-              {ma.trend.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+            <div
+              className={`text-lg font-bold ${
+                ma.trend === 'trending_up'
+                  ? 'text-green-400'
+                  : ma.trend === 'trending_down'
+                    ? 'text-red-400'
+                    : 'text-yellow-400'
+              }`}
+            >
+              {ma.trend.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
             </div>
             <div className="text-xs text-gray-500">Strength: {ma.trend_strength}%</div>
           </div>
           <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
             <div className="text-xs text-gray-400 uppercase">RSI</div>
-            <div className={`text-lg font-bold ${
-              ma.rsi > 70 ? 'text-red-400' : ma.rsi < 30 ? 'text-green-400' : 'text-white'
-            }`}>
+            <div
+              className={`text-lg font-bold ${
+                ma.rsi > 70 ? 'text-red-400' : ma.rsi < 30 ? 'text-green-400' : 'text-white'
+              }`}
+            >
               {ma.rsi}
             </div>
             <div className="text-xs text-gray-500">{ma.momentum}</div>
@@ -310,25 +345,35 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div className="text-center">
               <div className="text-xs text-gray-500">Worst Case</div>
               <div className="text-lg font-bold text-red-400">
-                ${growth_plan.projections.worst_case.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                $
+                {growth_plan.projections.worst_case.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
               </div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-500">Expected</div>
               <div className="text-lg font-bold text-green-400">
-                ${growth_plan.projections.expected.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                $
+                {growth_plan.projections.expected.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
               </div>
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-500">Best Case</div>
               <div className="text-lg font-bold text-cyan-400">
-                ${growth_plan.projections.best_case.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                $
+                {growth_plan.projections.best_case.toLocaleString(undefined, {
+                  maximumFractionDigits: 0,
+                })}
               </div>
             </div>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">
-              ${growth_plan.initial_capital.toLocaleString()} → ${growth_plan.target_amount.toLocaleString()} ({growth_plan.growth_target_pct}% target)
+              ${growth_plan.initial_capital.toLocaleString()} → $
+              {growth_plan.target_amount.toLocaleString()} ({growth_plan.growth_target_pct}% target)
             </span>
             {growth_plan.best_strategy_months_to_target && (
               <span className="text-cyan-400 font-semibold">
@@ -342,13 +387,20 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full ${
-                  growth_plan.risk_metrics.max_drawdown_pct > 10 ? 'bg-red-500' :
-                  growth_plan.risk_metrics.max_drawdown_pct > 5 ? 'bg-yellow-500' : 'bg-green-500'
+                  growth_plan.risk_metrics.max_drawdown_pct > 10
+                    ? 'bg-red-500'
+                    : growth_plan.risk_metrics.max_drawdown_pct > 5
+                      ? 'bg-yellow-500'
+                      : 'bg-green-500'
                 }`}
-                style={{ width: `${Math.min(100, growth_plan.risk_metrics.max_drawdown_pct * 5)}%` }}
+                style={{
+                  width: `${Math.min(100, growth_plan.risk_metrics.max_drawdown_pct * 5)}%`,
+                }}
               />
             </div>
-            <span className="text-xs text-gray-400">{growth_plan.risk_metrics.max_drawdown_pct}% max drawdown</span>
+            <span className="text-xs text-gray-400">
+              {growth_plan.risk_metrics.max_drawdown_pct}% max drawdown
+            </span>
           </div>
         </div>
 
@@ -373,7 +425,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-white">Strategy Rankings for {symbol}</h2>
-          <button onClick={() => setStep(2)} className="text-sm text-gray-400 hover:text-white underline">
+          <button
+            onClick={() => setStep(2)}
+            className="text-sm text-gray-400 hover:text-white underline"
+          >
             Back to overview
           </button>
         </div>
@@ -384,25 +439,34 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div
               key={s.key}
               className={`bg-gray-800/50 rounded-lg border transition-all cursor-pointer ${
-                s.rank === 1 ? 'border-cyan-500/50 ring-1 ring-cyan-500/20' : 'border-gray-700 hover:border-gray-600'
+                s.rank === 1
+                  ? 'border-cyan-500/50 ring-1 ring-cyan-500/20'
+                  : 'border-gray-700 hover:border-gray-600'
               }`}
               onClick={() => setExpandedStrategy(expandedStrategy === s.key ? null : s.key)}
             >
               {/* Card Header */}
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                    s.rank === 1 ? 'bg-cyan-500/20 text-cyan-400' :
-                    s.rank === 2 ? 'bg-yellow-500/20 text-yellow-400' :
-                    s.rank === 3 ? 'bg-orange-500/20 text-orange-400' :
-                    'bg-gray-700 text-gray-400'
-                  }`}>
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      s.rank === 1
+                        ? 'bg-cyan-500/20 text-cyan-400'
+                        : s.rank === 2
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : s.rank === 3
+                            ? 'bg-orange-500/20 text-orange-400'
+                            : 'bg-gray-700 text-gray-400'
+                    }`}
+                  >
                     #{s.rank}
                   </div>
                   <div>
                     <div className="font-semibold text-white flex items-center gap-2">
                       {s.name}
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${RISK_COLOR[s.risk_level] || RISK_COLOR.moderate}`}>
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full border ${RISK_COLOR[s.risk_level] || RISK_COLOR.moderate}`}
+                      >
                         {s.risk_level}
                       </span>
                     </div>
@@ -417,12 +481,27 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
 
               {/* Quick Stats Row */}
               <div className="px-4 pb-3 flex gap-4 text-xs">
-                <span className="text-gray-400">Win: <span className="text-white font-medium">{s.historical_win_rate}%</span></span>
-                <span className="text-gray-400">Avg Return: <span className="text-white font-medium">{s.historical_avg_return}%</span></span>
-                <span className="text-gray-400">Monthly: <span className="text-green-400 font-medium">{s.projected_monthly_return}%</span></span>
-                <span className="text-gray-400">Hold: <span className="text-white font-medium">{s.typical_hold}</span></span>
+                <span className="text-gray-400">
+                  Win: <span className="text-white font-medium">{s.historical_win_rate}%</span>
+                </span>
+                <span className="text-gray-400">
+                  Avg Return:{' '}
+                  <span className="text-white font-medium">{s.historical_avg_return}%</span>
+                </span>
+                <span className="text-gray-400">
+                  Monthly:{' '}
+                  <span className="text-green-400 font-medium">{s.projected_monthly_return}%</span>
+                </span>
+                <span className="text-gray-400">
+                  Hold: <span className="text-white font-medium">{s.typical_hold}</span>
+                </span>
                 {s.months_to_target && (
-                  <span className="text-gray-400">Target in: <span className="text-cyan-400 font-medium">~{Math.ceil(s.months_to_target)}mo</span></span>
+                  <span className="text-gray-400">
+                    Target in:{' '}
+                    <span className="text-cyan-400 font-medium">
+                      ~{Math.ceil(s.months_to_target)}mo
+                    </span>
+                  </span>
                 )}
               </div>
 
@@ -433,8 +512,13 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">Indicators Used</div>
                     <div className="flex flex-wrap gap-1">
-                      {s.indicators_used.map(ind => (
-                        <span key={ind} className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded">{ind}</span>
+                      {s.indicators_used.map((ind) => (
+                        <span
+                          key={ind}
+                          className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded"
+                        >
+                          {ind}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -467,7 +551,9 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
 
                   {/* Monthly Returns Mini Chart */}
                   <div>
-                    <div className="text-xs text-gray-500 uppercase mb-1">Monthly Returns (Last 6 months)</div>
+                    <div className="text-xs text-gray-500 uppercase mb-1">
+                      Monthly Returns (Last 6 months)
+                    </div>
                     <div className="flex items-end gap-1 h-12">
                       {s.monthly_returns_history.map((ret, i) => (
                         <div
@@ -482,7 +568,8 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                       ))}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Sharpe Ratio: {s.sharpe_ratio} | Cumulative: {s.monthly_returns_history.reduce((a, b) => a + b, 0).toFixed(1)}%
+                      Sharpe Ratio: {s.sharpe_ratio} | Cumulative:{' '}
+                      {s.monthly_returns_history.reduce((a, b) => a + b, 0).toFixed(1)}%
                     </div>
                   </div>
                 </div>
@@ -507,7 +594,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
         {/* Restart */}
         <div className="flex gap-3">
           <button
-            onClick={() => { setStep(1); setResult(null); }}
+            onClick={() => {
+              setStep(1);
+              setResult(null);
+            }}
             className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
           >
             Start Over
@@ -531,7 +621,7 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
       <div className="bg-gray-900 rounded-xl shadow-2xl border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Progress Bar */}
         <div className="flex items-center gap-0 px-6 pt-4 pb-2">
-          {[1, 2, 3].map(s => (
+          {[1, 2, 3].map((s) => (
             <React.Fragment key={s}>
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
@@ -541,7 +631,9 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                 {step > s ? '✓' : s}
               </div>
               {s < 3 && (
-                <div className={`flex-1 h-0.5 mx-1 transition-all ${step > s ? 'bg-cyan-600' : 'bg-gray-700'}`} />
+                <div
+                  className={`flex-1 h-0.5 mx-1 transition-all ${step > s ? 'bg-cyan-600' : 'bg-gray-700'}`}
+                />
               )}
             </React.Fragment>
           ))}

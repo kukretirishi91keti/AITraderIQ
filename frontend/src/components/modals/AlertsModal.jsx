@@ -10,14 +10,16 @@ const AlertsModal = ({
   onAddAlert,
   onRemoveAlert,
 }) => (
-  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-    <div
-      className="bg-gray-800 rounded-lg max-w-md w-full"
-      onClick={e => e.stopPropagation()}
-    >
+  <div
+    className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+    onClick={onClose}
+  >
+    <div className="bg-gray-800 rounded-lg max-w-md w-full" onClick={(e) => e.stopPropagation()}>
       <div className="p-4 border-b border-gray-700 flex justify-between items-center">
         <h2 className="text-xl font-bold text-orange-400">🔔 Price Alerts</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">
+          &times;
+        </button>
       </div>
       <div className="p-4">
         <div className="flex gap-2 mb-4">
@@ -51,11 +53,15 @@ const AlertsModal = ({
             alerts.map((alert, i) => (
               <div key={i} className="flex items-center justify-between p-3 bg-gray-700/50 rounded">
                 <span>
-                  <span className="text-cyan-400 font-medium">{alert.symbol}</span>
-                  {' '}{alert.condition}{' '}
-                  <span className="text-white">${alert.price}</span>
+                  <span className="text-cyan-400 font-medium">{alert.symbol}</span>{' '}
+                  {alert.condition} <span className="text-white">${alert.price}</span>
                 </span>
-                <button onClick={() => onRemoveAlert(i)} className="text-red-400 hover:text-red-300">×</button>
+                <button
+                  onClick={() => onRemoveAlert(i)}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  ×
+                </button>
               </div>
             ))
           )}

@@ -2,7 +2,7 @@
  * DataStatusBadge.jsx - FIXED
  * ============================
  * Location: frontend/src/components/DataStatusBadge.jsx
- * 
+ *
  * FIXED: Added proper SystemStatusBar export
  */
 
@@ -71,7 +71,7 @@ const getStatusConfig = (dataQuality) => {
 // MAIN COMPONENT: DataStatusBadge
 // =============================================================================
 
-const DataStatusBadge = ({ 
+const DataStatusBadge = ({
   dataQuality = 'SIMULATED',
   source = 'mme',
   dataAge = 0,
@@ -81,13 +81,13 @@ const DataStatusBadge = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const config = getStatusConfig(dataQuality);
-  
+
   const sizeClasses = {
     small: 'px-2 py-0.5 text-xs',
     medium: 'px-3 py-1 text-sm',
     large: 'px-4 py-2 text-base',
   };
-  
+
   const dotSizes = {
     small: 'w-1.5 h-1.5',
     medium: 'w-2 h-2',
@@ -118,26 +118,28 @@ const DataStatusBadge = ({
       >
         {/* Animated dot */}
         <span className="relative flex">
-          <span className={`
+          <span
+            className={`
             rounded-full ${config.dotColor} ${dotSizes[size]}
             ${config.pulse ? 'animate-ping absolute opacity-75' : ''}
-          `} />
-          <span className={`
+          `}
+          />
+          <span
+            className={`
             rounded-full ${config.dotColor} ${dotSizes[size]}
             relative
-          `} />
+          `}
+          />
         </span>
-        
+
         {/* Label */}
         <span>{config.label}</span>
-        
+
         {/* Age indicator */}
         {dataAge > 0 && size !== 'small' && (
-          <span className="opacity-70">
-            ({formatDataAge(dataAge)})
-          </span>
+          <span className="opacity-70">({formatDataAge(dataAge)})</span>
         )}
-        
+
         {/* Anchored indicator */}
         {isAnchored && dataQuality === 'SIMULATED' && (
           <span title="Anchored to last known price">⚓</span>
@@ -152,9 +154,9 @@ const DataStatusBadge = ({
               <span className="text-lg">{config.icon}</span>
               <span className="font-semibold">{config.label}</span>
             </div>
-            
+
             <p className="text-sm text-gray-600">{config.description}</p>
-            
+
             <div className="pt-2 border-t border-gray-100 space-y-1 text-xs text-gray-500">
               <div className="flex justify-between">
                 <span>Source:</span>
@@ -171,14 +173,13 @@ const DataStatusBadge = ({
                 </div>
               )}
             </div>
-            
+
             {dataQuality !== 'LIVE' && (
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-xs text-gray-400 italic">
-                  {dataQuality === 'STALE' 
+                  {dataQuality === 'STALE'
                     ? '💡 Showing last known real price while live feed reconnects'
-                    : '💡 Prices are simulated while awaiting live data'
-                  }
+                    : '💡 Prices are simulated while awaiting live data'}
                 </p>
               </div>
             )}
@@ -193,33 +194,32 @@ const DataStatusBadge = ({
 // COMPACT VERSION: DataStatusDot
 // =============================================================================
 
-export const DataStatusDot = ({ 
-  dataQuality = 'SIMULATED',
-  showLabel = false,
-}) => {
+export const DataStatusDot = ({ dataQuality = 'SIMULATED', showLabel = false }) => {
   const config = getStatusConfig(dataQuality);
-  
+
   return (
-    <span 
+    <span
       className="inline-flex items-center gap-1"
       title={`${config.label}: ${config.description}`}
     >
       <span className="relative flex h-2 w-2">
         {config.pulse && (
-          <span className={`
+          <span
+            className={`
             animate-ping absolute inline-flex h-full w-full rounded-full opacity-75
             ${config.dotColor}
-          `} />
+          `}
+          />
         )}
-        <span className={`
+        <span
+          className={`
           relative inline-flex rounded-full h-2 w-2
           ${config.dotColor}
-        `} />
+        `}
+        />
       </span>
       {showLabel && (
-        <span className={`text-xs font-medium ${config.textColor}`}>
-          {config.label}
-        </span>
+        <span className={`text-xs font-medium ${config.textColor}`}>{config.label}</span>
       )}
     </span>
   );
@@ -229,7 +229,7 @@ export const DataStatusDot = ({
 // SYSTEM STATUS BAR (for dashboard header) - FIXED EXPORT
 // =============================================================================
 
-export const SystemStatusBar = ({ 
+export const SystemStatusBar = ({
   dataQuality = 'SIMULATED',
   source = 'mme',
   dataAge = 0,
@@ -237,55 +237,48 @@ export const SystemStatusBar = ({
   health = null,
 }) => {
   const config = getStatusConfig(dataQuality);
-  
+
   // Circuit breaker status
   const breakerState = health?.yfinance?.breaker?.state || 'UNKNOWN';
-  const breakerColor = {
-    CLOSED: 'text-green-600',
-    HALF_OPEN: 'text-yellow-600',
-    OPEN: 'text-red-600',
-  }[breakerState] || 'text-gray-600';
+  const breakerColor =
+    {
+      CLOSED: 'text-green-600',
+      HALF_OPEN: 'text-yellow-600',
+      OPEN: 'text-red-600',
+    }[breakerState] || 'text-gray-600';
 
   return (
-    <div className={`
+    <div
+      className={`
       flex items-center justify-between px-4 py-2 rounded-lg
       ${config.bgColor} ${config.borderColor} border
-    `}>
+    `}
+    >
       <div className="flex items-center gap-4">
         {/* Main status */}
-        <DataStatusBadge 
+        <DataStatusBadge
           dataQuality={dataQuality}
           source={source}
           dataAge={dataAge}
           isAnchored={isAnchored}
           size="medium"
         />
-        
+
         {/* Source */}
         <span className="text-sm text-gray-600">
           via <span className="font-medium">{SOURCE_LABELS[source] || source}</span>
         </span>
       </div>
-      
+
       <div className="flex items-center gap-4 text-xs text-gray-500">
         {/* Circuit breaker */}
-        {health && (
-          <span className={breakerColor}>
-            Breaker: {breakerState}
-          </span>
-        )}
-        
+        {health && <span className={breakerColor}>Breaker: {breakerState}</span>}
+
         {/* LKG entries */}
-        {health?.lkg && (
-          <span>
-            Cache: {health.lkg.entries} entries
-          </span>
-        )}
-        
+        {health?.lkg && <span>Cache: {health.lkg.entries} entries</span>}
+
         {/* Last updated */}
-        <span>
-          Updated: {formatDataAge(dataAge)}
-        </span>
+        <span>Updated: {formatDataAge(dataAge)}</span>
       </div>
     </div>
   );

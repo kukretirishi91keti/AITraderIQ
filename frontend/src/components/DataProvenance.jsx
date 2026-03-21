@@ -1,9 +1,9 @@
 /**
  * DataProvenance.jsx
- * 
+ *
  * A footer component that displays data source attribution.
  * Crucial for academic submission to show transparency.
- * 
+ *
  * Usage: <DataProvenance />
  */
 
@@ -18,49 +18,49 @@ const DataProvenance = () => {
       source: 'Yahoo Finance (yfinance)',
       status: 'live',
       icon: '📈',
-      note: 'Near real-time via fast_info API'
+      note: 'Near real-time via fast_info API',
     },
     {
       type: 'News Headlines',
       source: 'News APIs',
       status: 'live',
       icon: '📰',
-      note: 'Sentiment classified in real-time'
+      note: 'Sentiment classified in real-time',
     },
     {
       type: 'Social Sentiment',
       source: 'Reddit API',
       status: 'live',
       icon: '🤖',
-      note: 'r/wallstreetbets, r/stocks aggregation'
+      note: 'r/wallstreetbets, r/stocks aggregation',
     },
     {
       type: 'Financial Metrics',
       source: 'Simulated/Derived',
       status: 'simulated',
       icon: '💰',
-      note: 'Demo mode - real requires SEC/Bloomberg'
+      note: 'Demo mode - real requires SEC/Bloomberg',
     },
     {
       type: 'Technical Indicators',
       source: 'Calculated',
       status: 'live',
       icon: '📊',
-      note: 'RSI, MACD, Bollinger computed locally'
+      note: 'RSI, MACD, Bollinger computed locally',
     },
     {
       type: 'AI Analysis',
       source: 'Groq LLM',
       status: 'live',
       icon: '🧠',
-      note: 'Context-aware financial reasoning'
-    }
+      note: 'Context-aware financial reasoning',
+    },
   ];
 
   const statusColors = {
     live: 'bg-green-500/20 text-green-400',
     simulated: 'bg-yellow-500/20 text-yellow-400',
-    cached: 'bg-blue-500/20 text-blue-400'
+    cached: 'bg-blue-500/20 text-blue-400',
   };
 
   return (
@@ -80,7 +80,9 @@ const DataProvenance = () => {
                     <span className="text-xs font-medium text-white">{type}</span>
                   </div>
                   <div className="text-[10px] text-gray-400 mb-2">{source}</div>
-                  <div className={`text-[10px] px-2 py-0.5 rounded inline-block ${statusColors[status]}`}>
+                  <div
+                    className={`text-[10px] px-2 py-0.5 rounded inline-block ${statusColors[status]}`}
+                  >
                     {status.toUpperCase()}
                   </div>
                   <div className="text-[9px] text-gray-500 mt-2">{note}</div>
@@ -88,15 +90,16 @@ const DataProvenance = () => {
               ))}
             </div>
             <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400/80">
-              ⚠️ <strong>Academic Demonstration:</strong> This dashboard is for educational purposes only. 
-              Financial data may be simulated or delayed. Do not use for actual trading decisions.
+              ⚠️ <strong>Academic Demonstration:</strong> This dashboard is for educational purposes
+              only. Financial data may be simulated or delayed. Do not use for actual trading
+              decisions.
             </div>
           </div>
         </div>
       )}
 
       {/* Collapsed Footer Bar */}
-      <div 
+      <div
         className="bg-gray-900/95 backdrop-blur border-t border-gray-700 px-4 py-2 cursor-pointer hover:bg-gray-800/95 transition-colors"
         onClick={() => setIsExpanded(!isExpanded)}
       >

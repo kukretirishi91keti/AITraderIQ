@@ -228,10 +228,22 @@ export async function deleteAlert(alertId) {
 }
 
 export default {
-  getToken, getUser, isAuthenticated,
-  register, login, logout,
-  getProfile, updateProfile, authFetch,
-  getUserWatchlist, addToWatchlist, removeFromWatchlist,
-  getUserPortfolio, addToPortfolio, removeFromPortfolio,
-  getUserAlerts, createAlert, deleteAlert,
+  getToken,
+  getUser,
+  isAuthenticated,
+  register,
+  login,
+  logout,
+  getProfile,
+  updateProfile,
+  authFetch,
+  getUserWatchlist,
+  addToWatchlist,
+  removeFromWatchlist,
+  getUserPortfolio,
+  addToPortfolio,
+  removeFromPortfolio,
+  getUserAlerts,
+  createAlert,
+  deleteAlert,
 };
