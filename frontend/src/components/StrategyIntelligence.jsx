@@ -98,7 +98,7 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
     <div className="space-y-6">
       <div className="text-center mb-6">
         <h2 className="text-2xl font-bold text-white">Strategy Intelligence</h2>
-        <p className="text-gray-400 mt-1">Tell us your goals — we'll find the winning strategy for <span className="text-cyan-400 font-semibold">{symbol}</span></p>
+        <p className="text-gray-400 mt-1">Tell us your goals — we&apos;ll find the winning strategy for <span className="text-cyan-400 font-semibold">{symbol}</span></p>
       </div>
 
       {/* Capital Input */}
