@@ -31,14 +31,35 @@ const formatPrice = (price, ticker) => {
   })}`;
 };
 
+const MODEL_OPTIONS = [
+  { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", tag: "Best" },
+  { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B", tag: "Fast" },
+  { id: "mixtral-8x7b-32768", label: "Mixtral 8x7B", tag: "" },
+  { id: "gemma2-9b-it", label: "Gemma 2 9B", tag: "" },
+];
+
 export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing", stockData = {}, signal = "" }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
+  const [showModelPicker, setShowModelPicker] = useState(false);
   const messagesEndRef = useRef(null);
-  
+  const modelPickerRef = useRef(null);
+
   // Get currency for current ticker
   const currency = getCurrencySymbol(currentTicker);
+
+  // Close model picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (modelPickerRef.current && !modelPickerRef.current.contains(e.target)) {
+        setShowModelPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,7 +91,8 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
           symbol: currentTicker,
           trader_type: traderType,
           stock_data: { ...stockData, currency: currency },
-          current_signal: signal
+          current_signal: signal,
+          model: selectedModel
         }),
       });
 
@@ -103,7 +125,56 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
             <p>Analyzing <span className="ticker">{currentTicker}</span> • {formatPrice(stockData?.price, currentTicker)}</p>
           </div>
         </div>
-        <div className="chat-header-right">
+        <div className="chat-header-right" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div ref={modelPickerRef} style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowModelPicker(!showModelPicker)}
+              title="Select AI Model"
+              style={{
+                display: "flex", alignItems: "center", gap: "4px",
+                background: "rgba(99,102,241,0.15)", border: "1px solid rgba(99,102,241,0.3)",
+                borderRadius: "6px", padding: "4px 10px", cursor: "pointer",
+                color: "#a5b4fc", fontSize: "12px", fontWeight: 500,
+                transition: "all 0.2s"
+              }}
+            >
+              <span style={{ fontSize: "14px" }}>🧠</span>
+              {MODEL_OPTIONS.find(m => m.id === selectedModel)?.label || "Model"}
+              <span style={{ fontSize: "10px", opacity: 0.7 }}>▼</span>
+            </button>
+            {showModelPicker && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: "4px",
+                background: "#1e1e2e", border: "1px solid rgba(99,102,241,0.3)",
+                borderRadius: "8px", padding: "4px", zIndex: 100, minWidth: "200px",
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
+              }}>
+                {MODEL_OPTIONS.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => { setSelectedModel(m.id); setShowModelPicker(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      width: "100%", padding: "8px 12px", border: "none", borderRadius: "6px",
+                      cursor: "pointer", fontSize: "13px", textAlign: "left",
+                      background: selectedModel === m.id ? "rgba(99,102,241,0.2)" : "transparent",
+                      color: selectedModel === m.id ? "#a5b4fc" : "#cbd5e1",
+                      transition: "background 0.15s"
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(99,102,241,0.15)"}
+                    onMouseLeave={e => e.currentTarget.style.background = selectedModel === m.id ? "rgba(99,102,241,0.2)" : "transparent"}
+                  >
+                    <span>{selectedModel === m.id ? "✓ " : ""}{m.label}</span>
+                    {m.tag && <span style={{
+                      fontSize: "10px", padding: "1px 6px", borderRadius: "4px",
+                      background: m.tag === "Best" ? "rgba(34,197,94,0.2)" : "rgba(234,179,8,0.2)",
+                      color: m.tag === "Best" ? "#4ade80" : "#facc15"
+                    }}>{m.tag}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <span className={`strategy-badge ${traderType}`}>{traderType}</span>
           {messages.length > 0 && <button onClick={() => setMessages([])} className="clear-btn">Clear</button>}
         </div>
@@ -120,7 +191,7 @@ export default function GenAIChat({ currentTicker = "AAPL", traderType = "swing"
           <div className="chat-empty">
             <div className="empty-icon">💬</div>
             <h4>Ask about {currentTicker}</h4>
-            <p>Powered by <strong>Groq Llama 3.3 70B</strong> AI with real-time technical indicators, sentiment data, and strategy intelligence. Ask about strategies, risk, entry/exit points, or how the AI engine works.</p>
+            <p>Powered by <strong>{MODEL_OPTIONS.find(m => m.id === selectedModel)?.label || "Groq AI"}</strong> via Groq with real-time technical indicators, sentiment data, and strategy intelligence. Ask about strategies, risk, entry/exit points, or how the AI engine works.</p>
             <div className="quick-prompts">
               {quickPrompts.map((p, i) => (
                 <button key={i} onClick={() => sendMessage(p)} className="quick-btn">{p}</button>
