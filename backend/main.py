@@ -138,13 +138,16 @@ else:
 if os.getenv("DEMO_MODE", "").lower() == "true":
     ALLOWED_ORIGINS.append("https://*.netlify.app")
 
+logger.info(f"CORS allowed origins: {ALLOWED_ORIGINS}")
+print(f"  CORS Origins: {ALLOWED_ORIGINS}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=r"https://.*\.netlify\.app",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["*"],
 )
 
 # Request logging middleware
