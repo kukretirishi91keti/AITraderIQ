@@ -123,14 +123,25 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration - Restrict to known frontend origins
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
-]
+# CORS configuration - Allow frontend origins
+_cors_env = os.getenv("CORS_ORIGINS", "")
+if _cors_env:
+    ALLOWED_ORIGINS = [origin.strip() for origin in _cors_env.split(",") if origin.strip()]
+else:
+    ALLOWED_ORIGINS = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://aitraderiq.netlify.app",
+    ]
+
+# In demo mode, also allow any netlify preview deploys
+if os.getenv("DEMO_MODE", "").lower() == "true":
+    ALLOWED_ORIGINS.append("https://*.netlify.app")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.netlify\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
