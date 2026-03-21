@@ -1,0 +1,43 @@
+# Netlify deployment — builds and serves the frontend React app
+# Backend must be deployed separately (Railway / Render)
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# API proxy to backend — set BACKEND_URL in Netlify environment variables
+# Example: BACKEND_URL = https://traderai-backend.up.railway.app
+[[redirects]]
+  from = "/api/*"
+  to = "${BACKEND_URL}/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ws/*"
+  to = "${BACKEND_URL}/ws/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ping"
+  to = "${BACKEND_URL}/ping"
+  status = 200
+  force = true
+
+# SPA catch-all (MUST be last)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

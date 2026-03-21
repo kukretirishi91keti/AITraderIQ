@@ -2,35 +2,42 @@
 # Docs: https://docs.netlify.com/configure-builds/file-based-configuration/
 
 [build]
+  # Build from the frontend directory
+  base = "frontend"
   command = "npm run build"
   publish = "dist"
 
-# SPA routing — all routes serve index.html (React handles routing)
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build.environment]
+  NODE_VERSION = "20"
+
+# IMPORTANT: Redirect order matters — specific rules MUST come before the catch-all
 
 # Proxy API calls to backend (avoids CORS entirely)
-# Replace YOUR_BACKEND_URL with your actual backend URL
+# Set BACKEND_URL in Netlify Dashboard > Site Settings > Environment Variables
 # e.g., https://traderai-backend.up.railway.app
 [[redirects]]
   from = "/api/*"
-  to = "https://YOUR_BACKEND_URL/api/:splat"
+  to = "${BACKEND_URL}/api/:splat"
   status = 200
   force = true
 
 [[redirects]]
   from = "/ws/*"
-  to = "wss://YOUR_BACKEND_URL/ws/:splat"
+  to = "${BACKEND_URL}/ws/:splat"
   status = 200
   force = true
 
-# Environment variables (set these in Netlify Dashboard > Site Settings > Build & Deploy > Environment)
-# VITE_API_BASE_URL = "" (leave empty to use proxy above, or set full backend URL)
+[[redirects]]
+  from = "/ping"
+  to = "${BACKEND_URL}/ping"
+  status = 200
+  force = true
 
-[build.environment]
-  NODE_VERSION = "20"
+# SPA catch-all — MUST be last (serves index.html for all frontend routes)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 # Security headers
 [[headers]]
