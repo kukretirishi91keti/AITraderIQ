@@ -633,10 +633,10 @@ async def get_stock_data(
                 "source": candles["source"],
             },
             "metadata": {
-                "quoteSource": quote["source"],
+                "quoteSource": quote.get("source", "UNKNOWN"),
                 "chartSource": candles["source"],
-                "dataQuality": quote["dataQuality"],
-                "asOf": quote["asOf"],
+                "dataQuality": quote.get("dataQuality", "UNKNOWN"),
+                "asOf": quote.get("asOf", quote.get("timestamp", datetime.now().isoformat())),
             }
         }
     except Exception as e:
@@ -765,8 +765,9 @@ async def get_roadmap():
 async def reset_circuit_breaker():
     """Reset circuit breaker (admin use)."""
     try:
-        svc = get_market_data_service()
-        svc._yf_quote_breaker.reset()
+        from services.market_data_service import _circuit_breaker
+        _circuit_breaker.failures = 0
+        _circuit_breaker.is_open = False
         return {"success": True, "message": "Circuit breaker reset"}
     except Exception as e:
         logger.error(f"Reset breaker error: {e}")
