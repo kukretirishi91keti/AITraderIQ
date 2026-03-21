@@ -512,7 +512,9 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => setShowStrategyIntelligence(true)} className="px-3 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-sm font-bold shadow-lg shadow-cyan-500/20">Strategy AI</button>
+            <button onClick={() => setShowStrategyIntelligence(true)} className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-lg text-sm font-bold shadow-lg shadow-cyan-500/30 border border-cyan-400/30 animate-pulse hover:animate-none flex items-center gap-1.5">
+              <span className="text-base">&#x1F9E0;</span> Strategy AI
+            </button>
             <button onClick={() => { setShowScreener(true); fetchScreenerData(); }} className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 rounded-lg text-sm font-medium">Screener</button>
             <button onClick={() => setShowPortfolio(true)} className="px-3 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium">💰 Portfolio</button>
             <button onClick={() => setShowAlerts(true)} className="px-3 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium relative">

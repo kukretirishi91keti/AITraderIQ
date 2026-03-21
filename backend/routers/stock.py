@@ -26,7 +26,7 @@ All endpoints:
 from fastapi import APIRouter, Query, HTTPException
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import random
 import hashlib
@@ -151,8 +151,10 @@ def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
         low_price = min(open_price, close_price) * random.uniform(0.99, 0.999)
         volume = random.randint(100000, 5000000)
         
+        candle_time = now - timedelta(minutes=(count - i) * interval_minutes)
         candles.append({
-            "timestamp": (now.timestamp() - (count - i) * interval_minutes * 60) * 1000,
+            "timestamp": candle_time.isoformat(),
+            "date": candle_time.isoformat(),
             "open": round(open_price, 2),
             "high": round(high_price, 2),
             "low": round(low_price, 2),
