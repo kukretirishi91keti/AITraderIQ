@@ -10,10 +10,17 @@ from sqlalchemy.orm import DeclarativeBase
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./traderai.db")
 
+# Connection args vary by database type
+_connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    _connect_args = {"check_same_thread": False}
+
 # Async engine for FastAPI
 engine = create_async_engine(
     DATABASE_URL,
     echo=os.getenv("DB_ECHO", "false").lower() == "true",
+    connect_args=_connect_args,
+    pool_pre_ping=True,
 )
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)

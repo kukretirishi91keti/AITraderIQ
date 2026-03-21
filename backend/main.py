@@ -61,13 +61,19 @@ loaded_routers = []
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle management."""
-    # Initialize database
+    # Initialize database - CRITICAL for auth to work
+    db_ready = False
     try:
         from database.engine import init_db, close_db
         await init_db()
-        logger.info("Database initialized")
+        db_ready = True
+        logger.info("Database initialized successfully")
+        print("  Database: READY (tables created)")
     except Exception as e:
-        logger.warning(f"Database init failed (non-fatal): {e}")
+        logger.error(f"Database init failed: {e}")
+        print(f"  Database: FAILED - {e}")
+        print("  WARNING: Login/register will NOT work without database!")
+        print("  Check DATABASE_URL in your .env file")
 
     print("\n" + "=" * 70)
     print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
@@ -276,6 +282,20 @@ load_router(
     ['routers.scanner'],
     'scanner router',
     '(AI-ranked opportunities)'
+)
+
+# Load strategy intelligence router
+load_router(
+    ['routers.strategy'],
+    'strategy router',
+    '(strategy intelligence, growth projections)'
+)
+
+# Load subscription/payment router
+load_router(
+    ['routers.subscription'],
+    'subscription router',
+    '(plans, checkout, billing)'
 )
 
 

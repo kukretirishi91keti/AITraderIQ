@@ -20,6 +20,12 @@ class User(Base):
     trader_style = Column(String(50), default="swing")  # day, swing, position, scalper
     risk_tolerance = Column(String(50), default="moderate")  # conservative, moderate, aggressive
     is_active = Column(Boolean, default=True)
+    # Subscription / payment tier
+    plan = Column(String(20), default="free")  # free, pro, premium
+    stripe_customer_id = Column(String(255), nullable=True)
+    plan_expires_at = Column(DateTime, nullable=True)
+    ai_queries_today = Column(Integer, default=0)
+    ai_queries_reset_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

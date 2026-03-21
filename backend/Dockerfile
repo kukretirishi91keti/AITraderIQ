@@ -24,4 +24,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
     CMD curl -f http://localhost:8000/ping || exit 1
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 4"]
+# Workers: 2 for SQLite (no concurrent writes), increase to 4+ with PostgreSQL
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --timeout-keep-alive 30"]

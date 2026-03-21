@@ -143,7 +143,30 @@ def generate_fallback_response(request: QueryRequest) -> str:
     signal = request.signal or "HOLD"
     
     question = request.question.lower()
-    
+
+    # AI backend / intelligence engine questions
+    if any(word in question for word in ["ai model", "ai backend", "intelligence", "how does", "what powers", "engine", "what ai", "models power"]):
+        return (
+            "TraderAI Pro uses a multi-layer intelligence engine:\n\n"
+            "1. **AI Model**: Groq Llama 3.3 70B (primary) with Llama 3.1 8B (fast fallback)\n"
+            "2. **Technical Analysis**: RSI, MACD, Bollinger Bands, VWAP, ATR computed in real-time\n"
+            "3. **Sentiment Engine**: Aggregates StockTwits (35%), Reddit (30%), News (35%) into a -100 to +100 score\n"
+            "4. **Strategy Intelligence**: 6 ranked strategies scored against your profile + market conditions\n"
+            "5. **Backtesting**: Historical signal accuracy tracked per strategy type\n\n"
+            "To get a Groq API key for full AI responses: visit console.groq.com (free tier available). "
+            "Set GROQ_API_KEY in your .env file. Without it, you still get rule-based analysis from our technical engine."
+        )
+
+    # Strategy-related questions
+    if any(word in question for word in ["best strategy", "which strategy", "strategy for", "recommend strategy"]):
+        rsi_hint = f"RSI at {rsi:.0f}" if rsi else "neutral RSI"
+        if rsi and rsi < 35:
+            return f"With {rsi_hint}, {symbol} looks oversold. **Mean Reversion** or **Value Dip Buying** strategies work best here. Use the Strategy AI button in the toolbar for a full ranked analysis with entry/exit rules."
+        elif rsi and rsi > 65:
+            return f"With {rsi_hint}, {symbol} shows strong momentum. **Momentum Breakout** or **Trend Following** could work. Click 'Strategy AI' for personalized recommendations based on your capital and risk tolerance."
+        else:
+            return f"{symbol} is in a neutral zone ({rsi_hint}). Open the **Strategy AI** wizard (toolbar button) — it analyzes 6 strategies against current market conditions and your growth goals to find the best fit."
+
     # Entry point questions
     if any(word in question for word in ["entry", "buy", "enter", "position"]):
         if rsi < 30:

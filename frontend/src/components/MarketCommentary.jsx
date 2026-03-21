@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect, memo } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const SEVERITY_STYLES = {
   high: 'border-l-red-500 bg-red-900/10',

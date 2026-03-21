@@ -7,7 +7,7 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 const REFRESH_INTERVALS = {
   QUOTE: 30000,     // 30 seconds (was 5s - too aggressive for demo data)

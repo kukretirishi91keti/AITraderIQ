@@ -1,0 +1,23 @@
+# Netlify deployment — builds and serves the frontend React app
+# Backend must be deployed separately (Railway / Render)
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA catch-all — serves index.html for all frontend routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
