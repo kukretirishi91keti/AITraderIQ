@@ -2,7 +2,7 @@
 Authentication Router - Register, Login, Profile.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,7 +72,7 @@ async def register(request: RegisterRequest, db: Annotated[AsyncSession, Depends
     await db.commit()
     await db.refresh(user)
 
-    token = create_access_token(data={"sub": user.id})
+    token = create_access_token(data={"sub": str(user.id)})
 
     return {
         "access_token": token,
@@ -89,9 +89,8 @@ async def register(request: RegisterRequest, db: Annotated[AsyncSession, Depends
 
 @router.post("/login")
 async def login(
-    request: Request,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: AsyncSession = Depends(get_db),
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Login with username/email and password."""
     # Try finding by username or email
@@ -112,7 +111,7 @@ async def login(
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Account deactivated")
 
-    token = create_access_token(data={"sub": user.id})
+    token = create_access_token(data={"sub": str(user.id)})
 
     return {
         "access_token": token,

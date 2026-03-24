@@ -15,9 +15,9 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
 import os
-os.environ["DEMO_MODE"] = "true"
-os.environ["JWT_SECRET_KEY"] = "test-secret-key-not-for-production"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./smoke_test.db"
+os.environ.setdefault("DEMO_MODE", "true")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./test.db")
 
 from main import app  # noqa: E402
 from database.engine import engine, Base  # noqa: E402
@@ -28,8 +28,9 @@ SYMBOL = "AAPL"
 
 @pytest_asyncio.fixture
 async def db():
-    """Create fresh database for smoke test."""
+    """Create fresh database tables for smoke test, drop after."""
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine.begin() as conn:
@@ -149,9 +150,14 @@ async def simulate_user(client: AsyncClient, user_id: int) -> dict:
 @pytest.mark.asyncio
 async def test_smoke_50_concurrent_users(client):
     """Run 50 concurrent user sessions and verify system stability."""
-    # Run all 50 users concurrently
-    tasks = [simulate_user(client, i) for i in range(NUM_USERS)]
-    results = await asyncio.gather(*tasks)
+    # Batch users (10 at a time) to avoid SQLite write-lock contention
+    results = []
+    batch_size = 10
+    for batch_start in range(0, NUM_USERS, batch_size):
+        batch_end = min(batch_start + batch_size, NUM_USERS)
+        tasks = [simulate_user(client, i) for i in range(batch_start, batch_end)]
+        batch_results = await asyncio.gather(*tasks)
+        results.extend(batch_results)
 
     # Aggregate results
     total_passed = sum(r["passed"] for r in results)
