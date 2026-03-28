@@ -200,6 +200,12 @@ async def websocket_prices(websocket: WebSocket):
                         **manager.get_stats(),
                     })
 
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Unknown action: {action}",
+                    })
+
             except json.JSONDecodeError:
                 await websocket.send_json({
                     "type": "error",
