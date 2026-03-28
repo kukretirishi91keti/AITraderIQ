@@ -12,7 +12,7 @@ class GenAIHandler:
         if not api_key:
             raise ValueError("GROQ_API_KEY not set in .env")
         
-        self.client = Groq(api_key=api_key)
+        self.client = Groq(api_key=api_key, timeout=15.0)
         self.model = "llama-3.3-70b-versatile"
 
     

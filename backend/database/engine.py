@@ -40,12 +40,27 @@ async def get_db() -> AsyncSession:
 
 
 async def init_db():
-    """Create all tables (imports all models so metadata is complete)."""
+    """
+    Initialize database tables.
+
+    In production (DEMO_MODE != true), logs a reminder to use Alembic migrations.
+    In development/demo mode, uses create_all for convenience.
+    """
     import database.models  # noqa: F401 - registers User, WatchlistItem, etc.
     try:
         from services.backtest_engine import SignalRecord  # noqa: F401
     except ImportError:
         pass
+
+    demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
+    if not demo_mode:
+        import logging
+        _logger = logging.getLogger(__name__)
+        _logger.info(
+            "Production mode: use 'alembic upgrade head' to manage schema migrations. "
+            "Falling back to create_all for any missing tables."
+        )
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
