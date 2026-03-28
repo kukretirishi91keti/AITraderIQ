@@ -1,6 +1,8 @@
 """
 Rate limiting middleware using slowapi.
 Prevents API abuse and protects upstream data sources (yfinance).
+
+Keys by authenticated user ID when available, otherwise by client IP.
 """
 
 import os
@@ -24,9 +26,32 @@ def _get_client_ip(request: Request) -> str:
     return get_remote_address(request)
 
 
-# Global limiter instance
+def _get_rate_limit_key(request: Request) -> str:
+    """
+    Return a per-user rate limit key when the request has a valid JWT,
+    otherwise fall back to client IP.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        try:
+            from jose import jwt as jose_jwt
+            secret = os.getenv(
+                "JWT_SECRET_KEY",
+                "CHANGE-THIS-IN-PRODUCTION-use-openssl-rand-hex-32",
+            )
+            payload = jose_jwt.decode(token, secret, algorithms=["HS256"])
+            user_id = payload.get("sub")
+            if user_id:
+                return f"user:{user_id}"
+        except Exception:
+            pass  # Fall through to IP-based key
+    return _get_client_ip(request)
+
+
+# Global limiter instance — keys by user ID when authenticated
 limiter = Limiter(
-    key_func=_get_client_ip,
+    key_func=_get_rate_limit_key,
     default_limits=[DEFAULT_RATE],
     storage_uri=os.getenv("RATE_LIMIT_STORAGE", "memory://"),
 )

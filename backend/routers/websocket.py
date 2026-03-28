@@ -9,11 +9,25 @@ import asyncio
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Set
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from typing import Dict, Optional, Set
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 router = APIRouter(tags=["WebSocket"])
 logger = logging.getLogger(__name__)
+
+
+async def _authenticate_ws(token: Optional[str]) -> Optional[int]:
+    """Validate JWT token and return user_id, or None for anonymous."""
+    if not token:
+        return None
+    try:
+        from jose import jwt as jose_jwt, JWTError
+        from auth.security import SECRET_KEY, ALGORITHM
+        payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        raw_id = payload.get("sub")
+        return int(raw_id) if raw_id else None
+    except Exception:
+        return None
 
 
 class ConnectionManager:
@@ -143,9 +157,12 @@ async def price_broadcast_loop():
 # =============================================================================
 
 @router.websocket("/ws/prices")
-async def websocket_prices(websocket: WebSocket):
+async def websocket_prices(websocket: WebSocket, token: Optional[str] = Query(None)):
     """
     WebSocket endpoint for real-time price streaming.
+
+    Authentication: Optional. Pass ?token=<jwt> for authenticated access.
+    Anonymous connections are allowed but may be rate-limited in the future.
 
     Protocol:
     - Client sends: {"action": "subscribe", "symbols": ["AAPL", "MSFT"]}
@@ -153,6 +170,7 @@ async def websocket_prices(websocket: WebSocket):
     - Server sends: {"type": "quote", "symbol": "AAPL", "price": 150.50, ...}
     - Server sends: {"type": "status", "connections": 5, ...}
     """
+    user_id = await _authenticate_ws(token)
     await manager.connect(websocket)
 
     # Ensure broadcast loop is running
@@ -165,6 +183,7 @@ async def websocket_prices(websocket: WebSocket):
         await websocket.send_json({
             "type": "connected",
             "message": "Connected to TraderAI Pro price stream",
+            "authenticated": user_id is not None,
             **manager.get_stats(),
         })
 
@@ -198,6 +217,12 @@ async def websocket_prices(websocket: WebSocket):
                     await websocket.send_json({
                         "type": "status",
                         **manager.get_stats(),
+                    })
+
+                else:
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": f"Unknown action: {action}",
                     })
 
             except json.JSONDecodeError:

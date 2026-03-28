@@ -11,14 +11,31 @@ def validate_environment():
     warnings = []
     errors = []
 
+    # ── P0: Hard-fail on default JWT secret in production ──
     jwt_secret = os.getenv("JWT_SECRET_KEY", "")
-    if not jwt_secret or jwt_secret in ("change-this-in-production", "CHANGE-THIS-IN-PRODUCTION-use-openssl-rand-hex-32"):
+    demo_mode = os.getenv("DEMO_MODE", "true").lower()
+    _jwt_defaults = {
+        "",
+        "change-this-in-production",
+        "CHANGE-THIS-IN-PRODUCTION-use-openssl-rand-hex-32",
+    }
+    if jwt_secret in _jwt_defaults:
+        if demo_mode != "true":
+            errors.append(
+                "CRITICAL: JWT_SECRET_KEY is not set or uses the insecure default. "
+                "This is REQUIRED in production. Generate one with: openssl rand -hex 32"
+            )
+        else:
+            warnings.append(
+                "JWT_SECRET_KEY is not set or is using the default value. "
+                "Generate one with: openssl rand -hex 32"
+            )
+    elif len(jwt_secret) < 32:
         warnings.append(
-            "JWT_SECRET_KEY is not set or is using the default value. "
-            "Generate one with: openssl rand -hex 32"
+            "JWT_SECRET_KEY is shorter than 32 characters. "
+            "Use a longer key for production: openssl rand -hex 32"
         )
 
-    demo_mode = os.getenv("DEMO_MODE", "true").lower()
     if demo_mode == "true":
         warnings.append("DEMO_MODE=true - using simulated data. Set DEMO_MODE=false for live market data.")
 
@@ -30,12 +47,20 @@ def validate_environment():
     if "*" in cors:
         warnings.append("CORS_ORIGINS contains '*' - restrict to specific origins in production.")
 
+    # ── P0: Enforce PostgreSQL in production ──
     db_url = os.getenv("DATABASE_URL", "")
     if "sqlite" in db_url or not db_url:
-        warnings.append(
-            "Using SQLite database. For 100+ concurrent users, switch to PostgreSQL: "
-            "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
-        )
+        if demo_mode != "true":
+            errors.append(
+                "CRITICAL: SQLite is not suitable for production. "
+                "Set DATABASE_URL to PostgreSQL: "
+                "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
+            )
+        else:
+            warnings.append(
+                "Using SQLite database. For 100+ concurrent users, switch to PostgreSQL: "
+                "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
+            )
 
     stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
     if not stripe_key:

@@ -537,12 +537,13 @@ export default function App() {
         }),
       });
       const data = await response.json();
+      const modelLabel = AI_MODEL_OPTIONS.find((m) => m.id === data.model)?.label;
       setAiMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: data.answer || data.response || 'Unable to generate response',
-          source: data.source || 'ai',
+          source: data.model ? `${modelLabel || data.model}` : data.source || 'rule-based',
         },
       ]);
     } catch (err) {

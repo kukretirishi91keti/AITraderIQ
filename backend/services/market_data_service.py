@@ -551,8 +551,11 @@ class MarketDataService:
         
         # 2. Try yfinance via SingleFlight (prevents thundering herd)
         async def fetch_live():
-            return await run_in_threadpool(_fetch_yfinance_quote_sync, symbol)
-        
+            return await asyncio.wait_for(
+                run_in_threadpool(_fetch_yfinance_quote_sync, symbol),
+                timeout=15.0,  # 15s hard timeout for external API
+            )
+
         try:
             live_data = await self.singleflight.do(f"quote:{symbol}", fetch_live)
             
@@ -563,9 +566,11 @@ class MarketDataService:
                 self.stats["last_live_fetch"] = datetime.now().isoformat()
                 return live_data
         
+        except asyncio.TimeoutError:
+            logger.warning(f"Live fetch timed out for {symbol} (15s)")
         except Exception as e:
             logger.warning(f"Live fetch failed for {symbol}: {e}")
-        
+
         # 3. Try LKG cache (any age)
         lkg = self.cache.get_lkg(cache_key)
         if lkg:
@@ -603,17 +608,22 @@ class MarketDataService:
         
         # Try yfinance
         async def fetch_live():
-            return await run_in_threadpool(
-                _fetch_yfinance_history_sync, symbol, period, interval
+            return await asyncio.wait_for(
+                run_in_threadpool(
+                    _fetch_yfinance_history_sync, symbol, period, interval
+                ),
+                timeout=30.0,  # 30s for history (larger payload)
             )
-        
+
         try:
             live_data = await self.singleflight.do(cache_key, fetch_live)
-            
+
             if live_data:
                 self.cache.set(cache_key, live_data, source="LIVE")
                 return live_data, "LIVE"
-        
+
+        except asyncio.TimeoutError:
+            logger.warning(f"History fetch timed out for {symbol} (30s)")
         except Exception as e:
             logger.warning(f"History fetch failed for {symbol}: {e}")
         

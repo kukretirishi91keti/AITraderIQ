@@ -4,10 +4,11 @@ Authentication Router - Register, Login, Profile.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+from typing import Annotated
 
 from database.engine import get_db
 from database.models import User
@@ -15,6 +16,7 @@ from auth.security import (
     hash_password, verify_password, create_access_token,
     get_current_user, require_auth,
 )
+from utils.validation import sanitize_text
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -48,7 +50,7 @@ class ProfileUpdate(BaseModel):
 # =============================================================================
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(request: RegisterRequest, db: Annotated[AsyncSession, Depends(get_db)]):
     """Register a new user."""
     # Check if email already exists
     result = await db.execute(select(User).where(User.email == request.email))
@@ -64,14 +66,14 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         email=request.email,
         username=request.username,
         hashed_password=hash_password(request.password),
-        full_name=request.full_name,
+        full_name=sanitize_text(request.full_name),
         trader_style=request.trader_style,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    token = create_access_token(data={"sub": user.id})
+    token = create_access_token(data={"sub": str(user.id)})
 
     return {
         "access_token": token,
@@ -88,8 +90,8 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login")
 async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db),
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Login with username/email and password."""
     # Try finding by username or email
@@ -110,7 +112,7 @@ async def login(
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Account deactivated")
 
-    token = create_access_token(data={"sub": user.id})
+    token = create_access_token(data={"sub": str(user.id)})
 
     return {
         "access_token": token,
@@ -127,7 +129,7 @@ async def login(
 
 
 @router.get("/me")
-async def get_profile(user: User = Depends(require_auth)):
+async def get_profile(user: Annotated[User, Depends(require_auth)]):
     """Get current user profile."""
     return {
         "id": user.id,
@@ -143,12 +145,12 @@ async def get_profile(user: User = Depends(require_auth)):
 @router.put("/me")
 async def update_profile(
     update: ProfileUpdate,
-    user: User = Depends(require_auth),
-    db: AsyncSession = Depends(get_db),
+    user: Annotated[User, Depends(require_auth)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Update user profile."""
     if update.full_name is not None:
-        user.full_name = update.full_name
+        user.full_name = sanitize_text(update.full_name)
     if update.trader_style is not None:
         user.trader_style = update.trader_style
     if update.risk_tolerance is not None:
