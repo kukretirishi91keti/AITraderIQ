@@ -16,6 +16,7 @@ from auth.security import (
     hash_password, verify_password, create_access_token,
     get_current_user, require_auth,
 )
+from utils.validation import sanitize_text
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -65,7 +66,7 @@ async def register(request: RegisterRequest, db: Annotated[AsyncSession, Depends
         email=request.email,
         username=request.username,
         hashed_password=hash_password(request.password),
-        full_name=request.full_name,
+        full_name=sanitize_text(request.full_name),
         trader_style=request.trader_style,
     )
     db.add(user)
@@ -149,7 +150,7 @@ async def update_profile(
 ):
     """Update user profile."""
     if update.full_name is not None:
-        user.full_name = update.full_name
+        user.full_name = sanitize_text(update.full_name)
     if update.trader_style is not None:
         user.trader_style = update.trader_style
     if update.risk_tolerance is not None:

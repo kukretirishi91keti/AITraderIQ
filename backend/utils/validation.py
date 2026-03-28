@@ -6,6 +6,20 @@ Prevents path traversal, injection, and invalid input.
 import re
 from fastapi import HTTPException
 
+# ── HTML / Script injection prevention ──────────────────────────────────────
+
+_SCRIPT_RE = re.compile(r'<\s*script[^>]*>.*?</\s*script\s*>', re.IGNORECASE | re.DOTALL)
+_TAG_RE = re.compile(r'<[^>]+>')
+
+
+def sanitize_text(value: str) -> str:
+    """Strip HTML tags and script blocks from user-supplied text."""
+    if not value:
+        return value
+    value = _SCRIPT_RE.sub('', value)
+    value = _TAG_RE.sub('', value)
+    return value.strip()
+
 # Valid symbol pattern: alphanumeric, dots, hyphens, equals, carets
 # Examples: AAPL, RELIANCE.NS, BTC-USD, EURUSD=X, GC=F, ^GSPC
 SYMBOL_PATTERN = re.compile(r'^[A-Za-z0-9\.\-\=\^]{1,20}$')

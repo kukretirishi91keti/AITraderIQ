@@ -13,7 +13,7 @@ from datetime import datetime
 from database.engine import get_db
 from database.models import User, WatchlistItem, PortfolioItem, Alert
 from auth.security import require_auth
-from utils.validation import validate_symbol
+from utils.validation import validate_symbol, sanitize_text
 
 router = APIRouter(prefix="/api/user", tags=["User Data"])
 
@@ -104,7 +104,7 @@ async def add_to_watchlist(
         user_id=user.id,
         symbol=symbol,
         market=request.market,
-        notes=request.notes,
+        notes=sanitize_text(request.notes),
     )
     db.add(item)
     await db.commit()
@@ -186,7 +186,7 @@ async def add_to_portfolio(
         avg_price=request.avg_price,
         currency=request.currency,
         market=request.market,
-        notes=request.notes,
+        notes=sanitize_text(request.notes),
     )
     db.add(item)
     await db.commit()
@@ -218,7 +218,7 @@ async def update_portfolio_item(
     if update.avg_price is not None:
         item.avg_price = update.avg_price
     if update.notes is not None:
-        item.notes = update.notes
+        item.notes = sanitize_text(update.notes)
 
     item.updated_at = datetime.utcnow()
     await db.commit()

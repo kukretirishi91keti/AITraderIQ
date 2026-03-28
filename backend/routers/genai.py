@@ -60,7 +60,7 @@ def get_groq_client():
     """Get or create Groq client."""
     try:
         from groq import Groq
-        return Groq(api_key=GROQ_API_KEY)
+        return Groq(api_key=GROQ_API_KEY, timeout=15.0)
     except ImportError:
         logger.warning("Groq library not installed")
         return None
@@ -240,7 +240,8 @@ async def query_ai(request: QueryRequest):
                     {"role": "user", "content": request.question}
                 ],
                 max_tokens=MAX_TOKENS,
-                temperature=0.7
+                temperature=0.7,
+                timeout=15.0,
             )
 
             return QueryResponse(
