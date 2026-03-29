@@ -33,6 +33,7 @@ class User(Base):
     watchlist_items = relationship("WatchlistItem", back_populates="user", cascade="all, delete-orphan")
     portfolio_items = relationship("PortfolioItem", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="user", cascade="all, delete-orphan")
+    paper_trades = relationship("PaperTrade", back_populates="user", cascade="all, delete-orphan")
 
 
 class WatchlistItem(Base):
@@ -80,3 +81,26 @@ class Alert(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="alerts")
+
+
+class PaperTrade(Base):
+    __tablename__ = "paper_trades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    symbol = Column(String(20), nullable=False)
+    side = Column(String(10), nullable=False)  # "buy" or "sell"
+    quantity = Column(Float, nullable=False)
+    entry_price = Column(Float, nullable=False)
+    exit_price = Column(Float, nullable=True)
+    status = Column(String(20), default="open")  # "open", "closed"
+    strategy = Column(String(50), nullable=True)  # strategy name that triggered this
+    market = Column(String(20), default="US")
+    currency = Column(String(10), default="$")
+    pnl = Column(Float, nullable=True)
+    pnl_percent = Column(Float, nullable=True)
+    notes = Column(Text, default="")
+    opened_at = Column(DateTime, default=datetime.utcnow)
+    closed_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="paper_trades")
