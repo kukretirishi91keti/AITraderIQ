@@ -19,6 +19,10 @@ class User(Base):
     full_name = Column(String(255), default="")
     trader_style = Column(String(50), default="swing")  # day, swing, position, scalper
     risk_tolerance = Column(String(50), default="moderate")  # conservative, moderate, aggressive
+    investment_horizon = Column(String(20), default="medium")  # short, medium, long
+    experience_level = Column(String(20), default="intermediate")  # beginner, intermediate, advanced, expert
+    capital_range = Column(String(20), default="medium")  # small, medium, large, institutional
+    goals = Column(Text, default="[]")  # JSON array: income, growth, preservation, speculation
     is_active = Column(Boolean, default=True)
     # Subscription / payment tier
     plan = Column(String(20), default="free")  # free, pro, premium
@@ -97,6 +101,8 @@ class PaperTrade(Base):
     strategy = Column(String(50), nullable=True)  # strategy name that triggered this
     market = Column(String(20), default="US")
     currency = Column(String(10), default="$")
+    stop_loss_price = Column(Float, nullable=True)
+    take_profit_price = Column(Float, nullable=True)
     pnl = Column(Float, nullable=True)
     pnl_percent = Column(Float, nullable=True)
     notes = Column(Text, default="")

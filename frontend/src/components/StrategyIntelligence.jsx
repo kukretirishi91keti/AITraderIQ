@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { API_BASE } from '../config';
+import { authFetch } from '../services/auth';
+import { useAuth } from '../context/AuthContext';
 
 // =============================================================================
 // STRATEGY INTELLIGENCE WIZARD + DASHBOARD
@@ -64,6 +66,12 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
   // Expanded strategy detail
   const [expandedStrategy, setExpandedStrategy] = useState(null);
 
+  // Paper trade placement
+  const { isLoggedIn, setShowAuthModal } = useAuth();
+  const [applyingKey, setApplyingKey] = useState(null);  // strategy key currently in-flight
+  const [applyResult, setApplyResult] = useState(null);  // success payload
+  const [applyError,  setApplyError]  = useState(null);  // error string
+
   const targetAmount = useMemo(() => capital * (1 + growthTarget / 100), [capital, growthTarget]);
 
   // ============================================================
@@ -95,6 +103,45 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
       setLoading(false);
     }
   }, [symbol, capital, growthTarget, riskTolerance, timeHorizon, traderStyle]);
+
+  const handleApply = useCallback(
+    async (strategy) => {
+      if (!isLoggedIn) { setShowAuthModal(true); return; }
+      const key = strategy.key;
+      setApplyingKey(key);
+      setApplyError(null);
+      setApplyResult(null);
+      try {
+        const res = await authFetch(`${API_BASE}/api/strategy/apply`, {
+          method: 'POST',
+          body: JSON.stringify({
+            symbol: symbol.toUpperCase(),
+            strategy_name: key,
+            capital: capital,
+            risk_tolerance: riskTolerance,
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.detail || `Request failed (${res.status})`);
+        }
+        const data = await res.json();
+        setApplyResult({
+          key,
+          tradeId:      data.trade_id,
+          symbol:       data.symbol,
+          qty:          data.quantity,
+          price:        data.entry_price,
+          strategyName: data.strategy_name,
+        });
+      } catch (err) {
+        setApplyError(err.message || 'Failed to place trade.');
+      } finally {
+        setApplyingKey(null);
+      }
+    },
+    [isLoggedIn, setShowAuthModal, symbol, capital, riskTolerance]
+  );
 
   // ============================================================
   // STEP 1: USER INPUT FORM
@@ -572,6 +619,35 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                       {s.monthly_returns_history.reduce((a, b) => a + b, 0).toFixed(1)}%
                     </div>
                   </div>
+
+                  {/* Place Paper Trade */}
+                  <div className="pt-2 border-t border-gray-700/50">
+                    {applyResult?.key === s.key ? (
+                      <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
+                        ✓ Trade placed:{' '}
+                        <span className="font-semibold">{applyResult.strategyName}</span>
+                        {' '}— {applyResult.qty} × {applyResult.symbol} @{' '}
+                        ${applyResult.price.toFixed(2)} (ID #{applyResult.tradeId})
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleApply(s); }}
+                          disabled={applyingKey === s.key}
+                          className="w-full py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        >
+                          {applyingKey === s.key
+                            ? 'Placing trade…'
+                            : isLoggedIn
+                              ? 'Place Paper Trade'
+                              : 'Sign in to Place Paper Trade'}
+                        </button>
+                        {applyError && applyingKey !== s.key && (
+                          <p className="mt-1 text-xs text-red-400">{applyError}</p>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -604,9 +680,9 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
           </button>
           <button
             onClick={onClose}
-            className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors"
+            className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
           >
-            Apply to Trading
+            Close
           </button>
         </div>
       </div>

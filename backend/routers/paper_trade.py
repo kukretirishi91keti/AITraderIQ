@@ -33,6 +33,11 @@ class PlaceTrade(BaseModel):
     notes: str = Field(default="", max_length=500)
 
 
+class SetLevels(BaseModel):
+    stop_loss_price: Optional[float] = Field(default=None, gt=0)
+    take_profit_price: Optional[float] = Field(default=None, gt=0)
+
+
 # =============================================================================
 # ENDPOINTS
 # =============================================================================
@@ -148,6 +153,8 @@ async def list_paper_trades(
                 "strategy": t.strategy,
                 "market": t.market,
                 "currency": t.currency,
+                "stop_loss_price": t.stop_loss_price,
+                "take_profit_price": t.take_profit_price,
                 "pnl": t.pnl,
                 "pnl_percent": t.pnl_percent,
                 "notes": t.notes,
@@ -217,6 +224,42 @@ async def close_paper_trade(
         "currency": trade.currency,
         "status": "closed",
         "message": f"Trade closed. P&L: {trade.currency}{trade.pnl:+.2f} ({trade.pnl_percent:+.2f}%)",
+    }
+
+
+@router.put("/{trade_id}/levels")
+async def set_trade_levels(
+    trade_id: int,
+    levels: SetLevels,
+    user: User = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set stop-loss and/or take-profit price levels on an open paper trade."""
+    result = await db.execute(
+        select(PaperTrade).where(
+            PaperTrade.id == trade_id,
+            PaperTrade.user_id == user.id,
+        )
+    )
+    trade = result.scalar_one_or_none()
+    if not trade:
+        raise HTTPException(status_code=404, detail="Paper trade not found")
+    if trade.status != "open":
+        raise HTTPException(status_code=400, detail="Cannot set levels on a closed trade")
+
+    if levels.stop_loss_price is not None:
+        trade.stop_loss_price = levels.stop_loss_price
+    if levels.take_profit_price is not None:
+        trade.take_profit_price = levels.take_profit_price
+
+    await db.commit()
+
+    return {
+        "id": trade.id,
+        "symbol": trade.symbol,
+        "stop_loss_price": trade.stop_loss_price,
+        "take_profit_price": trade.take_profit_price,
+        "message": "Trade levels updated",
     }
 
 

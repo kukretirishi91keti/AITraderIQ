@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from './context/AuthContext';
 import ConnectionStatus from './components/ConnectionStatus';
+import RiskDisclaimer from './components/RiskDisclaimer';
+import ToastNotification from './components/ToastNotification';
 import BacktestPanel from './components/BacktestPanel';
 import SentimentDashboard from './components/SentimentDashboard';
 import MarketCommentary from './components/MarketCommentary';
@@ -17,6 +19,8 @@ import {
   getUserAlerts,
   createAlert as apiCreateAlert,
   deleteAlert as apiDeleteAlert,
+  authFetch,
+  getProfile,
 } from './services/auth';
 
 // Constants
@@ -51,6 +55,8 @@ const PortfolioModal = lazy(() => import('./components/modals/PortfolioModal'));
 const AlertsModal = lazy(() => import('./components/modals/AlertsModal'));
 const AddToPortfolioModal = lazy(() => import('./components/modals/AddToPortfolioModal'));
 const StrategyIntelligence = lazy(() => import('./components/StrategyIntelligence'));
+const PaperTradesModal = lazy(() => import('./components/modals/PaperTradesModal'));
+const OnboardingModal = lazy(() => import('./components/modals/OnboardingModal'));
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -89,6 +95,8 @@ export default function App() {
   const [financialsLoading, setFinancialsLoading] = useState(false);
   const [showScreener, setShowScreener] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [showPaperTrades, setShowPaperTrades] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
@@ -151,6 +159,10 @@ export default function App() {
   const [pollingInterval, setPollingInterval] = useState(POLLING_INTERVALS.HEALTHY);
   const [lastFetchTime, setLastFetchTime] = useState(null);
 
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+  const openTradesRef = useRef({});
+
   // Refs
   const intervalRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -197,6 +209,84 @@ export default function App() {
     () => MARKETS.find((m) => m.id === selectedMarket) || MARKETS[0],
     [selectedMarket]
   );
+
+  // Hydrate investorProfile from DB on login, then decide onboarding
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    getProfile()
+      .then((dbProfile) => {
+        const existing = JSON.parse(localStorage.getItem('investorProfile') || '{}');
+
+        let parsedGoals = existing.goals || [];
+        try {
+          if (dbProfile.goals) parsedGoals = JSON.parse(dbProfile.goals);
+        } catch { /* keep existing */ }
+
+        const merged = {
+          ...existing,
+          name:              dbProfile.full_name          || existing.name              || '',
+          tradingStyle:      dbProfile.trader_style       || existing.tradingStyle      || 'swing',
+          riskTolerance:     dbProfile.risk_tolerance     || existing.riskTolerance     || 'moderate',
+          investmentHorizon: dbProfile.investment_horizon || existing.investmentHorizon || 'medium',
+          experience:        dbProfile.experience_level   || existing.experience        || 'intermediate',
+          capitalRange:      dbProfile.capital_range      || existing.capitalRange      || 'medium',
+          goals:             parsedGoals,
+        };
+
+        localStorage.setItem('investorProfile', JSON.stringify(merged));
+        setInvestorProfile(merged);
+
+        // Skip onboarding if the DB already has non-default profile data
+        const hasSetUpProfile =
+          merged.investmentHorizon !== 'medium' ||
+          merged.experience        !== 'intermediate' ||
+          merged.goals.length      >  0 ||
+          merged.riskTolerance     !== 'moderate';
+
+        if (!localStorage.getItem('onboardingComplete') && !hasSetUpProfile) {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => {
+        // DB fetch failed — fall back to local-only check
+        if (!localStorage.getItem('onboardingComplete')) {
+          setShowOnboarding(true);
+        }
+      });
+  }, [isLoggedIn]);
+
+  // Stable helper to add a toast that auto-dismisses after 5 s
+  const addToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  }, []);
+
+  // Poll open paper trades every 60 s; notify when one auto-closes (SL/TP hit)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const checkTrades = async () => {
+      try {
+        const res = await authFetch(`${API_BASE}/api/paper-trade?status=open`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const currentIds = new Set((data.trades || []).map((t) => t.id));
+        const currentMap = Object.fromEntries(
+          (data.trades || []).map((t) => [t.id, { symbol: t.symbol, side: t.side }])
+        );
+        Object.entries(openTradesRef.current).forEach(([id, info]) => {
+          if (!currentIds.has(Number(id))) {
+            addToast(`${info.symbol} ${info.side.toUpperCase()} trade auto-closed (SL/TP hit)`, 'warning');
+          }
+        });
+        openTradesRef.current = currentMap;
+      } catch { /* silent */ }
+    };
+    checkTrades();
+    const interval = setInterval(checkTrades, 60_000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, addToast]);
 
   // ============================================================
   // KEYBOARD SHORTCUTS
@@ -556,7 +646,10 @@ export default function App() {
           price: quote?.price,
           currency: currentMarket.currency,
           market: currentMarket.name,
-          trader_type: traderStyle.toLowerCase(),
+          trader_style: traderStyle.toLowerCase(),
+          risk_tolerance: investorProfile.riskTolerance,
+          experience_level: investorProfile.experience,
+          investment_horizon: investorProfile.investmentHorizon,
           rsi: getSignalValue(signals?.rsi),
           signal: signals?.signal || signals?.overall_signal,
           model: selectedModel,
@@ -973,6 +1066,14 @@ export default function App() {
             >
               💰 Portfolio
             </button>
+            {isLoggedIn && (
+              <button
+                onClick={() => setShowPaperTrades(true)}
+                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium"
+              >
+                📋 Paper Trades
+              </button>
+            )}
             <button
               onClick={() => setShowAlerts(true)}
               className="px-3 py-2 bg-orange-600 hover:bg-orange-500 rounded-lg text-sm font-medium relative"
@@ -1204,8 +1305,25 @@ export default function App() {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     localStorage.setItem('investorProfile', JSON.stringify(investorProfile));
+                    if (isLoggedIn) {
+                      try {
+                        await authFetch(`${API_BASE}/api/auth/me`, {
+                          method: 'PUT',
+                          body: JSON.stringify({
+                            trader_style: investorProfile.tradingStyle || investorProfile.experience,
+                            risk_tolerance: investorProfile.riskTolerance,
+                            investment_horizon: investorProfile.investmentHorizon,
+                            experience_level: investorProfile.experience,
+                            capital_range: investorProfile.capitalRange,
+                            goals: JSON.stringify(investorProfile.goals || []),
+                          }),
+                        });
+                      } catch {
+                        // Profile saved locally; DB sync will retry on next login
+                      }
+                    }
                     setShowInvestorProfile(false);
                   }}
                   className="w-full py-2 bg-gradient-to-r from-cyan-500 to-purple-500 text-white text-sm font-medium rounded hover:opacity-90 transition-opacity"
@@ -1764,6 +1882,9 @@ export default function App() {
             onRemove={removeFromPortfolio}
           />
         )}
+        {showPaperTrades && (
+          <PaperTradesModal onClose={() => setShowPaperTrades(false)} />
+        )}
         {showAlerts && (
           <AlertsModal
             onClose={() => setShowAlerts(false)}
@@ -1839,6 +1960,27 @@ export default function App() {
           </pre>
         </div>
       )}
+
+      {/* Onboarding wizard — shown once after first login */}
+      {showOnboarding && (
+        <Suspense fallback={null}>
+          <OnboardingModal
+            onComplete={(profile) => {
+              setInvestorProfile((prev) => ({ ...prev, ...profile }));
+              setShowOnboarding(false);
+            }}
+          />
+        </Suspense>
+      )}
+
+      {/* Persistent risk disclaimer banner */}
+      <RiskDisclaimer />
+
+      {/* Toast notifications (auto-closing trades, etc.) */}
+      <ToastNotification
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+      />
     </div>
   );
 }
