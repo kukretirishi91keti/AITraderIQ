@@ -68,9 +68,9 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
 
   // Paper trade placement
   const { isLoggedIn, setShowAuthModal } = useAuth();
-  const [applyingKey, setApplyingKey] = useState(null);  // strategy key currently in-flight
-  const [applyResult, setApplyResult] = useState(null);  // success payload
-  const [applyError,  setApplyError]  = useState(null);  // error string
+  const [applyingKey, setApplyingKey] = useState(null); // strategy key currently in-flight
+  const [applyResult, setApplyResult] = useState(null); // success payload
+  const [applyError, setApplyError] = useState(null); // error string
 
   const targetAmount = useMemo(() => capital * (1 + growthTarget / 100), [capital, growthTarget]);
 
@@ -106,7 +106,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
 
   const handleApply = useCallback(
     async (strategy) => {
-      if (!isLoggedIn) { setShowAuthModal(true); return; }
+      if (!isLoggedIn) {
+        setShowAuthModal(true);
+        return;
+      }
       const key = strategy.key;
       setApplyingKey(key);
       setApplyError(null);
@@ -128,10 +131,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
         const data = await res.json();
         setApplyResult({
           key,
-          tradeId:      data.trade_id,
-          symbol:       data.symbol,
-          qty:          data.quantity,
-          price:        data.entry_price,
+          tradeId: data.trade_id,
+          symbol: data.symbol,
+          qty: data.quantity,
+          price: data.entry_price,
           strategyName: data.strategy_name,
         });
       } catch (err) {
@@ -625,14 +628,17 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                     {applyResult?.key === s.key ? (
                       <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
                         ✓ Trade placed:{' '}
-                        <span className="font-semibold">{applyResult.strategyName}</span>
-                        {' '}— {applyResult.qty} × {applyResult.symbol} @{' '}
-                        ${applyResult.price.toFixed(2)} (ID #{applyResult.tradeId})
+                        <span className="font-semibold">{applyResult.strategyName}</span> —{' '}
+                        {applyResult.qty} × {applyResult.symbol} @ ${applyResult.price.toFixed(2)}{' '}
+                        (ID #{applyResult.tradeId})
                       </div>
                     ) : (
                       <>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleApply(s); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApply(s);
+                          }}
                           disabled={applyingKey === s.key}
                           className="w-full py-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                         >

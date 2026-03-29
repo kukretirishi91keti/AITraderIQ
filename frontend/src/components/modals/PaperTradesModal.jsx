@@ -146,9 +146,7 @@ const PaperTradesModal = ({ onClose }) => {
                           className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-green-300 placeholder-gray-500 focus:outline-none focus:border-green-500"
                         />
                       </td>
-                      <td className="py-3 text-gray-400 text-xs">
-                        {trade.strategy || '—'}
-                      </td>
+                      <td className="py-3 text-gray-400 text-xs">{trade.strategy || '—'}</td>
                       <td className="py-3 text-center">
                         <div className="flex gap-1 justify-center">
                           <button

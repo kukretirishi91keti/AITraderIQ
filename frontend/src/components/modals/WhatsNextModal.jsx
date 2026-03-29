@@ -109,9 +109,7 @@ const WhatsNextModal = ({ onClose }) => {
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-3 mb-3">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-white">
-                    {tradeSummary.open_positions}
-                  </div>
+                  <div className="text-2xl font-bold text-white">{tradeSummary.open_positions}</div>
                   <div className="text-xs text-gray-400">Open Trades</div>
                 </div>
                 <div className="text-center">
@@ -126,9 +124,7 @@ const WhatsNextModal = ({ onClose }) => {
                   <div className="text-xs text-gray-400">Total P&amp;L</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-400">
-                    {tradeSummary.win_rate}%
-                  </div>
+                  <div className="text-2xl font-bold text-yellow-400">{tradeSummary.win_rate}%</div>
                   <div className="text-xs text-gray-400">Win Rate</div>
                 </div>
               </div>

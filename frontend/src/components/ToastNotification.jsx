@@ -13,13 +13,13 @@ import React, { useEffect } from 'react';
 const TYPE_STYLES = {
   success: 'bg-green-900/90 border-green-500/50 text-green-200',
   warning: 'bg-yellow-900/90 border-yellow-500/50 text-yellow-200',
-  error:   'bg-red-900/90   border-red-500/50   text-red-200',
+  error: 'bg-red-900/90   border-red-500/50   text-red-200',
 };
 
 const TYPE_ICONS = {
   success: '✓',
   warning: '⚠',
-  error:   '✕',
+  error: '✕',
 };
 
 export default function ToastNotification({ toasts, onDismiss }) {
