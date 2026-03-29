@@ -3,9 +3,12 @@ import React, { useState } from 'react';
 const WatchlistEditModal = ({
   onClose,
   watchlist,
-  setWatchlist,
+  onAdd,
+  onRemove,
+  onClear,
+  onReorder,
   onSelectSymbol,
-  setAlerts,
+  onAddAlert,
   currentSymbol,
 }) => {
   const [newSymbol, setNewSymbol] = useState('');
@@ -14,17 +17,17 @@ const WatchlistEditModal = ({
   const handleAdd = () => {
     const symbol = newSymbol.trim().toUpperCase();
     if (symbol && !watchlist.includes(symbol)) {
-      setWatchlist((prev) => [...prev, symbol]);
+      onAdd(symbol);
       setNewSymbol('');
     }
   };
 
   const handleRemove = (symbol) => {
-    setWatchlist((prev) => prev.filter((s) => s !== symbol));
+    onRemove(symbol);
   };
 
   const handleAddAlert = (symbol) => {
-    setAlerts((prev) => [...prev, { symbol, condition: 'above', price: 0 }]);
+    onAddAlert(symbol);
   };
 
   const handleDragStart = (e, index) => {
@@ -41,7 +44,7 @@ const WatchlistEditModal = ({
     newWatchlist.splice(draggedIndex, 1);
     newWatchlist.splice(index, 0, draggedItem);
 
-    setWatchlist(newWatchlist);
+    onReorder(newWatchlist);
     setDraggedIndex(index);
   };
 
@@ -135,7 +138,7 @@ const WatchlistEditModal = ({
 
         <div className="p-4 border-t border-gray-700 flex gap-2">
           <button
-            onClick={() => setWatchlist([])}
+            onClick={() => onClear()}
             className="flex-1 py-2 bg-red-600/30 hover:bg-red-600/50 text-red-400 rounded text-sm font-medium"
           >
             Clear All

@@ -324,101 +324,235 @@ async def get_history(
 @router.get("/signals/{symbol}")
 async def get_signals(symbol: str):
     """
-    Get trading signals for a symbol.
+    Get trading signals for a symbol using real technical indicators.
 
-    Returns RSI, MACD, trend, signal recommendation, ATR, and risk score.
-    This endpoint is called by the frontend Technicals tab.
+    Computes RSI(14), MACD(12,26,9), Bollinger Bands(20,2), ATR(14), VWAP,
+    SMA(20), EMA(12) from actual OHLCV price history.
+    Falls back to demo data if live history is unavailable.
     """
+    import math
+
     symbol = validate_symbol(symbol)
-    
-    # Generate consistent signals based on symbol + time
-    seed = get_seed(symbol) + int(datetime.now().timestamp() / 300)  # Change every 5 min
-    random.seed(seed)
-    
-    # Get current price
+    source = "LIVE"
+
     try:
         svc = get_market_data_service()
-        quote = await svc.get_quote(symbol)
-        price = quote.get("price", 100.0)
-        currency = quote.get("currency", "$")
-    except:
-        price = 100.0
-        currency = "$"
-    
-    # Generate indicators
-    rsi = random.uniform(25, 75)
-    macd = random.uniform(-5, 5)
-    macd_signal = macd + random.uniform(-1, 1)
-    macd_histogram = macd - macd_signal
-    
-    sma_20 = price * random.uniform(0.97, 1.03)
-    ema_12 = price * random.uniform(0.98, 1.02)
-    vwap = price * random.uniform(0.99, 1.01)
-    
-    # ATR (Average True Range) - typically 1-3% of price
-    atr = round(price * random.uniform(0.01, 0.03), 2)
-    
-    # Bollinger Bands
-    bb_middle = sma_20
-    bb_std = price * 0.02
-    bb_upper = bb_middle + (2 * bb_std)
-    bb_lower = bb_middle - (2 * bb_std)
-    
-    # Determine signal based on RSI
-    if rsi < 30:
-        signal = "STRONG BUY"
-        confidence = random.randint(75, 95)
-        trend = "Oversold - Reversal Expected"
-    elif rsi < 40:
-        signal = "BUY"
-        confidence = random.randint(60, 80)
-        trend = "Bullish"
-    elif rsi > 70:
-        signal = "STRONG SELL"
-        confidence = random.randint(75, 95)
-        trend = "Overbought - Correction Expected"
-    elif rsi > 60:
-        signal = "SELL"
-        confidence = random.randint(60, 80)
-        trend = "Bearish"
-    else:
-        signal = "HOLD"
-        confidence = random.randint(50, 70)
-        trend = "Neutral"
-    
-    # Risk score (0-100)
-    volatility = random.uniform(0.5, 2.5)
-    risk_score = min(100, int(30 + volatility * 20 + abs(50 - rsi) * 0.5))
-    risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
-    
-    return {
-        "success": True,
-        "symbol": symbol,
-        "signal": signal,
-        "confidence": confidence,
-        "trend": trend,
-        "rsi": round(rsi, 2),
-        "macd": round(macd, 4),
-        "macd_signal": round(macd_signal, 4),
-        "macd_histogram": round(macd_histogram, 4),
-        "sma_20": round(sma_20, 2),
-        "ema_12": round(ema_12, 2),
-        "vwap": round(vwap, 2),
-        "atr": atr,
-        "bollinger": {
-            "upper": round(bb_upper, 2),
-            "middle": round(bb_middle, 2),
-            "lower": round(bb_lower, 2)
-        },
-        "risk_score": risk_score,
-        "risk_level": risk_level,
-        "support": round(price * 0.95, 2),
-        "resistance": round(price * 1.05, 2),
-        "currency": currency,
-        "price": price,
-        "source": "DEMO",
-        "timestamp": datetime.now().isoformat()
-    }
+        candles_raw, hist_source = await svc.get_history(symbol, period="1mo", interval="1d")
+
+        if not candles_raw or len(candles_raw) < 26:
+            raise ValueError("Insufficient data")
+
+        # Extract OHLCV
+        candles = []
+        for c in candles_raw:
+            candles.append({
+                "open": float(c.get("open", 0)),
+                "high": float(c.get("high", 0)),
+                "low": float(c.get("low", 0)),
+                "close": float(c.get("close", 0)),
+                "volume": float(c.get("volume", 0)),
+            })
+
+        closes = [c["close"] for c in candles]
+        price = closes[-1]
+
+        # Get currency from quote
+        try:
+            quote = await svc.get_quote(symbol)
+            currency = quote.get("currency", "$")
+        except Exception:
+            currency = "$"
+
+        # ── RSI(14) ──
+        deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+        gains = [d if d > 0 else 0 for d in deltas]
+        losses = [-d if d < 0 else 0 for d in deltas]
+        avg_gain = sum(gains[:14]) / 14
+        avg_loss = sum(losses[:14]) / 14
+        for i in range(14, len(gains)):
+            avg_gain = (avg_gain * 13 + gains[i]) / 14
+            avg_loss = (avg_loss * 13 + losses[i]) / 14
+        rs = avg_gain / avg_loss if avg_loss > 0 else 100
+        rsi = 100 - (100 / (1 + rs))
+
+        # ── EMA helper ──
+        def _ema(data, period):
+            k = 2 / (period + 1)
+            result = [data[0]]
+            for i in range(1, len(data)):
+                result.append(data[i] * k + result[-1] * (1 - k))
+            return result
+
+        # ── MACD(12,26,9) ──
+        ema12_vals = _ema(closes, 12)
+        ema26_vals = _ema(closes, 26)
+        macd_line = [ema12_vals[i] - ema26_vals[i] for i in range(len(closes))]
+        signal_line = _ema(macd_line[25:], 9)
+        macd = macd_line[-1]
+        macd_signal = signal_line[-1]
+        macd_histogram = macd - macd_signal
+
+        # ── Bollinger Bands(20,2) ──
+        window = closes[-20:] if len(closes) >= 20 else closes
+        sma_20 = sum(window) / len(window)
+        std_20 = math.sqrt(sum((c - sma_20) ** 2 for c in window) / len(window))
+        bb_upper = sma_20 + 2 * std_20
+        bb_lower = sma_20 - 2 * std_20
+
+        # ── ATR(14) ──
+        trs = []
+        for i in range(1, len(candles)):
+            tr = max(
+                candles[i]["high"] - candles[i]["low"],
+                abs(candles[i]["high"] - candles[i - 1]["close"]),
+                abs(candles[i]["low"] - candles[i - 1]["close"]),
+            )
+            trs.append(tr)
+        atr = sum(trs[-14:]) / 14 if len(trs) >= 14 else (sum(trs) / len(trs) if trs else 0)
+
+        # ── VWAP ──
+        tp_vol = sum((c["high"] + c["low"] + c["close"]) / 3 * c["volume"] for c in candles)
+        total_vol = sum(c["volume"] for c in candles)
+        vwap = tp_vol / total_vol if total_vol > 0 else price
+
+        # ── EMA(12) ──
+        ema_12 = ema12_vals[-1]
+
+        # ── Signal determination ──
+        if rsi < 30 and macd_histogram > 0:
+            signal = "STRONG BUY"
+            confidence = round(80 + min(15, (30 - rsi) / 2), 1)
+            trend = "Oversold + MACD crossover - Reversal Expected"
+        elif rsi < 30:
+            signal = "BUY"
+            confidence = round(65 + min(15, (30 - rsi) / 2), 1)
+            trend = "Oversold - Reversal Expected"
+        elif rsi > 70 and macd_histogram < 0:
+            signal = "STRONG SELL"
+            confidence = round(80 + min(15, (rsi - 70) / 2), 1)
+            trend = "Overbought + MACD bearish - Correction Expected"
+        elif rsi > 70:
+            signal = "SELL"
+            confidence = round(65 + min(15, (rsi - 70) / 2), 1)
+            trend = "Overbought - Correction Expected"
+        elif macd_histogram > 0 and price > sma_20:
+            signal = "BUY"
+            confidence = round(55 + min(15, abs(macd_histogram) / price * 1000), 1)
+            trend = "Bullish"
+        elif macd_histogram < 0 and price < sma_20:
+            signal = "SELL"
+            confidence = round(55 + min(15, abs(macd_histogram) / price * 1000), 1)
+            trend = "Bearish"
+        else:
+            signal = "HOLD"
+            confidence = round(45 + min(15, (50 - abs(rsi - 50)) / 3), 1)
+            trend = "Neutral"
+
+        confidence = max(0, min(100, confidence))
+
+        # Risk assessment
+        volatility = (atr / price * 100) if price > 0 else 1.0
+        risk_score = min(100, int(30 + volatility * 10 + abs(50 - rsi) * 0.5))
+        risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
+
+        return {
+            "success": True,
+            "symbol": symbol,
+            "signal": signal,
+            "confidence": confidence,
+            "trend": trend,
+            "rsi": round(rsi, 2),
+            "macd": round(macd, 4),
+            "macd_signal": round(macd_signal, 4),
+            "macd_histogram": round(macd_histogram, 4),
+            "sma_20": round(sma_20, 2),
+            "ema_12": round(ema_12, 2),
+            "vwap": round(vwap, 2),
+            "atr": round(atr, 2),
+            "bollinger": {
+                "upper": round(bb_upper, 2),
+                "middle": round(sma_20, 2),
+                "lower": round(bb_lower, 2),
+            },
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "support": round(bb_lower, 2),
+            "resistance": round(bb_upper, 2),
+            "currency": currency,
+            "price": round(price, 2),
+            "source": hist_source,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        logger.warning(f"Live signals failed for {symbol}, using demo: {e}")
+        # ── Fallback: demo signals ──
+        seed = get_seed(symbol) + int(datetime.now().timestamp() / 300)
+        random.seed(seed)
+
+        try:
+            svc = get_market_data_service()
+            quote = await svc.get_quote(symbol)
+            price = quote.get("price", 100.0)
+            currency = quote.get("currency", "$")
+        except Exception:
+            price = 100.0
+            currency = "$"
+
+        rsi = random.uniform(25, 75)
+        macd = random.uniform(-5, 5)
+        macd_signal = macd + random.uniform(-1, 1)
+        macd_histogram = macd - macd_signal
+        sma_20 = price * random.uniform(0.97, 1.03)
+        ema_12 = price * random.uniform(0.98, 1.02)
+        vwap = price * random.uniform(0.99, 1.01)
+        atr = round(price * random.uniform(0.01, 0.03), 2)
+        bb_std = price * 0.02
+        bb_upper = sma_20 + 2 * bb_std
+        bb_lower = sma_20 - 2 * bb_std
+
+        if rsi < 30:
+            signal, confidence, trend = "STRONG BUY", random.randint(75, 95), "Oversold - Reversal Expected"
+        elif rsi < 40:
+            signal, confidence, trend = "BUY", random.randint(60, 80), "Bullish"
+        elif rsi > 70:
+            signal, confidence, trend = "STRONG SELL", random.randint(75, 95), "Overbought - Correction Expected"
+        elif rsi > 60:
+            signal, confidence, trend = "SELL", random.randint(60, 80), "Bearish"
+        else:
+            signal, confidence, trend = "HOLD", random.randint(50, 70), "Neutral"
+
+        risk_score = min(100, int(30 + random.uniform(0.5, 2.5) * 20 + abs(50 - rsi) * 0.5))
+        risk_level = "Low" if risk_score < 40 else "Medium" if risk_score < 70 else "High"
+
+        return {
+            "success": True,
+            "symbol": symbol,
+            "signal": signal,
+            "confidence": confidence,
+            "trend": trend,
+            "rsi": round(rsi, 2),
+            "macd": round(macd, 4),
+            "macd_signal": round(macd_signal, 4),
+            "macd_histogram": round(macd_histogram, 4),
+            "sma_20": round(sma_20, 2),
+            "ema_12": round(ema_12, 2),
+            "vwap": round(vwap, 2),
+            "atr": atr,
+            "bollinger": {
+                "upper": round(bb_upper, 2),
+                "middle": round(sma_20, 2),
+                "lower": round(bb_lower, 2),
+            },
+            "risk_score": risk_score,
+            "risk_level": risk_level,
+            "support": round(price * 0.95, 2),
+            "resistance": round(price * 1.05, 2),
+            "currency": currency,
+            "price": price,
+            "source": "DEMO",
+            "timestamp": datetime.now().isoformat(),
+        }
 
 
 # =============================================================================

@@ -7,6 +7,17 @@ import MarketCommentary from './components/MarketCommentary';
 import AIScanner from './components/AIScanner';
 import ChartPanel from './components/ChartPanel';
 import { getPriceStream } from './services/websocket';
+import {
+  getUserWatchlist,
+  addToWatchlist as apiAddToWatchlist,
+  removeFromWatchlist as apiRemoveFromWatchlist,
+  getUserPortfolio,
+  addToPortfolio as apiAddToPortfolio,
+  removeFromPortfolio as apiRemoveFromPortfolio,
+  getUserAlerts,
+  createAlert as apiCreateAlert,
+  deleteAlert as apiDeleteAlert,
+} from './services/auth';
 
 // Constants
 import { MARKETS, STATIC_UNIVERSE } from './constants/markets';
@@ -238,9 +249,21 @@ export default function App() {
         case 'w':
         case 'W':
           e.preventDefault();
-          if (!watchlist.includes(selectedSymbol))
+          if (!watchlist.includes(selectedSymbol)) {
             setWatchlist((prev) => [...prev, selectedSymbol]);
-          else setWatchlist((prev) => prev.filter((s) => s !== selectedSymbol));
+            if (isLoggedIn) {
+              apiAddToWatchlist(selectedSymbol, selectedMarket)
+                .then(() => refreshWatchlistFromApi())
+                .catch(() => {});
+            }
+          } else {
+            setWatchlist((prev) => prev.filter((s) => s !== selectedSymbol));
+            if (isLoggedIn) {
+              apiRemoveFromWatchlist(selectedSymbol)
+                .then(() => refreshWatchlistFromApi())
+                .catch(() => {});
+            }
+          }
           break;
         case 'p':
         case 'P':
@@ -293,6 +316,9 @@ export default function App() {
     showWatchlistEdit,
     showAddToPortfolio,
     showKeyboardHelp,
+    isLoggedIn,
+    selectedMarket,
+    refreshWatchlistFromApi,
   ]);
 
   // ============================================================
@@ -563,10 +589,19 @@ export default function App() {
   // ============================================================
   // WATCHLIST / PORTFOLIO / ALERT HANDLERS
   // ============================================================
-  const addToWatchlist = useCallback(() => {
-    if (selectedSymbol && !watchlist.includes(selectedSymbol))
+  const addToWatchlist = useCallback(async () => {
+    if (selectedSymbol && !watchlist.includes(selectedSymbol)) {
       setWatchlist((prev) => [...prev, selectedSymbol]);
-  }, [selectedSymbol, watchlist]);
+      if (isLoggedIn) {
+        try {
+          await apiAddToWatchlist(selectedSymbol, selectedMarket);
+          await refreshWatchlistFromApi();
+        } catch {
+          // Local state already updated as fallback
+        }
+      }
+    }
+  }, [selectedSymbol, watchlist, isLoggedIn, selectedMarket, refreshWatchlistFromApi]);
 
   const isInWatchlist = useMemo(
     () => watchlist.includes(selectedSymbol),
@@ -577,7 +612,7 @@ export default function App() {
     [portfolio, selectedSymbol]
   );
 
-  const addToPortfolio = useCallback(() => {
+  const addToPortfolio = useCallback(async () => {
     const shares = parseFloat(portfolioShares);
     const avgPrice = parseFloat(portfolioAvgPrice);
     if (isNaN(shares) || shares <= 0 || isNaN(avgPrice) || avgPrice <= 0) return;
@@ -595,13 +630,40 @@ export default function App() {
     setPortfolioShares('');
     setPortfolioAvgPrice('');
     setShowAddToPortfolio(false);
-  }, [selectedSymbol, portfolioShares, portfolioAvgPrice]);
+    if (isLoggedIn) {
+      try {
+        await apiAddToPortfolio({
+          symbol: selectedSymbol,
+          shares,
+          avgPrice,
+          market: selectedMarket,
+        });
+        await refreshPortfolioFromApi();
+      } catch {
+        // Local state already updated as fallback
+      }
+    }
+  }, [selectedSymbol, portfolioShares, portfolioAvgPrice, isLoggedIn, selectedMarket, refreshPortfolioFromApi]);
 
-  const removeFromPortfolio = useCallback((symbol) => {
-    setPortfolio((prev) => prev.filter((p) => p.symbol !== symbol));
-  }, []);
+  const removeFromPortfolio = useCallback(async (symbolOrId) => {
+    if (isLoggedIn) {
+      // Find the portfolio item to get its DB id
+      const item = portfolio.find((p) => p.symbol === symbolOrId || p.id === symbolOrId);
+      setPortfolio((prev) => prev.filter((p) => p.symbol !== symbolOrId && p.id !== symbolOrId));
+      if (item?.id) {
+        try {
+          await apiRemoveFromPortfolio(item.id);
+          await refreshPortfolioFromApi();
+        } catch {
+          // Local state already updated as fallback
+        }
+      }
+    } else {
+      setPortfolio((prev) => prev.filter((p) => p.symbol !== symbolOrId));
+    }
+  }, [isLoggedIn, portfolio, refreshPortfolioFromApi]);
 
-  const addAlert = useCallback(() => {
+  const addAlert = useCallback(async () => {
     const price = parseFloat(newAlertPrice);
     if (isNaN(price) || price <= 0) return;
     const newAlert = { symbol: selectedSymbol, condition: newAlertCondition, price };
@@ -615,12 +677,89 @@ export default function App() {
     ) {
       setAlerts((prev) => [...prev, newAlert]);
       setNewAlertPrice('');
+      if (isLoggedIn) {
+        try {
+          await apiCreateAlert({
+            symbol: selectedSymbol,
+            condition: newAlertCondition,
+            targetValue: price,
+          });
+          await refreshAlertsFromApi();
+        } catch {
+          // Local state already updated as fallback
+        }
+      }
     }
-  }, [selectedSymbol, newAlertCondition, newAlertPrice, alerts]);
+  }, [selectedSymbol, newAlertCondition, newAlertPrice, alerts, isLoggedIn, refreshAlertsFromApi]);
 
-  const removeAlert = useCallback((index) => {
+  const removeAlert = useCallback(async (index) => {
+    const alertToRemove = alerts[index];
     setAlerts((prev) => prev.filter((_, i) => i !== index));
+    if (isLoggedIn && alertToRemove?.id) {
+      try {
+        await apiDeleteAlert(alertToRemove.id);
+        await refreshAlertsFromApi();
+      } catch {
+        // Local state already updated as fallback
+      }
+    }
+  }, [alerts, isLoggedIn, refreshAlertsFromApi]);
+
+  // Watchlist handlers for WatchlistEditModal (API-aware)
+  const handleWatchlistAdd = useCallback(async (symbol) => {
+    if (!symbol || watchlist.includes(symbol)) return;
+    setWatchlist((prev) => [...prev, symbol]);
+    if (isLoggedIn) {
+      try {
+        await apiAddToWatchlist(symbol, selectedMarket);
+        await refreshWatchlistFromApi();
+      } catch {
+        // Local state already updated as fallback
+      }
+    }
+  }, [watchlist, isLoggedIn, selectedMarket, refreshWatchlistFromApi]);
+
+  const handleWatchlistRemove = useCallback(async (symbol) => {
+    setWatchlist((prev) => prev.filter((s) => s !== symbol));
+    if (isLoggedIn) {
+      try {
+        await apiRemoveFromWatchlist(symbol);
+        await refreshWatchlistFromApi();
+      } catch {
+        // Local state already updated as fallback
+      }
+    }
+  }, [isLoggedIn, refreshWatchlistFromApi]);
+
+  const handleWatchlistClear = useCallback(async () => {
+    const oldWatchlist = [...watchlist];
+    setWatchlist([]);
+    if (isLoggedIn) {
+      try {
+        await Promise.all(oldWatchlist.map((symbol) => apiRemoveFromWatchlist(symbol)));
+        await refreshWatchlistFromApi();
+      } catch {
+        // Local state already cleared as fallback
+      }
+    }
+  }, [watchlist, isLoggedIn, refreshWatchlistFromApi]);
+
+  const handleWatchlistReorder = useCallback((newWatchlist) => {
+    setWatchlist(newWatchlist);
   }, []);
+
+  const handleWatchlistAddAlert = useCallback(async (symbol) => {
+    const newAlert = { symbol, condition: 'above', price: 0 };
+    setAlerts((prev) => [...prev, newAlert]);
+    if (isLoggedIn) {
+      try {
+        await apiCreateAlert({ symbol, condition: 'above', targetValue: 0 });
+        await refreshAlertsFromApi();
+      } catch {
+        // Local state already updated as fallback
+      }
+    }
+  }, [isLoggedIn, refreshAlertsFromApi]);
 
   // ============================================================
   // EFFECTS
@@ -652,6 +791,68 @@ export default function App() {
     setHistory([]);
     setLoading(true);
   }, [chartInterval]);
+
+  // ============================================================
+  // SYNC USER DATA FROM BACKEND ON LOGIN
+  // ============================================================
+  const refreshWatchlistFromApi = useCallback(async () => {
+    try {
+      const data = await getUserWatchlist();
+      if (data.watchlist && data.watchlist.length > 0) {
+        setWatchlist(data.watchlist.map((item) => item.symbol));
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
+  const refreshPortfolioFromApi = useCallback(async () => {
+    try {
+      const data = await getUserPortfolio();
+      if (data.holdings) {
+        setPortfolio(
+          data.holdings.map((item) => ({
+            id: item.id,
+            symbol: item.symbol,
+            shares: item.shares,
+            avgPrice: item.avg_price,
+            currency: item.currency,
+            market: item.market,
+          }))
+        );
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
+  const refreshAlertsFromApi = useCallback(async () => {
+    try {
+      const data = await getUserAlerts();
+      if (data.alerts) {
+        setAlerts(
+          data.alerts.map((item) => ({
+            id: item.id,
+            symbol: item.symbol,
+            condition: item.condition,
+            price: item.target_value,
+            is_triggered: item.is_triggered,
+            is_active: item.is_active,
+          }))
+        );
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      refreshWatchlistFromApi();
+      refreshPortfolioFromApi();
+      refreshAlertsFromApi();
+    }
+  }, [isLoggedIn, refreshWatchlistFromApi, refreshPortfolioFromApi, refreshAlertsFromApi]);
 
   // Filtered screener data
   const filteredScreenerData = useMemo(() => {
@@ -1510,9 +1711,12 @@ export default function App() {
           <WatchlistEditModal
             onClose={() => setShowWatchlistEdit(false)}
             watchlist={watchlist}
-            setWatchlist={setWatchlist}
+            onAdd={handleWatchlistAdd}
+            onRemove={handleWatchlistRemove}
+            onClear={handleWatchlistClear}
+            onReorder={handleWatchlistReorder}
             onSelectSymbol={handleSymbolSelect}
-            setAlerts={setAlerts}
+            onAddAlert={handleWatchlistAddAlert}
             currentSymbol={selectedSymbol}
           />
         )}
