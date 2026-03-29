@@ -312,6 +312,13 @@ load_router(
     '(plans, checkout, billing)'
 )
 
+# Load paper trade router
+load_router(
+    ['routers.paper_trade'],
+    'paper trade router',
+    '(paper trading simulation)'
+)
+
 
 # ============================================================
 # ROOT ENDPOINTS
