@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { authFetch } from '../../services/auth';
 import { API_BASE } from '../../constants/appConfig';
 
-const WhatsNextModal = ({ onClose }) => {
-  const { isLoggedIn } = useAuth();
+const WhatsNextModal = ({ onClose, isLoggedIn = false }) => {
   const [tradeSummary, setTradeSummary] = useState(null);
   const [openTrades, setOpenTrades] = useState([]);
 

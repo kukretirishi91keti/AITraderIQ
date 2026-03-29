@@ -1853,7 +1853,9 @@ export default function App() {
       {/* Lazy-loaded Modals */}
       <Suspense fallback={null}>
         {showUserGuide && <UserGuideModal onClose={() => setShowUserGuide(false)} />}
-        {showWhatsNext && <WhatsNextModal onClose={() => setShowWhatsNext(false)} />}
+        {showWhatsNext && (
+          <WhatsNextModal isLoggedIn={isLoggedIn} onClose={() => setShowWhatsNext(false)} />
+        )}
         {showKeyboardHelp && <KeyboardShortcutsModal onClose={() => setShowKeyboardHelp(false)} />}
         {showWatchlistEdit && (
           <WatchlistEditModal
