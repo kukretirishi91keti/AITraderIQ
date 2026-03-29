@@ -56,11 +56,14 @@ describe('auth service', () => {
 
     await authFetch('/test');
 
-    expect(fetch).toHaveBeenCalledWith('/test', expect.objectContaining({
-      headers: expect.objectContaining({
-        Authorization: 'Bearer mytoken',
-      }),
-    }));
+    expect(fetch).toHaveBeenCalledWith(
+      '/test',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer mytoken',
+        }),
+      })
+    );
   });
 
   it('authFetch auto-logout on 401', async () => {
@@ -84,7 +87,7 @@ describe('auth service', () => {
       expect.objectContaining({
         method: 'POST',
         body: expect.any(String),
-      }),
+      })
     );
 
     const body = JSON.parse(fetch.mock.calls[0][1].body);

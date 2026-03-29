@@ -73,7 +73,7 @@ describe('PriceStream', () => {
     ws.onmessage({ data: JSON.stringify({ type: 'quote', symbol: 'AAPL', price: 150 }) });
 
     expect(callback).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'quote', symbol: 'AAPL', price: 150 }),
+      expect.objectContaining({ type: 'quote', symbol: 'AAPL', price: 150 })
     );
   });
 

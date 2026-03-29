@@ -46,7 +46,7 @@ describe('AuthContext', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>,
+      </AuthProvider>
     );
 
     expect(screen.getByTestId('logged-in').textContent).toBe('false');
@@ -62,7 +62,7 @@ describe('AuthContext', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>,
+      </AuthProvider>
     );
 
     await act(async () => {
@@ -81,7 +81,7 @@ describe('AuthContext', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>,
+      </AuthProvider>
     );
 
     expect(screen.getByTestId('logged-in').textContent).toBe('true');
@@ -101,7 +101,7 @@ describe('AuthContext', () => {
     render(
       <AuthProvider>
         <TestConsumer />
-      </AuthProvider>,
+      </AuthProvider>
     );
 
     expect(screen.getByTestId('logged-in').textContent).toBe('true');

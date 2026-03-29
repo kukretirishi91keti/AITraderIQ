@@ -12,7 +12,14 @@ vi.mock('../config', () => ({
   },
 }));
 
-import { getQuote, getQuotesBatch, getCandles, getHealth, checkConnection, extractDataStatus } from './api';
+import {
+  getQuote,
+  getQuotesBatch,
+  getCandles,
+  getHealth,
+  checkConnection,
+  extractDataStatus,
+} from './api';
 
 globalThis.fetch = vi.fn();
 
@@ -25,7 +32,13 @@ describe('api service', () => {
   it('getQuote returns parsed data', async () => {
     fetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ symbol: 'AAPL', price: 150, prevClose: 148, change: 2, changePercent: 1.35 }),
+      json: async () => ({
+        symbol: 'AAPL',
+        price: 150,
+        prevClose: 148,
+        change: 2,
+        changePercent: 1.35,
+      }),
     });
 
     const result = await getQuote('AAPL');
@@ -51,10 +64,7 @@ describe('api service', () => {
 
     await getCandles('AAPL', '1h', 50);
 
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('interval=1h'),
-      expect.any(Object),
-    );
+    expect(fetch).toHaveBeenCalledWith(expect.stringContaining('interval=1h'), expect.any(Object));
   });
 
   it('getQuotesBatch sends POST', async () => {
@@ -67,7 +77,7 @@ describe('api service', () => {
 
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({ method: 'POST' })
     );
   });
 
