@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspens
 import { useAuth } from './context/AuthContext';
 import ConnectionStatus from './components/ConnectionStatus';
 import RiskDisclaimer from './components/RiskDisclaimer';
+import ToastNotification from './components/ToastNotification';
 import BacktestPanel from './components/BacktestPanel';
 import SentimentDashboard from './components/SentimentDashboard';
 import MarketCommentary from './components/MarketCommentary';
@@ -158,6 +159,10 @@ export default function App() {
   const [pollingInterval, setPollingInterval] = useState(POLLING_INTERVALS.HEALTHY);
   const [lastFetchTime, setLastFetchTime] = useState(null);
 
+  // Toast notifications
+  const [toasts, setToasts] = useState([]);
+  const openTradesRef = useRef({});
+
   // Refs
   const intervalRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -250,6 +255,38 @@ export default function App() {
         }
       });
   }, [isLoggedIn]);
+
+  // Stable helper to add a toast that auto-dismisses after 5 s
+  const addToast = useCallback((message, type = 'success') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
+  }, []);
+
+  // Poll open paper trades every 60 s; notify when one auto-closes (SL/TP hit)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const checkTrades = async () => {
+      try {
+        const res = await authFetch(`${API_BASE}/api/paper-trade?status=open`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const currentIds = new Set((data.trades || []).map((t) => t.id));
+        const currentMap = Object.fromEntries(
+          (data.trades || []).map((t) => [t.id, { symbol: t.symbol, side: t.side }])
+        );
+        Object.entries(openTradesRef.current).forEach(([id, info]) => {
+          if (!currentIds.has(Number(id))) {
+            addToast(`${info.symbol} ${info.side.toUpperCase()} trade auto-closed (SL/TP hit)`, 'warning');
+          }
+        });
+        openTradesRef.current = currentMap;
+      } catch { /* silent */ }
+    };
+    checkTrades();
+    const interval = setInterval(checkTrades, 60_000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, addToast]);
 
   // ============================================================
   // KEYBOARD SHORTCUTS
@@ -1938,6 +1975,12 @@ export default function App() {
 
       {/* Persistent risk disclaimer banner */}
       <RiskDisclaimer />
+
+      {/* Toast notifications (auto-closing trades, etc.) */}
+      <ToastNotification
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((t) => t.id !== id))}
+      />
     </div>
   );
 }

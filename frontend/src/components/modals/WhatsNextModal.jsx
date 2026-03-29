@@ -1,6 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { authFetch } from '../../services/auth';
+import { API_BASE } from '../../constants/appConfig';
 
 const WhatsNextModal = ({ onClose }) => {
+  const { isLoggedIn } = useAuth();
+  const [tradeSummary, setTradeSummary] = useState(null);
+  const [openTrades, setOpenTrades] = useState([]);
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    Promise.all([
+      authFetch(`${API_BASE}/api/paper-trade/summary`).then((r) => r.json()),
+      authFetch(`${API_BASE}/api/paper-trade?status=open`).then((r) => r.json()),
+    ])
+      .then(([summary, list]) => {
+        setTradeSummary(summary);
+        setOpenTrades(list.trades || []);
+      })
+      .catch(() => {});
+  }, [isLoggedIn]);
+
   const upcomingFeatures = [
     {
       name: 'Real-time WebSocket Streaming',
@@ -80,6 +100,71 @@ const WhatsNextModal = ({ onClose }) => {
         </div>
 
         <div className="p-4 space-y-6">
+          {/* Live trading activity — shown only when logged in */}
+          {isLoggedIn && tradeSummary && (
+            <div className="p-4 bg-gray-800/60 border border-gray-700 rounded-xl">
+              <h3 className="text-sm font-semibold text-cyan-400 uppercase mb-3">
+                📊 My Trading Activity
+              </h3>
+              {/* Summary row */}
+              <div className="grid grid-cols-3 gap-3 mb-3">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-white">
+                    {tradeSummary.open_positions}
+                  </div>
+                  <div className="text-xs text-gray-400">Open Trades</div>
+                </div>
+                <div className="text-center">
+                  <div
+                    className={`text-2xl font-bold ${
+                      tradeSummary.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'
+                    }`}
+                  >
+                    {tradeSummary.total_pnl >= 0 ? '+' : ''}
+                    {tradeSummary.total_pnl?.toFixed(2)}
+                  </div>
+                  <div className="text-xs text-gray-400">Total P&amp;L</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-400">
+                    {tradeSummary.win_rate}%
+                  </div>
+                  <div className="text-xs text-gray-400">Win Rate</div>
+                </div>
+              </div>
+              {/* Open trades list (max 3) */}
+              {openTrades.length > 0 ? (
+                <div className="space-y-1">
+                  {openTrades.slice(0, 3).map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex justify-between text-xs text-gray-300 bg-gray-700/40 rounded px-3 py-1.5"
+                    >
+                      <span>
+                        <span className="text-cyan-400 font-medium">{t.symbol}</span>{' '}
+                        {t.side.toUpperCase()}
+                      </span>
+                      <span className="text-gray-400">{t.strategy || 'Manual'}</span>
+                      <span>
+                        {t.currency}
+                        {t.entry_price?.toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                  {openTrades.length > 3 && (
+                    <p className="text-xs text-gray-500 text-center">
+                      +{openTrades.length - 3} more open trades
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500 text-center">
+                  No open trades — use Strategy AI to place one
+                </p>
+              )}
+            </div>
+          )}
+
           <section>
             <h3 className="text-lg font-semibold text-green-400 mb-3">✅ Recent Updates</h3>
             <div className="space-y-2">
