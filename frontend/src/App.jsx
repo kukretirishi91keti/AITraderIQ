@@ -221,17 +221,19 @@ export default function App() {
         let parsedGoals = existing.goals || [];
         try {
           if (dbProfile.goals) parsedGoals = JSON.parse(dbProfile.goals);
-        } catch { /* keep existing */ }
+        } catch {
+          /* keep existing */
+        }
 
         const merged = {
           ...existing,
-          name:              dbProfile.full_name          || existing.name              || '',
-          tradingStyle:      dbProfile.trader_style       || existing.tradingStyle      || 'swing',
-          riskTolerance:     dbProfile.risk_tolerance     || existing.riskTolerance     || 'moderate',
+          name: dbProfile.full_name || existing.name || '',
+          tradingStyle: dbProfile.trader_style || existing.tradingStyle || 'swing',
+          riskTolerance: dbProfile.risk_tolerance || existing.riskTolerance || 'moderate',
           investmentHorizon: dbProfile.investment_horizon || existing.investmentHorizon || 'medium',
-          experience:        dbProfile.experience_level   || existing.experience        || 'intermediate',
-          capitalRange:      dbProfile.capital_range      || existing.capitalRange      || 'medium',
-          goals:             parsedGoals,
+          experience: dbProfile.experience_level || existing.experience || 'intermediate',
+          capitalRange: dbProfile.capital_range || existing.capitalRange || 'medium',
+          goals: parsedGoals,
         };
 
         localStorage.setItem('investorProfile', JSON.stringify(merged));
@@ -240,9 +242,9 @@ export default function App() {
         // Skip onboarding if the DB already has non-default profile data
         const hasSetUpProfile =
           merged.investmentHorizon !== 'medium' ||
-          merged.experience        !== 'intermediate' ||
-          merged.goals.length      >  0 ||
-          merged.riskTolerance     !== 'moderate';
+          merged.experience !== 'intermediate' ||
+          merged.goals.length > 0 ||
+          merged.riskTolerance !== 'moderate';
 
         if (!localStorage.getItem('onboardingComplete') && !hasSetUpProfile) {
           setShowOnboarding(true);
@@ -277,11 +279,16 @@ export default function App() {
         );
         Object.entries(openTradesRef.current).forEach(([id, info]) => {
           if (!currentIds.has(Number(id))) {
-            addToast(`${info.symbol} ${info.side.toUpperCase()} trade auto-closed (SL/TP hit)`, 'warning');
+            addToast(
+              `${info.symbol} ${info.side.toUpperCase()} trade auto-closed (SL/TP hit)`,
+              'warning'
+            );
           }
         });
         openTradesRef.current = currentMap;
-      } catch { /* silent */ }
+      } catch {
+        /* silent */
+      }
     };
     checkTrades();
     const interval = setInterval(checkTrades, 60_000);
@@ -1312,7 +1319,8 @@ export default function App() {
                         await authFetch(`${API_BASE}/api/auth/me`, {
                           method: 'PUT',
                           body: JSON.stringify({
-                            trader_style: investorProfile.tradingStyle || investorProfile.experience,
+                            trader_style:
+                              investorProfile.tradingStyle || investorProfile.experience,
                             risk_tolerance: investorProfile.riskTolerance,
                             investment_horizon: investorProfile.investmentHorizon,
                             experience_level: investorProfile.experience,
@@ -1882,9 +1890,7 @@ export default function App() {
             onRemove={removeFromPortfolio}
           />
         )}
-        {showPaperTrades && (
-          <PaperTradesModal onClose={() => setShowPaperTrades(false)} />
-        )}
+        {showPaperTrades && <PaperTradesModal onClose={() => setShowPaperTrades(false)} />}
         {showAlerts && (
           <AlertsModal
             onClose={() => setShowAlerts(false)}

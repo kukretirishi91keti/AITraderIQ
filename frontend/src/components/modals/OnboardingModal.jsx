@@ -62,10 +62,10 @@ export default function OnboardingModal({ onComplete }) {
         await authFetch(`${API_BASE}/api/auth/me`, {
           method: 'PUT',
           body: JSON.stringify({
-            risk_tolerance:     profile.riskTolerance,
+            risk_tolerance: profile.riskTolerance,
             investment_horizon: profile.investmentHorizon,
-            experience_level:   profile.experience,
-            goals:              JSON.stringify(profile.goals),
+            experience_level: profile.experience,
+            goals: JSON.stringify(profile.goals),
           }),
         });
       } catch {
@@ -232,8 +232,8 @@ export default function OnboardingModal({ onComplete }) {
               <div className="bg-yellow-900/20 border border-yellow-700/40 rounded-lg p-4 text-sm text-gray-300 space-y-3 max-h-48 overflow-y-auto">
                 <p>
                   <strong className="text-yellow-400">Educational Use Only.</strong> AITraderIQ is
-                  designed to support learning and decision-making. It does{' '}
-                  <strong>not</strong> constitute financial, investment, or trading advice.
+                  designed to support learning and decision-making. It does <strong>not</strong>{' '}
+                  constitute financial, investment, or trading advice.
                 </p>
                 <p>
                   <strong className="text-yellow-400">No Guarantee of Accuracy.</strong> Market data
