@@ -19,6 +19,7 @@ import {
   createAlert as apiCreateAlert,
   deleteAlert as apiDeleteAlert,
   authFetch,
+  getProfile,
 } from './services/auth';
 
 // Constants
@@ -204,11 +205,50 @@ export default function App() {
     [selectedMarket]
   );
 
-  // Show onboarding wizard once after first login / registration
+  // Hydrate investorProfile from DB on login, then decide onboarding
   useEffect(() => {
-    if (isLoggedIn && !localStorage.getItem('onboardingComplete')) {
-      setShowOnboarding(true);
-    }
+    if (!isLoggedIn) return;
+
+    getProfile()
+      .then((dbProfile) => {
+        const existing = JSON.parse(localStorage.getItem('investorProfile') || '{}');
+
+        let parsedGoals = existing.goals || [];
+        try {
+          if (dbProfile.goals) parsedGoals = JSON.parse(dbProfile.goals);
+        } catch { /* keep existing */ }
+
+        const merged = {
+          ...existing,
+          name:              dbProfile.full_name          || existing.name              || '',
+          tradingStyle:      dbProfile.trader_style       || existing.tradingStyle      || 'swing',
+          riskTolerance:     dbProfile.risk_tolerance     || existing.riskTolerance     || 'moderate',
+          investmentHorizon: dbProfile.investment_horizon || existing.investmentHorizon || 'medium',
+          experience:        dbProfile.experience_level   || existing.experience        || 'intermediate',
+          capitalRange:      dbProfile.capital_range      || existing.capitalRange      || 'medium',
+          goals:             parsedGoals,
+        };
+
+        localStorage.setItem('investorProfile', JSON.stringify(merged));
+        setInvestorProfile(merged);
+
+        // Skip onboarding if the DB already has non-default profile data
+        const hasSetUpProfile =
+          merged.investmentHorizon !== 'medium' ||
+          merged.experience        !== 'intermediate' ||
+          merged.goals.length      >  0 ||
+          merged.riskTolerance     !== 'moderate';
+
+        if (!localStorage.getItem('onboardingComplete') && !hasSetUpProfile) {
+          setShowOnboarding(true);
+        }
+      })
+      .catch(() => {
+        // DB fetch failed — fall back to local-only check
+        if (!localStorage.getItem('onboardingComplete')) {
+          setShowOnboarding(true);
+        }
+      });
   }, [isLoggedIn]);
 
   // ============================================================
