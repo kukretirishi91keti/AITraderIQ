@@ -24,6 +24,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+import asyncio
 import logging
 import os
 import sys
@@ -63,8 +64,9 @@ async def lifespan(app: FastAPI):
     """Application lifecycle management."""
     # Initialize database - CRITICAL for auth to work
     db_ready = False
+    monitor_task = None
     try:
-        from database.engine import init_db, close_db
+        from database.engine import init_db, close_db, AsyncSessionLocal
         await init_db()
         db_ready = True
         logger.info("Database initialized successfully")
@@ -74,6 +76,17 @@ async def lifespan(app: FastAPI):
         print(f"  Database: FAILED - {e}")
         print("  WARNING: Login/register will NOT work without database!")
         print("  Check DATABASE_URL in your .env file")
+
+    # Start paper trade stop-loss/take-profit monitor
+    if db_ready:
+        try:
+            from services.paper_trade_monitor import monitor_paper_trades
+            monitor_task = asyncio.create_task(
+                monitor_paper_trades(AsyncSessionLocal, interval_seconds=60)
+            )
+            print("  Paper Trade Monitor: RUNNING (60s interval)")
+        except Exception as e:
+            logger.warning(f"Paper trade monitor failed to start: {e}")
 
     print("\n" + "=" * 70)
     print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
@@ -107,6 +120,12 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
+    if monitor_task is not None:
+        monitor_task.cancel()
+        try:
+            await monitor_task
+        except asyncio.CancelledError:
+            pass
     try:
         from database.engine import close_db
         await close_db()

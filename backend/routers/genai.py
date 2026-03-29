@@ -42,6 +42,9 @@ class QueryRequest(BaseModel):
     rsi: Optional[float] = None    # Allow None
     signal: Optional[str] = "HOLD"
     trader_style: Optional[str] = "swing"
+    risk_tolerance: Optional[str] = None      # conservative, moderate, aggressive
+    experience_level: Optional[str] = None    # beginner, intermediate, advanced, expert
+    investment_horizon: Optional[str] = None  # short, medium, long
     vwap: Optional[float] = None
     macd: Optional[float] = None
     model: Optional[str] = None  # User-selected model override
@@ -125,9 +128,17 @@ Current Context:
         context += f"\n- VWAP: {currency}{request.vwap:.2f}"
     if request.macd is not None:
         context += f"\n- MACD: {request.macd:.4f}"
-    
+
+    # Investor profile context
+    if request.risk_tolerance:
+        context += f"\n- Risk Tolerance: {request.risk_tolerance}"
+    if request.experience_level:
+        context += f"\n- Experience Level: {request.experience_level}"
+    if request.investment_horizon:
+        context += f"\n- Investment Horizon: {request.investment_horizon}"
+
     context += f"\n\nAlways use {currency} for price references. Be actionable and specific."""
-    
+
     return base_prompt + context
 
 # =============================================================================

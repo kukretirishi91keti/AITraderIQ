@@ -43,6 +43,10 @@ class ProfileUpdate(BaseModel):
     full_name: str | None = None
     trader_style: str | None = None
     risk_tolerance: str | None = None
+    investment_horizon: str | None = None
+    experience_level: str | None = None
+    capital_range: str | None = None
+    goals: str | None = None  # JSON string, e.g. '["income","growth"]'
 
 
 # =============================================================================
@@ -138,6 +142,10 @@ async def get_profile(user: Annotated[User, Depends(require_auth)]):
         "full_name": user.full_name,
         "trader_style": user.trader_style,
         "risk_tolerance": user.risk_tolerance,
+        "investment_horizon": user.investment_horizon,
+        "experience_level": user.experience_level,
+        "capital_range": user.capital_range,
+        "goals": user.goals,
         "created_at": user.created_at.isoformat() if user.created_at else None,
     }
 
@@ -155,6 +163,14 @@ async def update_profile(
         user.trader_style = update.trader_style
     if update.risk_tolerance is not None:
         user.risk_tolerance = update.risk_tolerance
+    if update.investment_horizon is not None:
+        user.investment_horizon = update.investment_horizon
+    if update.experience_level is not None:
+        user.experience_level = update.experience_level
+    if update.capital_range is not None:
+        user.capital_range = update.capital_range
+    if update.goals is not None:
+        user.goals = update.goals
 
     user.updated_at = datetime.utcnow()
     await db.commit()
@@ -167,4 +183,8 @@ async def update_profile(
         "full_name": user.full_name,
         "trader_style": user.trader_style,
         "risk_tolerance": user.risk_tolerance,
+        "investment_horizon": user.investment_horizon,
+        "experience_level": user.experience_level,
+        "capital_range": user.capital_range,
+        "goals": user.goals,
     }
