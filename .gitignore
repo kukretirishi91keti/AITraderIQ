@@ -6,12 +6,14 @@ node_modules/
 .env.local
 .env.*.local
 *.db
+*.db-journal
+*.db-wal
+*.db-shm
 dist/
 build/
 .vite/
 .DS_Store
 coverage/
 .nyc_output/
-test.db
 *.log
 backend/cache/
