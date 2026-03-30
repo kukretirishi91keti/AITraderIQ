@@ -558,6 +558,31 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
               {/* Expanded Details */}
               {expandedStrategy === s.key && (
                 <div className="px-4 pb-4 border-t border-gray-700 pt-3 space-y-3">
+                  {/* Plain-language "Why this strategy?" */}
+                  <div className="p-3 bg-cyan-900/20 border border-cyan-700/30 rounded-lg">
+                    <div className="text-xs text-cyan-400 font-semibold uppercase mb-1.5">
+                      Why ranked #{s.rank} for you?
+                    </div>
+                    <p className="text-xs text-gray-300 leading-relaxed">
+                      {s.name} scored{' '}
+                      <span className="text-white font-semibold">{s.score}/100</span> based on your
+                      inputs.{' '}
+                      {s.risk_level === 'low' || s.risk_level === 'moderate'
+                        ? `It suits your risk tolerance — the ${s.risk_level} risk level means smaller drawdowns if the trade goes against you.`
+                        : `It carries ${s.risk_level.replace('_', ' ')} risk — higher potential gains but larger possible losses.`}{' '}
+                      Historically it wins{' '}
+                      <span className="text-white font-semibold">{s.historical_win_rate}%</span> of
+                      trades, returning roughly{' '}
+                      <span className="text-green-400 font-semibold">
+                        +{s.projected_monthly_return}% per month
+                      </span>{' '}
+                      on average.{' '}
+                      {s.months_to_target
+                        ? `At that pace, your growth target could take ~${Math.ceil(s.months_to_target)} month${Math.ceil(s.months_to_target) === 1 ? '' : 's'} to reach.`
+                        : 'Growth timeline depends on market conditions.'}
+                    </p>
+                  </div>
+
                   {/* Indicators */}
                   <div>
                     <div className="text-xs text-gray-500 uppercase mb-1">Indicators Used</div>
