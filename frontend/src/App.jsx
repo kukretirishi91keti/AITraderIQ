@@ -307,6 +307,27 @@ export default function App() {
     }
   }, []);
 
+  // Must be declared before addToPortfolio (used in its dep array)
+  const refreshPortfolioFromApi = useCallback(async () => {
+    try {
+      const data = await getUserPortfolio();
+      if (data.holdings) {
+        setPortfolio(
+          data.holdings.map((item) => ({
+            id: item.id,
+            symbol: item.symbol,
+            shares: item.shares,
+            avgPrice: item.avg_price,
+            currency: item.currency,
+            market: item.market,
+          }))
+        );
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
   // ============================================================
   // KEYBOARD SHORTCUTS
   // ============================================================
@@ -929,26 +950,6 @@ export default function App() {
   // ============================================================
   // SYNC USER DATA FROM BACKEND ON LOGIN
   // ============================================================
-  const refreshPortfolioFromApi = useCallback(async () => {
-    try {
-      const data = await getUserPortfolio();
-      if (data.holdings) {
-        setPortfolio(
-          data.holdings.map((item) => ({
-            id: item.id,
-            symbol: item.symbol,
-            shares: item.shares,
-            avgPrice: item.avg_price,
-            currency: item.currency,
-            market: item.market,
-          }))
-        );
-      }
-    } catch {
-      // Silently fall back to local state
-    }
-  }, []);
-
   const refreshAlertsFromApi = useCallback(async () => {
     try {
       const data = await getUserAlerts();
