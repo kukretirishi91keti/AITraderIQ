@@ -295,6 +295,18 @@ export default function App() {
     return () => clearInterval(interval);
   }, [isLoggedIn, addToast]);
 
+  // Must be declared before keyboard shortcut effect (used in its dep array)
+  const refreshWatchlistFromApi = useCallback(async () => {
+    try {
+      const data = await getUserWatchlist();
+      if (data.watchlist && data.watchlist.length > 0) {
+        setWatchlist(data.watchlist.map((item) => item.symbol));
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
   // ============================================================
   // KEYBOARD SHORTCUTS
   // ============================================================
@@ -917,17 +929,6 @@ export default function App() {
   // ============================================================
   // SYNC USER DATA FROM BACKEND ON LOGIN
   // ============================================================
-  const refreshWatchlistFromApi = useCallback(async () => {
-    try {
-      const data = await getUserWatchlist();
-      if (data.watchlist && data.watchlist.length > 0) {
-        setWatchlist(data.watchlist.map((item) => item.symbol));
-      }
-    } catch {
-      // Silently fall back to local state
-    }
-  }, []);
-
   const refreshPortfolioFromApi = useCallback(async () => {
     try {
       const data = await getUserPortfolio();
