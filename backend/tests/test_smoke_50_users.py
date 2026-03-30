@@ -14,6 +14,8 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 
+pytestmark = pytest.mark.slow  # exclude from fast CI runs (-m "not slow")
+
 import os
 os.environ.setdefault("DEMO_MODE", "true")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")

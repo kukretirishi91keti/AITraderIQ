@@ -1,0 +1,43 @@
+name: Load Tests
+
+on:
+  # Run nightly at 02:00 UTC against main
+  schedule:
+    - cron: '0 2 * * *'
+  # Also triggerable manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to test'
+        required: false
+        default: 'main'
+
+jobs:
+  load-test:
+    name: Smoke & Load Tests (50 / 1000 users)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || 'main' }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run slow / load tests
+        env:
+          DEMO_MODE: "true"
+          JWT_SECRET_KEY: "ci-test-secret-not-for-production"
+          DATABASE_URL: "sqlite+aiosqlite:///./test.db"
+        run: pytest tests/ -v --tb=short -m "slow" --timeout=600
