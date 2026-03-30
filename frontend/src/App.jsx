@@ -56,6 +56,7 @@ const AlertsModal = lazy(() => import('./components/modals/AlertsModal'));
 const AddToPortfolioModal = lazy(() => import('./components/modals/AddToPortfolioModal'));
 const StrategyIntelligence = lazy(() => import('./components/StrategyIntelligence'));
 const PaperTradesModal = lazy(() => import('./components/modals/PaperTradesModal'));
+const TradeJournalModal = lazy(() => import('./components/modals/TradeJournalModal'));
 const OnboardingModal = lazy(() => import('./components/modals/OnboardingModal'));
 
 const AI_MODEL_OPTIONS = [
@@ -96,6 +97,9 @@ export default function App() {
   const [showScreener, setShowScreener] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
   const [showPaperTrades, setShowPaperTrades] = useState(false);
+  const [showJournal, setShowJournal] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showMobileAI, setShowMobileAI] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showAlerts, setShowAlerts] = useState(false);
   const [showUserGuide, setShowUserGuide] = useState(false);
@@ -1039,7 +1043,15 @@ export default function App() {
       {/* Header */}
       <header className="bg-gray-800 px-4 py-3 border-b border-gray-700">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile sidebar toggle */}
+            <button
+              className="md:hidden p-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+              onClick={() => setShowMobileSidebar((v) => !v)}
+              aria-label="Toggle watchlist"
+            >
+              ☰
+            </button>
             <h1 className="text-xl font-bold text-cyan-400">TraderAI Pro</h1>
             <span className="text-xs text-gray-500">v{APP_VERSION}</span>
             <div className="relative">
@@ -1062,7 +1074,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-0.5 sm:flex-wrap sm:overflow-visible">
             <button
               onClick={() => setShowStrategyIntelligence(true)}
               className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 rounded-lg text-sm font-bold shadow-lg shadow-cyan-500/30 border border-cyan-400/30 animate-pulse hover:animate-none flex items-center gap-1.5"
@@ -1085,12 +1097,20 @@ export default function App() {
               💰 Portfolio
             </button>
             {isLoggedIn && (
-              <button
-                onClick={() => setShowPaperTrades(true)}
-                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium"
-              >
-                📋 Paper Trades
-              </button>
+              <>
+                <button
+                  onClick={() => setShowPaperTrades(true)}
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm font-medium"
+                >
+                  📋 Paper Trades
+                </button>
+                <button
+                  onClick={() => setShowJournal(true)}
+                  className="px-3 py-2 bg-indigo-700 hover:bg-indigo-600 rounded-lg text-sm font-medium"
+                >
+                  📊 Journal
+                </button>
+              </>
             )}
             <button
               onClick={() => setShowAlerts(true)}
@@ -1137,15 +1157,15 @@ export default function App() {
                 title={
                   groqApiKey
                     ? 'GROQ API key set — AI responses powered by your key'
-                    : 'Add your GROQ API key for real AI responses'
+                    : 'Add your GROQ API key for real AI responses (free at console.groq.com)'
                 }
                 className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${groqApiKey ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-gray-700 text-gray-400 border-gray-600 hover:border-gray-500'}`}
               >
                 🔑 {groqApiKey ? 'AI Key ✓' : 'AI Key'}
               </button>
               {showApiKeyInput && (
-                <div className="absolute right-0 top-9 z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 w-72 shadow-xl">
-                  <p className="text-xs text-gray-400 mb-2">
+                <div className="absolute right-0 top-9 z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 w-80 shadow-xl">
+                  <p className="text-xs text-gray-400 mb-1">
                     Enter your{' '}
                     <a
                       href="https://console.groq.com"
@@ -1164,19 +1184,40 @@ export default function App() {
                     placeholder="gsk_..."
                     className="w-full bg-gray-700 px-2 py-1.5 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 mb-2"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={async () => {
+                        if (!groqApiKey.trim()) return;
+                        addToast('Testing key…', 'warning');
+                        try {
+                          const res = await fetch(`${API_BASE}/api/genai/test-key`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ groq_api_key: groqApiKey.trim() }),
+                          });
+                          const data = await res.json();
+                          if (data.ok) {
+                            localStorage.setItem('groqApiKey', groqApiKey.trim());
+                            setShowApiKeyInput(false);
+                            addToast('Key verified ✓ AI chat now uses real Groq LLM', 'success');
+                          } else {
+                            addToast(`Key rejected: ${data.error}`, 'error');
+                          }
+                        } catch {
+                          addToast('Could not reach server to test key', 'error');
+                        }
+                      }}
+                      className="flex-1 py-1 bg-cyan-700 hover:bg-cyan-600 text-white rounded text-xs"
+                    >
+                      Test &amp; Save
+                    </button>
                     <button
                       onClick={() => {
                         localStorage.setItem('groqApiKey', groqApiKey);
                         setShowApiKeyInput(false);
-                        addToast(
-                          groqApiKey
-                            ? 'GROQ API key saved — AI chat now uses real LLM responses'
-                            : 'API key cleared',
-                          groqApiKey ? 'success' : 'warning'
-                        );
+                        addToast(groqApiKey ? 'Key saved (not tested)' : 'Key cleared', 'warning');
                       }}
-                      className="flex-1 py-1 bg-cyan-700 hover:bg-cyan-600 text-white rounded text-xs"
+                      className="px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-300 rounded text-xs"
                     >
                       Save
                     </button>
@@ -1186,7 +1227,7 @@ export default function App() {
                         localStorage.removeItem('groqApiKey');
                         setShowApiKeyInput(false);
                       }}
-                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs"
+                      className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-400 rounded text-xs"
                     >
                       Clear
                     </button>
@@ -1237,7 +1278,16 @@ export default function App() {
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
         {/* Left Sidebar */}
-        <aside className="w-full md:w-56 bg-gray-800 border-r border-gray-700 p-4 space-y-6 overflow-y-auto md:block hidden">
+        {/* Mobile overlay backdrop */}
+        {showMobileSidebar && (
+          <div
+            className="fixed inset-0 bg-black/60 z-30 md:hidden"
+            onClick={() => setShowMobileSidebar(false)}
+          />
+        )}
+        <aside
+          className={`${showMobileSidebar ? 'fixed inset-y-0 left-0 z-40 translate-x-0' : 'hidden md:block'} w-56 bg-gray-800 border-r border-gray-700 p-4 space-y-6 overflow-y-auto transition-transform`}
+        >
           {/* Trading Style */}
           <div>
             <h3 className="text-xs text-gray-400 uppercase tracking-wide mb-2">Trading Style</h3>
@@ -1863,12 +1913,32 @@ export default function App() {
           </div>
         </main>
 
+        {/* Floating AI chat button — mobile only */}
+        <button
+          className="fixed bottom-4 right-4 z-30 md:hidden bg-cyan-600 hover:bg-cyan-500 rounded-full w-12 h-12 flex items-center justify-center text-xl shadow-lg shadow-cyan-500/30"
+          onClick={() => setShowMobileAI((v) => !v)}
+          aria-label="Toggle AI chat"
+        >
+          🤖
+        </button>
+
         {/* Right Sidebar - AI Chat */}
-        <aside className="w-full md:w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+        <aside
+          className={`${showMobileAI ? 'fixed inset-y-0 right-0 z-40 w-full sm:w-80' : 'hidden md:flex'} md:flex md:w-80 bg-gray-800 border-l border-gray-700 flex-col`}
+        >
           <div className="p-4 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-cyan-400">AI Assistant</h3>
-              <span className="text-xs text-green-400">● Active</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-green-400">● Active</span>
+                <button
+                  className="md:hidden text-gray-400 hover:text-white text-lg leading-none"
+                  onClick={() => setShowMobileAI(false)}
+                  aria-label="Close AI panel"
+                >
+                  &times;
+                </button>
+              </div>
             </div>
             <div className="mt-2 relative" ref={modelPickerRef}>
               <button
@@ -1945,7 +2015,13 @@ export default function App() {
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
                   {msg.source && msg.role === 'assistant' && (
-                    <p className="text-xs text-gray-500 mt-1">via {msg.source}</p>
+                    <p
+                      className={`text-xs mt-1 ${msg.source.startsWith('rule-based') && groqApiKey ? 'text-orange-400' : 'text-gray-500'}`}
+                    >
+                      {msg.source.startsWith('rule-based') && groqApiKey
+                        ? `⚠ ${msg.source}`
+                        : `via ${msg.source}`}
+                    </p>
                   )}
                 </div>
               ))
@@ -2035,6 +2111,7 @@ export default function App() {
           />
         )}
         {showPaperTrades && <PaperTradesModal onClose={() => setShowPaperTrades(false)} />}
+        {showJournal && <TradeJournalModal onClose={() => setShowJournal(false)} />}
         {showAlerts && (
           <AlertsModal
             onClose={() => setShowAlerts(false)}

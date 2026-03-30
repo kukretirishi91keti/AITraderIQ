@@ -124,6 +124,89 @@ async def get_paper_trade_summary(
     }
 
 
+@router.get("/journal")
+async def get_trade_journal(
+    user: User = Depends(require_auth),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return closed trades + risk metrics + equity-curve data points.
+    Equity curve = cumulative P&L sorted by closed_at.
+    """
+    result = await db.execute(
+        select(PaperTrade)
+        .where(PaperTrade.user_id == user.id, PaperTrade.status == "closed")
+        .order_by(PaperTrade.closed_at)
+    )
+    closed = result.scalars().all()
+
+    pnls = [t.pnl for t in closed if t.pnl is not None]
+    wins = [p for p in pnls if p > 0]
+    losses = [p for p in pnls if p <= 0]
+
+    # Equity curve: cumulative sum over time
+    equity_curve = []
+    running = 0.0
+    for t in closed:
+        if t.pnl is not None:
+            running += t.pnl
+        equity_curve.append({
+            "date": t.closed_at.isoformat() if t.closed_at else None,
+            "symbol": t.symbol,
+            "cumulative_pnl": round(running, 2),
+        })
+
+    total_pnl = sum(pnls)
+    avg_win = sum(wins) / len(wins) if wins else 0.0
+    avg_loss = sum(losses) / len(losses) if losses else 0.0
+    win_rate = len(wins) / len(pnls) * 100 if pnls else 0.0
+    profit_factor = abs(sum(wins) / sum(losses)) if losses and sum(losses) != 0 else None
+
+    # Max drawdown from equity curve
+    peak = 0.0
+    max_dd = 0.0
+    running2 = 0.0
+    for p in pnls:
+        running2 += p
+        if running2 > peak:
+            peak = running2
+        dd = peak - running2
+        if dd > max_dd:
+            max_dd = dd
+
+    return {
+        "metrics": {
+            "total_closed": len(closed),
+            "win_rate": round(win_rate, 1),
+            "total_pnl": round(total_pnl, 2),
+            "avg_win": round(avg_win, 2),
+            "avg_loss": round(avg_loss, 2),
+            "profit_factor": round(profit_factor, 2) if profit_factor else None,
+            "max_drawdown": round(max_dd, 2),
+            "best_trade": round(max(pnls), 2) if pnls else 0,
+            "worst_trade": round(min(pnls), 2) if pnls else 0,
+        },
+        "equity_curve": equity_curve,
+        "trades": [
+            {
+                "id": t.id,
+                "symbol": t.symbol,
+                "side": t.side,
+                "quantity": t.quantity,
+                "entry_price": t.entry_price,
+                "exit_price": t.exit_price,
+                "currency": t.currency,
+                "strategy": t.strategy,
+                "pnl": t.pnl,
+                "pnl_percent": t.pnl_percent,
+                "opened_at": t.opened_at.isoformat() if t.opened_at else None,
+                "closed_at": t.closed_at.isoformat() if t.closed_at else None,
+            }
+            for t in reversed(closed)  # newest first
+        ],
+    }
+
+
 @router.get("")
 async def list_paper_trades(
     status: Optional[str] = Query(default=None, pattern=r"^(open|closed)$"),
