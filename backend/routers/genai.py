@@ -259,7 +259,6 @@ async def query_ai(request: QueryRequest):
                 ],
                 max_tokens=MAX_TOKENS,
                 temperature=0.7,
-                timeout=15.0,
             )
 
             return QueryResponse(
@@ -268,25 +267,56 @@ async def query_ai(request: QueryRequest):
                 model=selected_model,
                 timestamp=datetime.now().isoformat()
             )
-            
+
         except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            # Fall through to fallback
-    
-    # Fallback response - now with null-safe handling
+            groq_error = str(e)[:120]
+            logger.error(f"Groq API error: {groq_error}")
+            # Fall through to fallback, but surface the real error
+    else:
+        groq_error = None
+
+    # Fallback response
     try:
         answer = generate_fallback_response(request)
     except Exception as e:
         logger.error(f"Fallback generation error: {e}")
         answer = f"I can help analyze {request.symbol or 'this stock'}. Please check the technical indicators panel for RSI, MACD, and signal recommendations."
-    
-    reason = "No GROQ API key — add yours via the 🔑 AI Key button" if not effective_key else "Groq client error"
+
+    if not effective_key:
+        reason = "No API key — click 🔑 AI Key in toolbar to add yours (free at console.groq.com)"
+    elif groq_error:
+        reason = f"Groq error: {groq_error}"
+    else:
+        reason = "Groq unavailable"
     return QueryResponse(
         answer=answer,
-        source=f"rule-based ({reason})",
+        source=f"rule-based | {reason}",
         model=None,
         timestamp=datetime.now().isoformat()
     )
+
+class TestKeyRequest(BaseModel):
+    groq_api_key: str
+
+@router.post("/test-key")
+async def test_api_key(request: TestKeyRequest):
+    """Validate a user-supplied Groq API key with a minimal test call."""
+    key = (request.groq_api_key or '').strip()
+    if not key:
+        return {"ok": False, "error": "No key provided"}
+    try:
+        from groq import Groq
+        client = Groq(api_key=key)
+        client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            messages=[{"role": "user", "content": "hi"}],
+            max_tokens=5,
+        )
+        return {"ok": True, "model": DEFAULT_MODEL}
+    except ImportError:
+        return {"ok": False, "error": "Groq library not installed on server"}
+    except Exception as e:
+        return {"ok": False, "error": str(e)[:150]}
 
 @router.get("/health")
 async def genai_health():
