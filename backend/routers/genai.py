@@ -48,6 +48,7 @@ class QueryRequest(BaseModel):
     vwap: Optional[float] = None
     macd: Optional[float] = None
     model: Optional[str] = None  # User-selected model override
+    groq_api_key: Optional[str] = None  # User-supplied key overrides server env key
 
 class QueryResponse(BaseModel):
     answer: str
@@ -231,15 +232,21 @@ def generate_fallback_response(request: QueryRequest) -> str:
 async def query_ai(request: QueryRequest):
     """
     Query the AI assistant for trading insights.
-    
+
     The AI provides context-aware responses based on:
     - Current stock price and technical indicators
     - Trader style preferences
     - Specific question asked
     """
-    client = get_groq_client()
-    
-    if client and GROQ_API_KEY:
+    # Use user-supplied key if provided, otherwise fall back to server env key
+    effective_key = (request.groq_api_key or '').strip() or GROQ_API_KEY
+    try:
+        from groq import Groq
+        client = Groq(api_key=effective_key, timeout=15.0) if effective_key else None
+    except Exception:
+        client = None
+
+    if client and effective_key:
         try:
             system_prompt = get_system_prompt(request)
             selected_model = request.model or DEFAULT_MODEL
@@ -273,7 +280,7 @@ async def query_ai(request: QueryRequest):
         logger.error(f"Fallback generation error: {e}")
         answer = f"I can help analyze {request.symbol or 'this stock'}. Please check the technical indicators panel for RSI, MACD, and signal recommendations."
     
-    reason = "GROQ_API_KEY not configured" if not GROQ_API_KEY else "Groq client error"
+    reason = "No GROQ API key — add yours via the 🔑 AI Key button" if not effective_key else "Groq client error"
     return QueryResponse(
         answer=answer,
         source=f"rule-based ({reason})",

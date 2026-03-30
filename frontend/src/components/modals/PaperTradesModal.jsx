@@ -172,10 +172,27 @@ const PaperTradesModal = ({ onClose }) => {
           )}
         </div>
 
+        {/* Plain-language SL/TP explainer */}
+        <div className="px-4 py-3 bg-gray-700/30 border-t border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex gap-2 text-xs text-gray-400">
+            <span className="text-red-400 mt-0.5">🛑</span>
+            <span>
+              <span className="text-red-400 font-medium">Stop-Loss</span> — auto-closes the trade if
+              the price falls to this level, limiting your loss. Set it below your entry for a BUY
+              trade. E.g. entry $150 → stop at $145 = max $5 loss per share.
+            </span>
+          </div>
+          <div className="flex gap-2 text-xs text-gray-400">
+            <span className="text-green-400 mt-0.5">🎯</span>
+            <span>
+              <span className="text-green-400 font-medium">Take-Profit</span> — auto-closes the
+              trade when the price hits your target, locking in gains. Set it above your entry for a
+              BUY trade. E.g. entry $150 → target at $160 = $10 profit per share.
+            </span>
+          </div>
+        </div>
         <div className="p-4 border-t border-gray-700 flex justify-between items-center text-xs text-gray-500">
-          <span>
-            Stop-loss &amp; take-profit levels are monitored automatically every 60 seconds.
-          </span>
+          <span>Levels checked automatically every 60 seconds against latest prices.</span>
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm text-white"

@@ -158,6 +158,11 @@ export default function App() {
   const [healthStatus, setHealthStatus] = useState('HEALTHY');
   const [pollingInterval, setPollingInterval] = useState(POLLING_INTERVALS.HEALTHY);
   const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [demoMode, setDemoMode] = useState(true); // assume demo until health check says otherwise
+
+  // User GROQ API key (stored in localStorage, sent with AI requests)
+  const [groqApiKey, setGroqApiKey] = useState(() => localStorage.getItem('groqApiKey') || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   // Toast notifications
   const [toasts, setToasts] = useState([]);
@@ -598,6 +603,7 @@ export default function App() {
           setHealthStatus(healthData.status?.toUpperCase() || 'HEALTHY');
           if (healthData.polling_recommendation)
             setPollingInterval(healthData.polling_recommendation * 1000);
+          if (healthData.demo_mode !== undefined) setDemoMode(healthData.demo_mode);
         }
         setLastFetchTime(new Date());
         setLoading(false);
@@ -714,6 +720,7 @@ export default function App() {
           rsi: getSignalValue(signals?.rsi),
           signal: signals?.signal || signals?.overall_signal,
           model: selectedModel,
+          groq_api_key: groqApiKey || undefined,
         }),
       });
       const data = await response.json();
@@ -1114,6 +1121,79 @@ export default function App() {
             >
               🔧
             </button>
+            {/* DEMO_MODE indicator */}
+            {demoMode && (
+              <span
+                title="Backend running in demo mode — prices are simulated, not live market data"
+                className="px-2 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded text-xs font-medium cursor-help"
+              >
+                📦 DEMO MODE
+              </span>
+            )}
+            {/* User GROQ API key */}
+            <div className="relative">
+              <button
+                onClick={() => setShowApiKeyInput((v) => !v)}
+                title={
+                  groqApiKey
+                    ? 'GROQ API key set — AI responses powered by your key'
+                    : 'Add your GROQ API key for real AI responses'
+                }
+                className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${groqApiKey ? 'bg-green-500/20 text-green-400 border-green-500/30' : 'bg-gray-700 text-gray-400 border-gray-600 hover:border-gray-500'}`}
+              >
+                🔑 {groqApiKey ? 'AI Key ✓' : 'AI Key'}
+              </button>
+              {showApiKeyInput && (
+                <div className="absolute right-0 top-9 z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 w-72 shadow-xl">
+                  <p className="text-xs text-gray-400 mb-2">
+                    Enter your{' '}
+                    <a
+                      href="https://console.groq.com"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-400 hover:underline"
+                    >
+                      Groq API key
+                    </a>{' '}
+                    for real AI responses (free tier available).
+                  </p>
+                  <input
+                    type="password"
+                    value={groqApiKey}
+                    onChange={(e) => setGroqApiKey(e.target.value)}
+                    placeholder="gsk_..."
+                    className="w-full bg-gray-700 px-2 py-1.5 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 mb-2"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        localStorage.setItem('groqApiKey', groqApiKey);
+                        setShowApiKeyInput(false);
+                        addToast(
+                          groqApiKey
+                            ? 'GROQ API key saved — AI chat now uses real LLM responses'
+                            : 'API key cleared',
+                          groqApiKey ? 'success' : 'warning'
+                        );
+                      }}
+                      className="flex-1 py-1 bg-cyan-700 hover:bg-cyan-600 text-white rounded text-xs"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setGroqApiKey('');
+                        localStorage.removeItem('groqApiKey');
+                        setShowApiKeyInput(false);
+                      }}
+                      className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded text-xs"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <ConnectionStatus />
             {isLoggedIn ? (
               <div className="flex items-center gap-2">
@@ -1414,9 +1494,25 @@ export default function App() {
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-2xl font-bold">{selectedSymbol}</h2>
-                <span className="px-2 py-0.5 bg-cyan-600/30 text-cyan-400 text-xs rounded">
-                  DEMO
-                </span>
+                {(() => {
+                  const dq = quote?.dataQuality || (demoMode ? 'DEMO' : 'LIVE');
+                  const isLive = dq === 'LIVE' || dq === 'REALTIME';
+                  const isDelayed = dq === 'DELAYED' || dq === '15min';
+                  return (
+                    <span
+                      title={
+                        isLive
+                          ? 'Real-time price data'
+                          : isDelayed
+                            ? '15-minute delayed data'
+                            : 'Simulated/demo data — not real market prices'
+                      }
+                      className={`px-2 py-0.5 text-xs rounded cursor-help ${isLive ? 'bg-green-600/30 text-green-400' : isDelayed ? 'bg-yellow-600/30 text-yellow-400' : 'bg-orange-600/30 text-orange-400'}`}
+                    >
+                      {isLive ? '⚡ Live' : isDelayed ? '⏱ Delayed' : '📦 Demo data'}
+                    </span>
+                  );
+                })()}
                 <span className="text-2xl font-bold">
                   {currentMarket.currency}
                   {quote?.price?.toFixed(2) || '-'}
@@ -1515,8 +1611,13 @@ export default function App() {
           <div className="bg-gray-800 rounded-lg p-4">
             {activeTab === 'technicals' && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">RSI (14)</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Relative Strength Index: measures how fast the price has moved. Below 30 = possibly oversold (bounce candidate). Above 70 = possibly overbought (pullback risk)."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    RSI <span className="text-gray-600 text-xs">(momentum 0–100)</span>
+                  </h4>
                   <div
                     className={`text-2xl font-bold ${getRsiColor(getSignalValue(signals?.rsi))}`}
                   >
@@ -1524,54 +1625,91 @@ export default function App() {
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
                     {getSignalValue(signals?.rsi) < 30
-                      ? 'Oversold'
+                      ? 'Oversold — possible bounce'
                       : getSignalValue(signals?.rsi) > 70
-                        ? 'Overbought'
-                        : 'Neutral'}
+                        ? 'Overbought — pullback risk'
+                        : 'Neutral zone'}
                   </p>
                 </div>
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">Signal</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Combined signal from multiple technical indicators. BUY = conditions favour going long. SELL = consider exiting or shorting. HOLD = no clear edge right now."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    Signal <span className="text-gray-600 text-xs">(overall bias)</span>
+                  </h4>
                   <div
                     className={`text-2xl font-bold ${getSignalColor(signals?.signal || signals?.overall_signal)}`}
                   >
                     {signals?.signal || signals?.overall_signal || '-'}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">AI recommendation</p>
+                  <p className="text-xs text-gray-500 mt-1">Combined indicator verdict</p>
                 </div>
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">SMA 20</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Simple Moving Average of the last 20 closing prices. Price above SMA20 = short-term uptrend. Price below = downtrend."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    SMA 20 <span className="text-gray-600 text-xs">(20-day avg price)</span>
+                  </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(
                       getSignalValue(signals?.sma_20 || signals?.sma20),
                       currentMarket.currency
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Moving average</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {quote?.price && getSignalValue(signals?.sma_20 || signals?.sma20)
+                      ? quote.price > getSignalValue(signals?.sma_20 || signals?.sma20)
+                        ? 'Price above — bullish bias'
+                        : 'Price below — bearish bias'
+                      : 'Trend reference level'}
+                  </p>
                 </div>
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">EMA 12</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Exponential Moving Average: like a moving average but gives more weight to recent prices. Reacts faster to price changes than SMA."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    EMA 12 <span className="text-gray-600 text-xs">(fast-reacting avg)</span>
+                  </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(
                       getSignalValue(signals?.ema_12 || signals?.ema12),
                       currentMarket.currency
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Exponential MA</p>
+                  <p className="text-xs text-gray-500 mt-1">Reacts faster than SMA</p>
                 </div>
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">VWAP</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Volume-Weighted Average Price: the average price weighted by trading volume. Institutions use this as a benchmark — price above VWAP is bullish intraday."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    VWAP <span className="text-gray-600 text-xs">(volume avg price)</span>
+                  </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(getSignalValue(signals?.vwap), currentMarket.currency)}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Volume weighted</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {quote?.price && getSignalValue(signals?.vwap)
+                      ? quote.price > getSignalValue(signals?.vwap)
+                        ? 'Above VWAP — institutions buying'
+                        : 'Below VWAP — selling pressure'
+                      : 'Intraday fair-value benchmark'}
+                  </p>
                 </div>
-                <div className="p-3 bg-gray-700/50 rounded-lg">
-                  <h4 className="text-sm text-gray-400 mb-1">ATR</h4>
+                <div
+                  className="p-3 bg-gray-700/50 rounded-lg"
+                  title="Average True Range: measures how much the price typically moves per day. High ATR = volatile stock. Use it to size your stop-loss — e.g. stop = 1.5× ATR below entry."
+                >
+                  <h4 className="text-sm text-gray-400 mb-1">
+                    ATR <span className="text-gray-600 text-xs">(daily move range)</span>
+                  </h4>
                   <div className="text-2xl font-bold text-orange-400">
                     {formatPrice(getSignalValue(signals?.atr), currentMarket.currency)}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Volatility</p>
+                  <p className="text-xs text-gray-500 mt-1">Typical daily price swing</p>
                 </div>
               </div>
             )}
