@@ -154,6 +154,8 @@ PortfolioModal:
 | POST | `/api/paper-trade/{id}/close` | - | `{id, symbol, side, entry_price, exit_price, quantity, pnl, pnl_percent, currency, status: "closed", message}` |
 | DELETE | `/api/paper-trade/{id}` | - | `{message: "Paper trade deleted"}` |
 | GET | `/api/paper-trade/summary` | - | `{total_trades, open_positions, closed_trades, wins, losses, win_rate, total_pnl}` |
+| PUT | `/api/paper-trade/{id}/levels` | `{stop_loss_price?, take_profit_price?}` | `{id, stop_loss_price, take_profit_price, message}` |
+| GET | `/api/paper-trade/journal` | - | `{metrics: {total_closed, win_rate, total_pnl, avg_win, avg_loss, profit_factor, max_drawdown, best_trade, worst_trade}, equity_curve: [{date, symbol, cumulative_pnl}], trades: [...]}` |
 
 ### How It Works
 
@@ -191,11 +193,19 @@ PortfolioModal:
 | strategy | String(50) | Nullable |
 | market | String(20) | Default "US" |
 | currency | String(10) | Default "$" |
+| stop_loss_price | Float | Nullable — auto-close trigger |
+| take_profit_price | Float | Nullable — auto-close trigger |
 | pnl | Float | Nullable |
 | pnl_percent | Float | Nullable |
 | notes | Text | Default "" |
 | opened_at | DateTime | Auto UTC |
 | closed_at | DateTime | Nullable |
+
+### SL/TP Auto-Monitor
+Background task (`services/paper_trade_monitor.py`) runs every 60 seconds:
+- Fetches current price for each open trade that has SL or TP set
+- Closes the trade automatically if price crosses either level
+- Frontend poll (`App.jsx` 60s interval) detects the disappearance and fires a toast notification
 
 ### Test Checkpoints
 

@@ -29,9 +29,10 @@ Frontend (React/Vite)          Backend (FastAPI/Python)
 | Backend | FastAPI, Python 3.11, Uvicorn |
 | Database | SQLite (dev) / PostgreSQL (prod), SQLAlchemy async, Alembic migrations |
 | Auth | JWT (python-jose), bcrypt password hashing |
-| Market Data | yfinance (primary), file cache (fallback), simulator (demo) |
-| AI | Groq LLM (Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B, Gemma 2 9B) |
-| Real-time | WebSocket (FastAPI native) |
+| Market Data | yfinance (primary, 15-min delayed), simulator/MME (demo fallback) |
+| AI | Groq LLM (Llama 3.3 70B, Llama 3.1 8B, Mixtral 8x7B, Gemma 2 9B); user-supplied API key supported |
+| Real-time | WebSocket `/ws/prices` — 5s broadcast loop pulling yfinance; demo-fallback simulates ticks |
+| Deployment | Railway (backend Docker), Netlify (frontend), PostgreSQL (Railway managed) |
 | Payments | Stripe (international), Razorpay (India) |
 
 ### Supported Markets (22)

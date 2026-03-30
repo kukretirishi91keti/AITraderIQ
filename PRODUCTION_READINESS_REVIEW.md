@@ -1,127 +1,218 @@
 # Production Readiness Review: TraderAI Pro (AITraderIQ)
-## Date: 2026-03-09 | Reviewer: Claude Code (Opus 4.6)
-
-### Current State: **~35% Production-Ready** (Strong Academic Project)
+## Updated: 2026-03-30 | Reviewer: Claude Code (Sonnet 4.6)
 
 ---
 
-## Executive Summary
+## Current State: **~72% Production-Ready**
 
-AITraderIQ is an ambitious full-stack AI trading dashboard covering 22 global markets with
-technical analysis, AI-powered insights (Groq/Llama 3.3), and real-time data via yfinance.
-The core trading logic, multi-market architecture, and AI integration are solid. However,
-critical gaps in security, scalability, and real-time capabilities must be addressed
-before serving 500 concurrent users.
+Up from ~35% (March 2026). Core platform is solid and deployable for a demo/beta audience.
+The single biggest gap remaining is **real-time market data** — everything else is either done or minor.
 
 ---
 
-## Day Trader Perspective
+## What Has Been Built (Completed Milestones)
 
-### What Works Well
-- 22 global markets in one dashboard (rare even in paid tools)
-- AI trading assistant with style customization (day/swing/position/scalper)
-- Technical indicators suite: RSI, MACD, Bollinger Bands, VWAP
-- Data provenance transparency (LIVE/CACHED/SIMULATED badges)
-- Graceful degradation with circuit breaker and LKG fallback
-- Clean multi-currency formatting across markets
+### Infrastructure
+- [x] PostgreSQL on Railway with async SQLAlchemy + Alembic migrations (auto-run on deploy)
+- [x] JWT authentication (register/login/profile), bcrypt password hashing
+- [x] Rate limiting (slowapi), CORS restricted to frontend origin
+- [x] Input validation + symbol sanitization on all endpoints
+- [x] Docker container on Railway with `alembic upgrade head` pre-start
+- [x] GitHub Actions CI: lint, format, tests (slow load tests moved to nightly workflow)
+- [x] Netlify frontend with Vite production builds
 
-### Critical User Gaps
-1. **No real-time data** - Polling every 5-60s is unacceptable for day trading
-2. **No authentication** - Watchlists/portfolios lost on refresh
-3. **No price alerts** - The #1 feature day traders need
-4. **yfinance 15-min delay** - Stale data for active trading
-5. **No order book / Level 2** - Can't see bid/ask depth
-6. **No backtested signal accuracy** - "BUY signal" means nothing without track record
+### Features
+- [x] 22-market support (US, India, UK, EU, APAC, Crypto, Forex, Commodities)
+- [x] Technical analysis: RSI, MACD, Bollinger Bands, VWAP, ATR, SMA/EMA
+- [x] WebSocket `/ws/prices` — 5s broadcast loop for subscribed symbols
+- [x] AI assistant (Groq Llama 3.3 70B) with trader-style adaptation
+- [x] User-supplied Groq API key — stored in localStorage, sent per-request, validated via `/api/genai/test-key`
+- [x] Strategy Intelligence wizard — 6 ranked strategies scored against user profile + market
+- [x] Paper trading with SL/TP auto-monitor (60s background task)
+- [x] Trade Journal — equity curve, 8 risk metrics, full trade log (`/api/paper-trade/journal`)
+- [x] AI scanner (batch screener with signal scoring)
+- [x] Backtesting panel
+- [x] Reddit/news sentiment aggregation
+- [x] Price alerts (in-browser, DB-backed)
+- [x] Watchlist / portfolio (DB-synced when logged in)
+- [x] Investor profile + onboarding flow
+- [x] Data freshness badge (Live / Delayed / Demo) on price header
+- [x] DEMO_MODE banner in toolbar when backend runs in demo mode
+- [x] Plain-language indicator explanations (RSI, VWAP, ATR, SMA, EMA, Signal)
+- [x] SL/TP plain-English help text with dollar examples in Paper Trades modal
+- [x] Strategy "Why ranked #X for you?" explanation panel
+- [x] Mobile layout: collapsible sidebar, floating AI panel button
+- [x] Toast notifications for auto-closed trades and key events
 
 ---
 
-## Engineering Assessment
+## Score by Category
 
-### RED FLAGS (Must Fix Before 500 Users)
+| Category | Score | Notes |
+|----------|-------|-------|
+| Auth & Security | 8/10 | JWT, bcrypt, rate limiting, CORS, input sanitization |
+| Data persistence | 9/10 | PostgreSQL + Alembic migrations |
+| AI features | 8/10 | Groq LLM, rule-based fallback, user key + Test & Save |
+| Paper trading | 9/10 | SL/TP monitor, journal, equity curve |
+| UI / UX | 7/10 | Mobile layout added; App.jsx still ~2000 lines |
+| Market data | 3/10 | **yfinance is 15-min delayed + gets blocked on cloud IPs** |
+| Real-time | 3/10 | WebSocket infrastructure exists but data feed is the bottleneck |
+| Scalability | 6/10 | Single Railway worker, in-process cache |
+| Observability | 5/10 | Structured logging; no external alerting |
+| **Overall** | **~72%** | |
 
-| Issue | Location | Risk |
-|-------|----------|------|
-| CORS `allow_origins=["*"]` | `backend/main.py:94` | Security - open API |
-| No authentication | Entire app | No user isolation |
-| No rate limiting | All endpoints | yfinance quota exhaustion |
-| Exception handler leaks internals | `main.py:108` | `str(exc)` exposes stack traces |
-| File-based cache | `cache_manager.py` | Breaks with multiple workers |
-| SingleFlight global lock | `cache_manager.py:353` | Deadlock under concurrent load |
-| No input validation on symbols | Stock routes | Path traversal risk |
-| No database | Entire app | No persistent state |
-| 3000-line App.jsx monolith | `frontend/src/App.jsx` | Performance + maintainability |
-| Groq key fallback string | `genai_services.py:29` | Credential artifact |
+---
 
-### YELLOW FLAGS (Should Fix)
+## The #1 Blocker: Real-Time Market Data
+
+### Why yfinance Does Not Work for Real-Time
 
 | Issue | Impact |
 |-------|--------|
-| No Docker/containerization | Unreliable deployment |
-| No CI/CD pipeline | Manual error-prone deploys |
-| No structured logging | Can't search/alert on logs |
-| API version confusion (v4 vs v5) | Client breakage risk |
-| `reload=True` in prod config | Memory leaks |
-| No request timeout on yfinance | Thread pool starvation |
-| Unbounded memory cache | OOM under load |
+| 15-minute delay on free Yahoo Finance data | Prices are stale — useless for day trading |
+| Yahoo blocks scraping from cloud IPs (Railway, AWS, GCP) | Frequently returns empty/error, falls to demo simulator |
+| No official API — could break any day | Reliability risk |
+| Rate limits hit under load (>10 req/min per symbol) | Breaks under real usage |
 
----
+**This is why DEMO_MODE shows** — when yfinance fails on Railway, the backend falls through to the MME (Market Micro-Engine simulator). The WebSocket loop IS running and pushing updates every 5 seconds, but the prices are randomly generated, not real market prices.
 
-## 500-User Demo Roadmap
+### How to Get 100% Real-Time Data
 
-### Phase 1: Foundation (Week 1-2) - DONE
-- [x] Redis cache (replace file-based)
-- [x] JWT authentication (fastapi-users)
-- [x] PostgreSQL/SQLite for user data
-- [x] Fix CORS whitelist
-- [x] Rate limiting (slowapi)
-- [ ] Docker Compose
-- [x] Input sanitization
-
-### Phase 2: Real-Time (Week 3-4) - DONE
-- [x] WebSocket price streaming
-- [x] Background market data worker
-- [ ] Upgrade data source (Polygon.io, Finnhub, or Twelve Data)
-- [x] Price alert system
-
-### Phase 3: AI Differentiation (Week 5-6) - DONE
-- [x] Signal backtesting with accuracy scores
-- [x] Auto-generated AI commentary on significant moves
-- [x] AI-ranked market scanner
-- [x] Combined sentiment score (Reddit + StockTwits + News)
-- [ ] Chart pattern recognition
-
-### Phase 4: Polish (Week 7-8)
-- [ ] Split App.jsx into ~15 components
-- [ ] Mobile responsive optimization
-- [ ] User onboarding flow
-- [ ] Performance (React.memo, virtualized lists)
-- [ ] Production deployment (Railway/Render/AWS)
-
----
-
-## Quick Wins (This Weekend)
-
-1. Fix SingleFlight per-key locking
-2. Add `slowapi` rate limiting (~10 lines)
-3. Restrict CORS to frontend origin
-4. Add basic WebSocket endpoint
-5. Extract Chart, Watchlist, AIChat from App.jsx
-
----
-
-## Recommended Architecture for 500 Users
-
+#### Option A — Finnhub (Free, US stocks, start today)
 ```
-Nginx/Cloudflare → Gunicorn (3 Uvicorn workers) → Redis (cache + pub/sub)
-                                                  → PostgreSQL (users, alerts)
-                                                  → Background Worker (market data ingestion)
+https://finnhub.io/register  →  copy API key
+Railway env: FINNHUB_API_KEY=your_key_here
+```
+- 60 calls/min on free tier
+- Native WebSocket for real-time tick data (sub-second)
+- Covers all US equities + major crypto
+
+#### Option B — Twelve Data ($8/mo, all 22 markets)
+```
+https://twelvedata.com  →  Basic plan $8/mo
+Railway env: TWELVE_DATA_API_KEY=your_key_here
+```
+- Covers all 22 markets including India (.NS), UK (.L), Japan (.T)
+- WebSocket + REST
+- Best option for full global coverage
+
+#### Option C — Polygon.io ($29/mo, institutional grade)
+```
+https://polygon.io  →  Starter plan $29/mo
+```
+- Real-time tick data, options chain, Level 2 order book
+- Purpose-built for trading apps
+- Best option for serious traders / scaling
+
+### Wiring Finnhub (Step-by-Step, ~1 Day of Work)
+
+**1. Install client:**
+```bash
+pip install finnhub-python
+# Add to requirements.txt: finnhub-python>=2.4.0
 ```
 
+**2. Add to `backend/services/market_data_service.py`** — new primary source before yfinance:
+```python
+import os, httpx
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
+
+async def _fetch_finnhub_quote(symbol: str) -> Optional[Dict]:
+    if not FINNHUB_KEY:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                "https://finnhub.io/api/v1/quote",
+                params={"symbol": symbol, "token": FINNHUB_KEY}
+            )
+            d = r.json()
+            if not d.get("c"):          # c = current price
+                return None
+            prev = d.get("pc") or d["c"]
+            return {
+                "price": d["c"],
+                "change": round(d["c"] - prev, 4),
+                "changePercent": round((d["c"] - prev) / prev * 100, 4) if prev else 0,
+                "high": d.get("h"), "low": d.get("l"), "open": d.get("o"),
+                "volume": 0,
+                "dataQuality": "LIVE",
+                "source": "FINNHUB",
+            }
+    except Exception:
+        return None
+```
+
+**3. In `get_quote()`, try Finnhub first:**
+```python
+async def get_quote(self, symbol: str) -> Optional[Dict]:
+    quote = await _fetch_finnhub_quote(symbol)
+    if quote:
+        return quote
+    # fall through to existing yfinance path
+    return await self._get_quote_yfinance_sync(symbol)
+```
+
+**4. Replace the 5s polling WebSocket loop with Finnhub WebSocket ticks:**
+```python
+# backend/routers/websocket.py — replace price_broadcast_loop() body
+import websockets, json
+
+async def price_broadcast_loop():
+    uri = f"wss://ws.finnhub.io?token={os.getenv('FINNHUB_API_KEY','')}"
+    async with websockets.connect(uri) as ws:
+        # Subscribe to all currently watched symbols
+        for sym in manager.get_all_subscribed_symbols():
+            await ws.send(json.dumps({"type": "subscribe", "symbol": sym}))
+        async for raw in ws:
+            msg = json.loads(raw)
+            if msg.get("type") != "trade":
+                continue
+            for tick in msg.get("data", []):
+                sym = tick["s"]
+                price = tick["p"]
+                await manager.broadcast_to_symbol(sym, {
+                    "type": "quote", "symbol": sym,
+                    "price": price, "dataQuality": "LIVE",
+                    "timestamp": datetime.now().isoformat(),
+                })
+```
+
+This gives **sub-second tick data** pushed directly to the browser — no polling at all.
+
 ---
 
-## Verdict
+## Deployment Checklist
 
-The hard part (multi-market pipeline, AI integration, trading signals) is done well.
-What remains is infrastructure and reliability work. **6-8 focused weeks** to a
-credible 500-user demo. The AI assistant is the true differentiator - no free tool
-does context-aware, style-adaptive trading insights this well.
+| Item | Status | Action |
+|------|--------|--------|
+| Railway backend auto-deploy | ✓ | — |
+| Alembic migrations auto-run | ✓ | — |
+| PostgreSQL on Railway | ✓ | — |
+| Netlify frontend auto-deploy | ✓ | — |
+| `SECRET_KEY` in Railway env | ✓ | — |
+| CORS = Netlify URL | ✓ | — |
+| `DEMO_MODE=false` | ⚠ Set this | Disables simulated prices |
+| `GROQ_API_KEY` in Railway | ⚠ Add yours | Server-side AI responses |
+| `FINNHUB_API_KEY` in Railway | ✗ Not yet | **Needed for real-time data** |
+
+---
+
+## Remaining Work to Reach 100%
+
+| Priority | Item | Effort |
+|----------|------|--------|
+| P0 | Wire Finnhub (US real-time) | 1 day |
+| P0 | Wire Twelve Data (global markets) | 1 day |
+| P1 | Redis cache (multi-worker safety) | 2 days |
+| P1 | Email/push price alerts | 1 day |
+| P2 | Split App.jsx into ~15 components | 3 days |
+| P2 | React.memo + virtualized watchlist | 1 day |
+| P3 | Level 2 order book (Polygon paid) | 2 days |
+| P3 | Chart pattern recognition | 3 days |
+
+---
+
+## Summary
+
+The hard work is done. Auth, paper trading, AI strategy, journaling, mobile layout, and UX polish are all production quality. **The only thing standing between this and a live trading tool is the data source.** Swap yfinance for Finnhub (free, 1 day of work) and you go from 📦 Demo data to ⚡ Live across US equities. Add Twelve Data ($8/mo) and all 22 markets go live.
