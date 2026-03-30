@@ -328,6 +328,27 @@ export default function App() {
     }
   }, []);
 
+  // Must be declared before addAlert/removeAlert/handleWatchlistAddAlert (used in their dep arrays)
+  const refreshAlertsFromApi = useCallback(async () => {
+    try {
+      const data = await getUserAlerts();
+      if (data.alerts) {
+        setAlerts(
+          data.alerts.map((item) => ({
+            id: item.id,
+            symbol: item.symbol,
+            condition: item.condition,
+            price: item.target_value,
+            is_triggered: item.is_triggered,
+            is_active: item.is_active,
+          }))
+        );
+      }
+    } catch {
+      // Silently fall back to local state
+    }
+  }, []);
+
   // ============================================================
   // KEYBOARD SHORTCUTS
   // ============================================================
@@ -950,25 +971,6 @@ export default function App() {
   // ============================================================
   // SYNC USER DATA FROM BACKEND ON LOGIN
   // ============================================================
-  const refreshAlertsFromApi = useCallback(async () => {
-    try {
-      const data = await getUserAlerts();
-      if (data.alerts) {
-        setAlerts(
-          data.alerts.map((item) => ({
-            id: item.id,
-            symbol: item.symbol,
-            condition: item.condition,
-            price: item.target_value,
-            is_triggered: item.is_triggered,
-            is_active: item.is_active,
-          }))
-        );
-      }
-    } catch {
-      // Silently fall back to local state
-    }
-  }, []);
 
   useEffect(() => {
     if (isLoggedIn) {
