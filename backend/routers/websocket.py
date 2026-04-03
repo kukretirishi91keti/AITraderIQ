@@ -8,6 +8,7 @@ broadcasts price updates to all connected subscribers.
 import asyncio
 import json
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Optional, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -105,26 +106,95 @@ _broadcast_running = False
 
 
 async def price_broadcast_loop():
-    """Background loop that fetches prices for subscribed symbols and broadcasts."""
+    """
+    Background loop that streams real-time prices to subscribed clients.
+
+    Priority:
+      1. Finnhub WebSocket — sub-second tick data (when FINNHUB_API_KEY is set)
+      2. REST polling fallback — 5s interval via market_data_service (yfinance/MME)
+    """
     global _broadcast_running
     if _broadcast_running:
         return
     _broadcast_running = True
-
     logger.info("Price broadcast loop started")
 
+    finnhub_key = os.getenv("FINNHUB_API_KEY", "")
+
+    if finnhub_key:
+        await _finnhub_ws_loop(finnhub_key)
+    else:
+        await _polling_fallback_loop()
+
+    _broadcast_running = False
+
+
+async def _finnhub_ws_loop(finnhub_key: str):
+    """Real-time Finnhub WebSocket stream with auto-reconnect."""
+    import websockets as _ws
+
+    backoff = 1
+    while True:
+        try:
+            uri = f"wss://ws.finnhub.io?token={finnhub_key}"
+            async with _ws.connect(uri, ping_interval=20, ping_timeout=10) as ws:
+                logger.info("Finnhub WebSocket connected")
+                backoff = 1  # reset on successful connect
+                subscribed: set = set()
+
+                while True:
+                    # Sync Finnhub subscriptions with current manager state
+                    current = manager.get_all_subscribed_symbols()
+                    for sym in current - subscribed:
+                        fh_sym = sym.split(".")[0] if "." in sym else sym
+                        await ws.send(json.dumps({"type": "subscribe", "symbol": fh_sym}))
+                        subscribed.add(sym)
+                    for sym in subscribed - current:
+                        fh_sym = sym.split(".")[0] if "." in sym else sym
+                        await ws.send(json.dumps({"type": "unsubscribe", "symbol": fh_sym}))
+                        subscribed.discard(sym)
+
+                    # Receive next message (1s timeout so we re-check subscriptions)
+                    try:
+                        raw = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                        msg = json.loads(raw)
+                        if msg.get("type") == "trade":
+                            for tick in msg.get("data", []):
+                                sym = tick["s"]
+                                await manager.broadcast_to_symbol(sym, {
+                                    "type": "quote",
+                                    "symbol": sym,
+                                    "price": tick["p"],
+                                    "change": None,
+                                    "changePercent": None,
+                                    "volume": tick.get("v"),
+                                    "dataQuality": "LIVE",
+                                    "timestamp": datetime.now().isoformat(),
+                                })
+                    except asyncio.TimeoutError:
+                        pass  # normal — loop back to sync subscriptions
+
+        except asyncio.CancelledError:
+            logger.info("Finnhub WS loop cancelled")
+            return
+        except Exception as e:
+            logger.warning(f"Finnhub WS disconnected: {e} — reconnecting in {backoff}s")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, 30)  # exponential backoff, cap 30s
+
+
+async def _polling_fallback_loop():
+    """5s REST polling fallback when no Finnhub key is configured."""
     try:
         while True:
             symbols = manager.get_all_subscribed_symbols()
             if not symbols:
                 await asyncio.sleep(2)
                 continue
-
             try:
                 from services.market_data_service import get_market_data_service
                 svc = get_market_data_service()
-
-                for symbol in list(symbols)[:50]:  # Cap at 50 to prevent overload
+                for symbol in list(symbols)[:50]:
                     try:
                         quote = await svc.get_quote(symbol)
                         if quote:
@@ -140,16 +210,11 @@ async def price_broadcast_loop():
                             })
                     except Exception as e:
                         logger.warning(f"Broadcast error for {symbol}: {e}")
-
             except Exception as e:
                 logger.error(f"Broadcast loop error: {e}")
-
-            await asyncio.sleep(5)  # Update every 5 seconds
-
+            await asyncio.sleep(5)
     except asyncio.CancelledError:
-        logger.info("Price broadcast loop stopped")
-    finally:
-        _broadcast_running = False
+        logger.info("Polling fallback loop stopped")
 
 
 # =============================================================================

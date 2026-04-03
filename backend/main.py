@@ -33,6 +33,16 @@ from datetime import datetime
 # Add the backend directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Error tracking (Sentry — no-op when SENTRY_DSN is not set)
+try:
+    import sentry_sdk
+    _sentry_dsn = os.getenv("SENTRY_DSN", "")
+    if _sentry_dsn:
+        sentry_sdk.init(dsn=_sentry_dsn, traces_sample_rate=0.1, environment=os.getenv("RAILWAY_ENVIRONMENT", "production"))
+        logging.getLogger(__name__).info("Sentry error tracking enabled")
+except ImportError:
+    pass  # sentry-sdk not installed
+
 # Rate limiting
 try:
     from middleware.rate_limit import setup_rate_limiting
@@ -163,10 +173,10 @@ print(f"  CORS Origins: {ALLOWED_ORIGINS}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_origin_regex=r"https://.*\.netlify\.app",
+    allow_origin_regex=r"https://aitraderiq\.netlify\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 
 # Request logging middleware

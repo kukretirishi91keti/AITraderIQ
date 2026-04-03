@@ -9,6 +9,10 @@ starlette>=0.27.0
 
 # Data Provider
 yfinance>=0.2.33
+finnhub-python>=2.4.0
+
+# Error Tracking
+sentry-sdk[fastapi]>=1.40.0
 
 # AI/ML
 groq>=0.4.0
