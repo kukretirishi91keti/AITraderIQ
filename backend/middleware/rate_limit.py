@@ -49,11 +49,19 @@ def _get_rate_limit_key(request: Request) -> str:
     return _get_client_ip(request)
 
 
+# Storage: prefer REDIS_URL (Railway add-on) → RATE_LIMIT_STORAGE → in-memory
+# Redis keeps limits across deploys and works with multiple workers.
+_storage_uri = (
+    os.getenv("REDIS_URL")
+    or os.getenv("RATE_LIMIT_STORAGE")
+    or "memory://"
+)
+
 # Global limiter instance — keys by user ID when authenticated
 limiter = Limiter(
     key_func=_get_rate_limit_key,
     default_limits=[DEFAULT_RATE],
-    storage_uri=os.getenv("RATE_LIMIT_STORAGE", "memory://"),
+    storage_uri=_storage_uri,
 )
 
 

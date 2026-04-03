@@ -16,6 +16,7 @@ Features:
 - Proper async/sync bridging via run_in_threadpool
 """
 
+import os
 import random
 import hashlib
 import logging
@@ -23,6 +24,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Tuple
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
+import httpx
+
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 
 # Third-party imports with fallbacks
 try:
@@ -206,6 +210,48 @@ class CircuitBreaker:
 
 # Global circuit breaker
 _circuit_breaker = CircuitBreaker()
+
+
+# =============================================================================
+# FINNHUB REST QUOTE (primary real-time source)
+# =============================================================================
+
+async def _fetch_finnhub_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch real-time quote from Finnhub REST API.
+    Finnhub uses plain tickers (no exchange suffix) for US stocks.
+    For non-US symbols (e.g. RELIANCE.NS), strip the suffix — Finnhub
+    will return null and we fall through to yfinance naturally.
+    """
+    if not FINNHUB_KEY:
+        return None
+    fh_symbol = symbol.split(".")[0] if "." in symbol else symbol
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                "https://finnhub.io/api/v1/quote",
+                params={"symbol": fh_symbol, "token": FINNHUB_KEY},
+            )
+            d = r.json()
+        price = d.get("c")      # current price
+        prev  = d.get("pc") or price
+        if not price:
+            return None
+        return {
+            "price":         round(price, 4),
+            "change":        round(price - prev, 4),
+            "changePercent": round((price - prev) / prev * 100, 4) if prev else 0,
+            "high":          d.get("h"),
+            "low":           d.get("l"),
+            "open":          d.get("o"),
+            "prevClose":     prev,
+            "volume":        d.get("v", 0),
+            "dataQuality":   "LIVE",
+            "source":        "FINNHUB",
+        }
+    except Exception as e:
+        logger.warning(f"Finnhub quote error for {symbol}: {e}")
+        return None
 
 
 # =============================================================================
@@ -533,8 +579,8 @@ class MarketDataService:
     async def get_quote(self, symbol: str, force_refresh: bool = False) -> Dict[str, Any]:
         """
         Get quote with full fallback chain.
-        
-        Flow: yfinance → LKG Cache → MME Simulator
+
+        Flow: Finnhub (real-time) → yfinance → LKG Cache → MME Simulator
         """
         symbol = symbol.upper()
         cache_key = f"quote:{symbol}"
@@ -549,7 +595,16 @@ class MarketDataService:
                 data['cacheAge'] = entry.age_human()
                 return data
         
-        # 2. Try yfinance via SingleFlight (prevents thundering herd)
+        # 2. Try Finnhub REST first (real-time, works from cloud IPs)
+        if FINNHUB_KEY:
+            fh_data = await _fetch_finnhub_quote_async(symbol)
+            if fh_data:
+                self.cache.set(cache_key, fh_data, source="FINNHUB")
+                self.stats["live_fetches"] += 1
+                self.stats["last_live_fetch"] = datetime.now().isoformat()
+                return fh_data
+
+        # 3. Try yfinance via SingleFlight (prevents thundering herd)
         async def fetch_live():
             return await asyncio.wait_for(
                 run_in_threadpool(_fetch_yfinance_quote_sync, symbol),
