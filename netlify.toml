@@ -1,5 +1,16 @@
 # Netlify deployment — builds and serves the frontend React app
-# Backend must be deployed separately (Railway / Render)
+# Backend must be deployed separately (Railway)
+#
+# ============================================================
+# ACTION REQUIRED to fix 404 errors:
+# Replace RAILWAY_BACKEND_URL below with your actual Railway
+# backend URL (e.g. https://aitraderiq-backend.up.railway.app)
+# Then commit and push — Netlify will redeploy automatically.
+#
+# Alternative: set VITE_API_BASE_URL in Netlify Environment
+# Variables (Site settings → Environment variables) and trigger
+# a redeploy. The proxy redirects below are then unused.
+# ============================================================
 
 [build]
   base = "frontend"
@@ -9,7 +20,23 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# API proxy — forwards /api/* and /ws/* to Railway backend
+# so the frontend can use relative URLs (no CORS needed)
+# REPLACE the URL below with your Railway backend URL:
+[[redirects]]
+  from = "/api/*"
+  to = "https://RAILWAY_BACKEND_URL/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ws/*"
+  to = "https://RAILWAY_BACKEND_URL/ws/:splat"
+  status = 101
+  force = true
+
 # SPA catch-all — serves index.html for all frontend routes
+# Must come AFTER the /api/* and /ws/* redirects above
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -4,7 +4,7 @@
  */
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
-export const APP_VERSION = 'F';
+export const APP_VERSION = '6.0.0';
 
 export const POLLING_INTERVALS = {
   HEALTHY: 60000,
