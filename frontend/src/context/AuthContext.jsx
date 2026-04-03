@@ -1,7 +1,7 @@
 /**
  * AuthContext - Manages authentication state across the app.
  */
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   login as apiLogin,
   register as apiRegister,
@@ -38,6 +38,16 @@ export const AuthProvider = ({ children }) => {
     apiLogout();
     setUser(null);
     setIsLoggedIn(false);
+  }, []);
+
+  // Listen for 401s from authFetch so React state updates alongside localStorage
+  useEffect(() => {
+    const handleExpired = () => {
+      setUser(null);
+      setIsLoggedIn(false);
+    };
+    window.addEventListener('auth:session-expired', handleExpired);
+    return () => window.removeEventListener('auth:session-expired', handleExpired);
   }, []);
 
   const value = {
