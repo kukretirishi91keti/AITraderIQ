@@ -13,6 +13,7 @@ Produces an actionable ranked list of trading opportunities.
 import asyncio
 from fastapi import APIRouter, Query
 from datetime import datetime
+import pytz
 
 from services.backtest_engine import get_backtest_engine
 from services.sentiment_aggregator import get_aggregated_sentiment
@@ -20,10 +21,20 @@ from services.cache_manager import get_cache_manager
 
 router = APIRouter(prefix="/api/scanner", tags=["AI Scanner"])
 
-# Default scan universe
+# Default scan universe (US)
 DEFAULT_SYMBOLS = [
     "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "AMD",
     "NFLX", "INTC", "SPY", "QQQ", "BTC-USD", "ETH-USD",
+]
+
+# Nifty 50 scan universe (NSE India)
+NIFTY_50_SYMBOLS = [
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+    "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS",
+    "KOTAKBANK.NS", "LT.NS", "ASIANPAINT.NS", "AXISBANK.NS", "MARUTI.NS",
+    "SUNPHARMA.NS", "TITAN.NS", "WIPRO.NS", "NTPC.NS", "POWERGRID.NS",
+    "ULTRACEMCO.NS", "NESTLEIND.NS", "TATAMOTORS.NS", "TECHM.NS", "HCLTECH.NS",
+    "TATASTEEL.NS", "JSWSTEEL.NS", "ONGC.NS", "DRREDDY.NS", "CIPLA.NS",
 ]
 
 # Cache for AI scores (5-minute TTL)
@@ -184,4 +195,70 @@ async def find_opportunities(
         "bearish_setups": bearish[:5],
         "market_bias": "BULLISH" if len(bullish) > len(bearish) else "BEARISH" if len(bearish) > len(bullish) else "NEUTRAL",
         "generated_at": datetime.now().isoformat(),
+    }
+
+
+@router.get("/nifty50")
+async def nifty50_scan(
+    trader_type: str = Query("Day", description="Day | Swing | Position | Scalper"),
+    top_n: int = Query(10, ge=1, le=30, description="Number of top picks to return"),
+):
+    """
+    Nifty 50 Morning Scanner (India).
+
+    Scans all 30 liquid Nifty 50 stocks and returns the top picks ranked by
+    composite AI score (technical 40% + backtest accuracy 25% + sentiment 20%
+    + risk-adjusted 15%).  Designed to run at market open (9:15 AM IST).
+
+    Also returns overall market bias for the session.
+    """
+    # Parallel scoring — all 30 symbols simultaneously
+    tasks = [_compute_ai_score_cached(sym, trader_type) for sym in NIFTY_50_SYMBOLS]
+    all_scores = await asyncio.gather(*tasks)
+
+    all_scores.sort(key=lambda x: x["ai_score"], reverse=True)
+    for i, r in enumerate(all_scores):
+        r["rank"] = i + 1
+
+    bullish_count = sum(1 for s in all_scores if "BULLISH" in s["direction"])
+    bearish_count = sum(1 for s in all_scores if "BEARISH" in s["direction"])
+    if bullish_count > bearish_count * 1.5:
+        market_bias = "BULLISH"
+        bias_label = "More than half the Nifty is showing bullish signals — lean long today"
+    elif bearish_count > bullish_count * 1.5:
+        market_bias = "BEARISH"
+        bias_label = "More than half the Nifty is showing bearish signals — be cautious"
+    else:
+        market_bias = "NEUTRAL"
+        bias_label = "Market is mixed — trade only the highest-conviction setups"
+
+    # NSE session status
+    ist = pytz.timezone("Asia/Kolkata")
+    now_ist = datetime.now(ist)
+    day = now_ist.weekday()   # 0=Mon … 4=Fri
+    hhmm = now_ist.hour * 100 + now_ist.minute
+    if day > 4:
+        session = "CLOSED_WEEKEND"
+    elif hhmm < 900:
+        session = "PRE_MARKET"
+    elif hhmm < 915:
+        session = "PRE_OPEN"
+    elif hhmm < 1530:
+        session = "OPEN"
+    else:
+        session = "CLOSED"
+
+    return {
+        "success": True,
+        "market": "NSE India — Nifty 50",
+        "trader_type": trader_type,
+        "session": session,
+        "market_bias": market_bias,
+        "bias_label": bias_label,
+        "top_picks": all_scores[:top_n],
+        "all_ranked": all_scores,
+        "bullish_count": bullish_count,
+        "bearish_count": bearish_count,
+        "neutral_count": len(all_scores) - bullish_count - bearish_count,
+        "generated_at": now_ist.isoformat(),
     }

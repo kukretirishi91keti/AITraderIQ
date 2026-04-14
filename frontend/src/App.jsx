@@ -7,6 +7,7 @@ import BacktestPanel from './components/BacktestPanel';
 import SentimentDashboard from './components/SentimentDashboard';
 import MarketCommentary from './components/MarketCommentary';
 import AIScanner from './components/AIScanner';
+import Nifty50Scanner from './components/Nifty50Scanner';
 import ChartPanel from './components/ChartPanel';
 import { getPriceStream } from './services/websocket';
 import {
@@ -32,6 +33,10 @@ import {
   TRADING_STYLES,
   AI_PROMPTS,
   KEYBOARD_SHORTCUTS,
+  DEFAULT_MARKET,
+  DEFAULT_SYMBOL,
+  NIFTY_50_WATCHLIST,
+  NSE_HOURS,
 } from './constants/appConfig';
 
 // Utils
@@ -74,8 +79,8 @@ export default function App() {
   const { user, isLoggedIn, setShowAuthModal, logout } = useAuth();
 
   // Core state
-  const [selectedMarket, setSelectedMarket] = useState('US');
-  const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
+  const [selectedMarket, setSelectedMarket] = useState(DEFAULT_MARKET);
+  const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_SYMBOL);
   const [searchQuery, setSearchQuery] = useState('');
   const [traderStyle, setTraderStyle] = useState('Swing');
   const [chartInterval, setChartInterval] = useState('1d');
@@ -119,7 +124,7 @@ export default function App() {
   const [screenerCategories, setScreenerCategories] = useState([]);
 
   // Watchlist & Alerts
-  const [watchlist, setWatchlist] = useState(['AAPL', 'NVDA', 'TSLA', 'BTC-USD', 'SPY']);
+  const [watchlist, setWatchlist] = useState(NIFTY_50_WATCHLIST);
   const [alerts, setAlerts] = useState([
     { symbol: 'AAPL', condition: 'above', price: 250 },
     { symbol: 'BTC-USD', condition: 'above', price: 110000 },
@@ -1563,6 +1568,23 @@ export default function App() {
                     </span>
                   );
                 })()}
+                {selectedMarket === 'INDIA' && (() => {
+                  const now = new Date();
+                  const ist = new Date(now.toLocaleString('en-US', { timeZone: NSE_HOURS.timezone }));
+                  const day = ist.getDay(); // 0=Sun,6=Sat
+                  const hhmm = ist.getHours() * 100 + ist.getMinutes();
+                  const isWeekday = day >= 1 && day <= 5;
+                  const isOpen = isWeekday && hhmm >= 915 && hhmm < 1530;
+                  const isPreOpen = isWeekday && hhmm >= 900 && hhmm < 915;
+                  return (
+                    <span
+                      title={isOpen ? 'NSE regular session (9:15–15:30 IST)' : isPreOpen ? 'NSE pre-open (9:00–9:15 IST)' : 'NSE market closed'}
+                      className={`px-2 py-0.5 text-xs rounded cursor-help ${isOpen ? 'bg-green-700/30 text-green-300' : isPreOpen ? 'bg-yellow-700/30 text-yellow-300' : 'bg-gray-700/40 text-gray-400'}`}
+                    >
+                      {isOpen ? '🟢 NSE Open' : isPreOpen ? '🟡 Pre-open' : '🔴 NSE Closed'}
+                    </span>
+                  );
+                })()}
                 <span className="text-2xl font-bold">
                   {currentMarket.currency}
                   {quote?.price?.toFixed(2) || '-'}
@@ -1651,7 +1673,7 @@ export default function App() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
-                  {tab}
+                  {tab === 'AI scanner' && selectedMarket === 'INDIA' ? 'Nifty 50' : tab}
                 </button>
               )
             )}
@@ -1905,10 +1927,17 @@ export default function App() {
             )}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
             {activeTab === 'AI scanner' && (
-              <AIScanner
-                traderStyle={traderStyle?.toLowerCase()}
-                onSymbolSelect={handleSymbolSelect}
-              />
+              selectedMarket === 'INDIA' ? (
+                <Nifty50Scanner
+                  traderStyle={traderStyle || 'Day'}
+                  onSymbolSelect={handleSymbolSelect}
+                />
+              ) : (
+                <AIScanner
+                  traderStyle={traderStyle?.toLowerCase()}
+                  onSymbolSelect={handleSymbolSelect}
+                />
+              )
             )}
           </div>
         </main>
