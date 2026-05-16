@@ -250,7 +250,14 @@ load_router(
 load_router(
     ['routers.screener', 'screener'],
     'screener router',
-    '(movers, universe, signals)'
+    '(movers, signals)'
+)
+
+# Load screener universe (GET /api/screener/universe — 22 market categories)
+load_router(
+    ['routers.screener_universe'],
+    'screener_universe router',
+    '(universe)'
 )
 
 # Load health router
