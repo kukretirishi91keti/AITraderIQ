@@ -58,9 +58,36 @@ export default function AuthModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {mode === 'login' && (
+            <div className="p-2.5 bg-blue-900/20 border border-blue-700/40 rounded text-xs text-blue-300">
+              First time here?{' '}
+              <button
+                type="button"
+                onClick={() => setMode('register')}
+                className="underline font-semibold"
+              >
+                Create a free account
+              </button>{' '}
+              — your paper trades and watchlist are saved to your account.
+            </div>
+          )}
           {error && (
             <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-400 text-sm">
               {error}
+              {error.toLowerCase().includes('incorrect') || error.toLowerCase().includes('401') ? (
+                <span className="block mt-1 text-xs">
+                  New here?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                    }}
+                    className="underline"
+                  >
+                    Register instead
+                  </button>
+                </span>
+              ) : null}
             </div>
           )}
 

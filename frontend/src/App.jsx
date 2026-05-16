@@ -1149,10 +1149,10 @@ export default function App() {
             {/* DEMO_MODE indicator */}
             {demoMode && (
               <span
-                title="Backend running in demo mode — prices are simulated, not live market data"
+                title="Prices are simulated. Set TWELVE_DATA_API_KEY + DEMO_MODE=false on your backend to go live."
                 className="px-2 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded text-xs font-medium cursor-help"
               >
-                📦 DEMO MODE
+                📦 Demo prices — not live
               </span>
             )}
             {/* User GROQ API key */}
@@ -1170,23 +1170,39 @@ export default function App() {
               </button>
               {showApiKeyInput && (
                 <div className="absolute right-0 top-9 z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 w-80 shadow-xl">
-                  <p className="text-xs text-gray-400 mb-1">
-                    Enter your{' '}
+                  <p className="text-xs font-semibold text-white mb-1">Enable Real AI Responses</p>
+                  <p className="text-xs text-gray-400 mb-2">
+                    Get a <strong>free</strong> API key from your AI provider, paste it below.
+                  </p>
+                  <div className="flex flex-col gap-1 mb-2 p-2 bg-gray-700/50 rounded text-xs">
                     <a
-                      href="https://console.groq.com"
+                      href="https://console.groq.com/keys"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-cyan-400 hover:underline"
+                      className="text-cyan-400 hover:underline flex items-center gap-1"
                     >
-                      Groq API key
-                    </a>{' '}
-                    for real AI responses (free tier available).
-                  </p>
+                      🔗 Groq (Recommended — fastest, free)
+                    </a>
+                    <span className="text-gray-500 text-[10px] pl-4">
+                      console.groq.com → API Keys → Create Key
+                    </span>
+                    <a
+                      href="https://platform.openai.com/api-keys"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-cyan-400 hover:underline flex items-center gap-1 mt-1"
+                    >
+                      🔗 OpenAI (GPT-4o)
+                    </a>
+                    <span className="text-gray-500 text-[10px] pl-4">
+                      platform.openai.com → API Keys
+                    </span>
+                  </div>
                   <input
                     type="password"
                     value={groqApiKey}
                     onChange={(e) => setGroqApiKey(e.target.value)}
-                    placeholder="gsk_..."
+                    placeholder="Paste key here (gsk_... or sk-...)"
                     className="w-full bg-gray-700 px-2 py-1.5 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 mb-2"
                   />
                   <div className="flex gap-1.5">

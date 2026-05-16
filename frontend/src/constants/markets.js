@@ -5,20 +5,20 @@
 
 export const MARKETS = [
   {
-    id: 'US',
-    name: 'US',
-    flag: '\u{1F1FA}\u{1F1F8}',
-    currency: '$',
-    currencyName: 'USD',
-    defaultSymbol: 'AAPL',
-  },
-  {
     id: 'India',
     name: 'India',
     flag: '\u{1F1EE}\u{1F1F3}',
     currency: '\u20B9',
     currencyName: 'INR',
     defaultSymbol: 'RELIANCE.NS',
+  },
+  {
+    id: 'US',
+    name: 'US',
+    flag: '\u{1F1FA}\u{1F1F8}',
+    currency: '$',
+    currencyName: 'USD',
+    defaultSymbol: 'AAPL',
   },
   {
     id: 'UK',
