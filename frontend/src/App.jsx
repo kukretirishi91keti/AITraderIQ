@@ -1149,7 +1149,7 @@ export default function App() {
             {/* DEMO_MODE indicator */}
             {demoMode && (
               <span
-                title="Prices are simulated. Set TWELVE_DATA_API_KEY + DEMO_MODE=false on your backend to go live."
+                title="Simulated prices. On Render dashboard: set TWELVE_DATA_API_KEY (twelvedata.com, free) + DEMO_MODE=false, then redeploy."
                 className="px-2 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded text-xs font-medium cursor-help"
               >
                 📦 Demo prices — not live
@@ -1181,28 +1181,17 @@ export default function App() {
                       rel="noreferrer"
                       className="text-cyan-400 hover:underline flex items-center gap-1"
                     >
-                      🔗 Groq (Recommended — fastest, free)
+                      🔗 Groq — fastest, free tier available
                     </a>
                     <span className="text-gray-500 text-[10px] pl-4">
-                      console.groq.com → API Keys → Create Key
-                    </span>
-                    <a
-                      href="https://platform.openai.com/api-keys"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-cyan-400 hover:underline flex items-center gap-1 mt-1"
-                    >
-                      🔗 OpenAI (GPT-4o)
-                    </a>
-                    <span className="text-gray-500 text-[10px] pl-4">
-                      platform.openai.com → API Keys
+                      console.groq.com → API Keys → Create Key → starts with gsk_
                     </span>
                   </div>
                   <input
                     type="password"
                     value={groqApiKey}
                     onChange={(e) => setGroqApiKey(e.target.value)}
-                    placeholder="Paste key here (gsk_... or sk-...)"
+                    placeholder="Paste Groq key here (gsk_...)"
                     className="w-full bg-gray-700 px-2 py-1.5 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 mb-2"
                   />
                   <div className="flex gap-1.5">
@@ -1948,7 +1937,11 @@ export default function App() {
             )}
 
             {activeTab === 'backtest' && (
-              <BacktestPanel symbol={selectedSymbol} traderStyle={traderStyle?.toLowerCase()} />
+              <BacktestPanel
+                symbol={selectedSymbol}
+                traderStyle={traderStyle?.toLowerCase()}
+                currency={currentMarket.currency}
+              />
             )}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
             {activeTab === 'AI scanner' &&

@@ -6,7 +6,7 @@ import React, { useState, useEffect, memo } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-function BacktestPanel({ symbol, traderStyle = 'swing' }) {
+function BacktestPanel({ symbol, traderStyle = 'swing', currency = '$' }) {
   const [data, setData] = useState(null);
   const [comparison, setComparison] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -176,8 +176,14 @@ function BacktestPanel({ symbol, traderStyle = 'swing' }) {
                         >
                           {s.signal}
                         </td>
-                        <td className="py-1 text-right text-gray-300">${s.price}</td>
-                        <td className="py-1 text-right text-gray-300">${s.outcome_price}</td>
+                        <td className="py-1 text-right text-gray-300">
+                          {currency}
+                          {s.price}
+                        </td>
+                        <td className="py-1 text-right text-gray-300">
+                          {currency}
+                          {s.outcome_price}
+                        </td>
                         <td
                           className={`py-1 text-right ${s.return_pct > 0 ? 'text-green-400' : 'text-red-400'}`}
                         >
