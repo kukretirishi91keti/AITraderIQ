@@ -316,6 +316,68 @@ def _to_twelvedata_symbol(symbol: str) -> Optional[str]:
     return None
 
 
+_TD_INTERVAL_MAP = {
+    # yfinance/internal → Twelve Data interval
+    "1m": "1min", "2m": "2min", "5m": "5min", "15m": "15min",
+    "30m": "30min", "60m": "1h", "1h": "1h", "90m": "90min",
+    "1d": "1day", "5d": "1day", "1wk": "1week", "1mo": "1month",
+    "3mo": "1month",
+}
+
+_TD_OUTPUTSIZE_MAP = {
+    # period → number of candles
+    "1d": 390, "5d": 390, "1mo": 30, "3mo": 66,
+    "6mo": 130, "1y": 252, "2y": 504, "5y": 1000,
+}
+
+
+async def _fetch_twelvedata_history_async(
+    symbol: str, period: str = "1mo", interval: str = "1d"
+) -> Optional[List[Dict[str, Any]]]:
+    """
+    Fetch OHLCV history from Twelve Data for Indian NSE/BSE symbols.
+    Returns a list of candle dicts matching the internal format.
+    """
+    if not TWELVE_DATA_KEY:
+        return None
+    td_symbol = _to_twelvedata_symbol(symbol)
+    if not td_symbol:
+        return None
+    td_interval  = _TD_INTERVAL_MAP.get(interval, "1day")
+    outputsize   = _TD_OUTPUTSIZE_MAP.get(period, 30)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.twelvedata.com/time_series",
+                params={
+                    "symbol": td_symbol,
+                    "interval": td_interval,
+                    "outputsize": outputsize,
+                    "apikey": TWELVE_DATA_KEY,
+                    "order": "ASC",
+                },
+            )
+            d = r.json()
+        if d.get("status") == "error" or "values" not in d:
+            logger.warning(f"Twelve Data history error for {td_symbol}: {d.get('message','')}")
+            return None
+        candles = []
+        for row in d["values"]:
+            candles.append({
+                "timestamp": row["datetime"],
+                "date":      row["datetime"],
+                "open":      float(row["open"]),
+                "high":      float(row["high"]),
+                "low":       float(row["low"]),
+                "close":     float(row["close"]),
+                "volume":    int(row.get("volume") or 0),
+            })
+        return candles if candles else None
+    except Exception as e:
+        logger.warning(f"Twelve Data history error for {symbol}: {e}")
+        return None
+
+
 async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
     """
     Fetch real-time quote from Twelve Data for Indian NSE/BSE stocks.
@@ -773,13 +835,20 @@ class MarketDataService:
         if entry:
             return entry.data, "CACHED"
         
-        # Try yfinance
+        # 1a. Twelve Data — primary for Indian (NSE/BSE) history
+        if TWELVE_DATA_KEY and _to_twelvedata_symbol(symbol):
+            td_hist = await _fetch_twelvedata_history_async(symbol, period, interval)
+            if td_hist:
+                self.cache.set(cache_key, td_hist, source="TWELVE_DATA")
+                return td_hist, "TWELVE_DATA"
+
+        # 1b. Try yfinance for non-Indian symbols
         async def fetch_live():
             return await asyncio.wait_for(
                 run_in_threadpool(
                     _fetch_yfinance_history_sync, symbol, period, interval
                 ),
-                timeout=30.0,  # 30s for history (larger payload)
+                timeout=30.0,
             )
 
         try:
