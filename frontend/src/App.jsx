@@ -1568,7 +1568,7 @@ export default function App() {
                     </span>
                   );
                 })()}
-                {selectedMarket === 'INDIA' &&
+                {selectedMarket === 'India' &&
                   (() => {
                     const now = new Date();
                     const ist = new Date(
@@ -1682,7 +1682,7 @@ export default function App() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
-                  {tab === 'AI scanner' && selectedMarket === 'INDIA' ? 'Nifty 50' : tab}
+                  {tab === 'AI scanner' && selectedMarket === 'India' ? 'Nifty 50' : tab}
                 </button>
               )
             )}
@@ -1936,7 +1936,7 @@ export default function App() {
             )}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
             {activeTab === 'AI scanner' &&
-              (selectedMarket === 'INDIA' ? (
+              (selectedMarket === 'India' ? (
                 <Nifty50Scanner
                   traderStyle={traderStyle || 'Day'}
                   onSymbolSelect={handleSymbolSelect}

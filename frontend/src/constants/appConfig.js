@@ -7,7 +7,7 @@ export const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 export const APP_VERSION = '6.0.0';
 
 // ─── India-first defaults ─────────────────────────────────────────────────────
-export const DEFAULT_MARKET = 'INDIA';
+export const DEFAULT_MARKET = 'India'; // matches markets.js id: 'India'
 export const DEFAULT_SYMBOL = 'RELIANCE.NS';
 
 /** Top 10 Nifty 50 heavyweights — shown as default watchlist on first load */
