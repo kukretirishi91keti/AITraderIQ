@@ -13,7 +13,7 @@ Produces an actionable ranked list of trading opportunities.
 import asyncio
 from fastapi import APIRouter, Query
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo
 
 from services.backtest_engine import get_backtest_engine
 from services.sentiment_aggregator import get_aggregated_sentiment
@@ -233,8 +233,7 @@ async def nifty50_scan(
         bias_label = "Market is mixed — trade only the highest-conviction setups"
 
     # NSE session status
-    ist = pytz.timezone("Asia/Kolkata")
-    now_ist = datetime.now(ist)
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     day = now_ist.weekday()   # 0=Mon … 4=Fri
     hhmm = now_ist.hour * 100 + now_ist.minute
     if day > 4:
