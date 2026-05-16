@@ -7,8 +7,8 @@ export const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 export const APP_VERSION = '6.0.0';
 
 // ─── India-first defaults ─────────────────────────────────────────────────────
-export const DEFAULT_MARKET  = 'INDIA';
-export const DEFAULT_SYMBOL  = 'RELIANCE.NS';
+export const DEFAULT_MARKET = 'INDIA';
+export const DEFAULT_SYMBOL = 'RELIANCE.NS';
 
 /** Top 10 Nifty 50 heavyweights — shown as default watchlist on first load */
 export const NIFTY_50_WATCHLIST = [
@@ -26,16 +26,53 @@ export const NIFTY_50_WATCHLIST = [
 
 /** Full Nifty 50 for the scanner — 50 most liquid NSE stocks */
 export const NIFTY_50_FULL = [
-  'RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS',
-  'HINDUNILVR.NS','ITC.NS','SBIN.NS','BHARTIARTL.NS','BAJFINANCE.NS',
-  'KOTAKBANK.NS','LT.NS','ASIANPAINT.NS','AXISBANK.NS','MARUTI.NS',
-  'SUNPHARMA.NS','TITAN.NS','WIPRO.NS','NTPC.NS','POWERGRID.NS',
-  'ULTRACEMCO.NS','NESTLEIND.NS','TATAMOTORS.NS','TECHM.NS','HCLTECH.NS',
-  'TATASTEEL.NS','JSWSTEEL.NS','ONGC.NS','DRREDDY.NS','CIPLA.NS',
-  'ADANIPORTS.NS','GRASIM.NS','HEROMOTOCO.NS','EICHERMOT.NS','BAJAJFINSV.NS',
-  'TATACONSUM.NS','APOLLOHOSP.NS','INDUSINDBK.NS','BPCL.NS','COALINDIA.NS',
-  'SHRIRAMFIN.NS','BRITANNIA.NS','DIVISLAB.NS','HDFCLIFE.NS','SBILIFE.NS',
-  'M&M.NS','HINDALCO.NS',
+  'RELIANCE.NS',
+  'TCS.NS',
+  'HDFCBANK.NS',
+  'INFY.NS',
+  'ICICIBANK.NS',
+  'HINDUNILVR.NS',
+  'ITC.NS',
+  'SBIN.NS',
+  'BHARTIARTL.NS',
+  'BAJFINANCE.NS',
+  'KOTAKBANK.NS',
+  'LT.NS',
+  'ASIANPAINT.NS',
+  'AXISBANK.NS',
+  'MARUTI.NS',
+  'SUNPHARMA.NS',
+  'TITAN.NS',
+  'WIPRO.NS',
+  'NTPC.NS',
+  'POWERGRID.NS',
+  'ULTRACEMCO.NS',
+  'NESTLEIND.NS',
+  'TATAMOTORS.NS',
+  'TECHM.NS',
+  'HCLTECH.NS',
+  'TATASTEEL.NS',
+  'JSWSTEEL.NS',
+  'ONGC.NS',
+  'DRREDDY.NS',
+  'CIPLA.NS',
+  'ADANIPORTS.NS',
+  'GRASIM.NS',
+  'HEROMOTOCO.NS',
+  'EICHERMOT.NS',
+  'BAJAJFINSV.NS',
+  'TATACONSUM.NS',
+  'APOLLOHOSP.NS',
+  'INDUSINDBK.NS',
+  'BPCL.NS',
+  'COALINDIA.NS',
+  'SHRIRAMFIN.NS',
+  'BRITANNIA.NS',
+  'DIVISLAB.NS',
+  'HDFCLIFE.NS',
+  'SBILIFE.NS',
+  'M&M.NS',
+  'HINDALCO.NS',
 ];
 
 /**
@@ -43,17 +80,17 @@ export const NIFTY_50_FULL = [
  * Pre-open: 09:00–09:15  |  Regular: 09:15–15:30  |  Closed: rest
  */
 export const NSE_HOURS = {
-  preOpen:    { start: '09:00', end: '09:15' },
-  regular:    { start: '09:15', end: '15:30' },
-  timezone:   'Asia/Kolkata',
+  preOpen: { start: '09:00', end: '09:15' },
+  regular: { start: '09:15', end: '15:30' },
+  timezone: 'Asia/Kolkata',
 };
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
 export const POLLING_INTERVALS = {
-  HEALTHY:  60000,
+  HEALTHY: 60000,
   DEGRADED: 120000,
   CRITICAL: 300000,
-  ERROR:    180000,
+  ERROR: 180000,
 };
 
 // ─── Trading styles (India-aware language) ────────────────────────────────────

@@ -1568,23 +1568,32 @@ export default function App() {
                     </span>
                   );
                 })()}
-                {selectedMarket === 'INDIA' && (() => {
-                  const now = new Date();
-                  const ist = new Date(now.toLocaleString('en-US', { timeZone: NSE_HOURS.timezone }));
-                  const day = ist.getDay(); // 0=Sun,6=Sat
-                  const hhmm = ist.getHours() * 100 + ist.getMinutes();
-                  const isWeekday = day >= 1 && day <= 5;
-                  const isOpen = isWeekday && hhmm >= 915 && hhmm < 1530;
-                  const isPreOpen = isWeekday && hhmm >= 900 && hhmm < 915;
-                  return (
-                    <span
-                      title={isOpen ? 'NSE regular session (9:15–15:30 IST)' : isPreOpen ? 'NSE pre-open (9:00–9:15 IST)' : 'NSE market closed'}
-                      className={`px-2 py-0.5 text-xs rounded cursor-help ${isOpen ? 'bg-green-700/30 text-green-300' : isPreOpen ? 'bg-yellow-700/30 text-yellow-300' : 'bg-gray-700/40 text-gray-400'}`}
-                    >
-                      {isOpen ? '🟢 NSE Open' : isPreOpen ? '🟡 Pre-open' : '🔴 NSE Closed'}
-                    </span>
-                  );
-                })()}
+                {selectedMarket === 'INDIA' &&
+                  (() => {
+                    const now = new Date();
+                    const ist = new Date(
+                      now.toLocaleString('en-US', { timeZone: NSE_HOURS.timezone })
+                    );
+                    const day = ist.getDay(); // 0=Sun,6=Sat
+                    const hhmm = ist.getHours() * 100 + ist.getMinutes();
+                    const isWeekday = day >= 1 && day <= 5;
+                    const isOpen = isWeekday && hhmm >= 915 && hhmm < 1530;
+                    const isPreOpen = isWeekday && hhmm >= 900 && hhmm < 915;
+                    return (
+                      <span
+                        title={
+                          isOpen
+                            ? 'NSE regular session (9:15–15:30 IST)'
+                            : isPreOpen
+                              ? 'NSE pre-open (9:00–9:15 IST)'
+                              : 'NSE market closed'
+                        }
+                        className={`px-2 py-0.5 text-xs rounded cursor-help ${isOpen ? 'bg-green-700/30 text-green-300' : isPreOpen ? 'bg-yellow-700/30 text-yellow-300' : 'bg-gray-700/40 text-gray-400'}`}
+                      >
+                        {isOpen ? '🟢 NSE Open' : isPreOpen ? '🟡 Pre-open' : '🔴 NSE Closed'}
+                      </span>
+                    );
+                  })()}
                 <span className="text-2xl font-bold">
                   {currentMarket.currency}
                   {quote?.price?.toFixed(2) || '-'}
@@ -1926,8 +1935,8 @@ export default function App() {
               <BacktestPanel symbol={selectedSymbol} traderStyle={traderStyle?.toLowerCase()} />
             )}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
-            {activeTab === 'AI scanner' && (
-              selectedMarket === 'INDIA' ? (
+            {activeTab === 'AI scanner' &&
+              (selectedMarket === 'INDIA' ? (
                 <Nifty50Scanner
                   traderStyle={traderStyle || 'Day'}
                   onSymbolSelect={handleSymbolSelect}
@@ -1937,8 +1946,7 @@ export default function App() {
                   traderStyle={traderStyle?.toLowerCase()}
                   onSymbolSelect={handleSymbolSelect}
                 />
-              )
-            )}
+              ))}
           </div>
         </main>
 
