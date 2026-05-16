@@ -1,5 +1,8 @@
 # Netlify deployment — builds and serves the frontend React app
-# Backend must be deployed separately (Railway / Render)
+# Backend runs on Render: https://traderai-backend.onrender.com
+#
+# API proxy forwards /api/* and /ws/* to Render so the frontend
+# uses same-origin relative URLs with no CORS headers needed.
 
 [build]
   base = "frontend"
@@ -9,7 +12,21 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# API proxy — forwards /api/* and /ws/* to Render backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://traderai-backend.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ws/*"
+  to = "https://traderai-backend.onrender.com/ws/:splat"
+  status = 101
+  force = true
+
 # SPA catch-all — serves index.html for all frontend routes
+# Must come AFTER the /api/* and /ws/* redirects above
 [[redirects]]
   from = "/*"
   to = "/index.html"

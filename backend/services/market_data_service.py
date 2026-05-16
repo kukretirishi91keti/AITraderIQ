@@ -26,7 +26,8 @@ from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import httpx
 
-FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
+FINNHUB_KEY     = os.getenv("FINNHUB_API_KEY", "")
+TWELVE_DATA_KEY = os.getenv("TWELVE_DATA_API_KEY", "")
 
 # Third-party imports with fallbacks
 try:
@@ -109,17 +110,57 @@ GLOBAL_STOCKS = {
     'MA': {'name': 'Mastercard Inc.', 'market': 'US', 'basePrice': 530},
     'DIS': {'name': 'Walt Disney Co.', 'market': 'US', 'basePrice': 115},
     
-    # INDIA STOCKS
-    'RELIANCE.NS': {'name': 'Reliance Industries', 'market': 'INDIA', 'basePrice': 1280},
-    'TCS.NS': {'name': 'Tata Consultancy', 'market': 'INDIA', 'basePrice': 4100},
-    'HDFCBANK.NS': {'name': 'HDFC Bank', 'market': 'INDIA', 'basePrice': 1750},
-    'INFY.NS': {'name': 'Infosys Ltd.', 'market': 'INDIA', 'basePrice': 1900},
-    'ICICIBANK.NS': {'name': 'ICICI Bank', 'market': 'INDIA', 'basePrice': 1250},
-    'SBIN.NS': {'name': 'State Bank of India', 'market': 'INDIA', 'basePrice': 850},
-    'BHARTIARTL.NS': {'name': 'Bharti Airtel', 'market': 'INDIA', 'basePrice': 1650},
-    'WIPRO.NS': {'name': 'Wipro Ltd.', 'market': 'INDIA', 'basePrice': 450},
-    'HINDUNILVR.NS': {'name': 'Hindustan Unilever', 'market': 'INDIA', 'basePrice': 2400},
-    'LT.NS': {'name': 'Larsen & Toubro', 'market': 'INDIA', 'basePrice': 3500},
+    # INDIA — NIFTY 50 (NSE)
+    'RELIANCE.NS':   {'name': 'Reliance Industries',    'market': 'INDIA', 'basePrice': 1280,  'sector': 'Energy'},
+    'TCS.NS':        {'name': 'Tata Consultancy Svcs',  'market': 'INDIA', 'basePrice': 4100,  'sector': 'IT'},
+    'HDFCBANK.NS':   {'name': 'HDFC Bank',              'market': 'INDIA', 'basePrice': 1750,  'sector': 'Banking'},
+    'INFY.NS':       {'name': 'Infosys Ltd.',            'market': 'INDIA', 'basePrice': 1900,  'sector': 'IT'},
+    'ICICIBANK.NS':  {'name': 'ICICI Bank',              'market': 'INDIA', 'basePrice': 1250,  'sector': 'Banking'},
+    'HINDUNILVR.NS': {'name': 'Hindustan Unilever',      'market': 'INDIA', 'basePrice': 2400,  'sector': 'FMCG'},
+    'ITC.NS':        {'name': 'ITC Ltd.',                'market': 'INDIA', 'basePrice': 490,   'sector': 'FMCG'},
+    'SBIN.NS':       {'name': 'State Bank of India',     'market': 'INDIA', 'basePrice': 850,   'sector': 'Banking'},
+    'BHARTIARTL.NS': {'name': 'Bharti Airtel',           'market': 'INDIA', 'basePrice': 1650,  'sector': 'Telecom'},
+    'BAJFINANCE.NS': {'name': 'Bajaj Finance',           'market': 'INDIA', 'basePrice': 7200,  'sector': 'NBFC'},
+    'KOTAKBANK.NS':  {'name': 'Kotak Mahindra Bank',     'market': 'INDIA', 'basePrice': 1900,  'sector': 'Banking'},
+    'LT.NS':         {'name': 'Larsen & Toubro',         'market': 'INDIA', 'basePrice': 3500,  'sector': 'Infra'},
+    'ASIANPAINT.NS': {'name': 'Asian Paints',            'market': 'INDIA', 'basePrice': 2800,  'sector': 'Paints'},
+    'AXISBANK.NS':   {'name': 'Axis Bank',               'market': 'INDIA', 'basePrice': 1100,  'sector': 'Banking'},
+    'MARUTI.NS':     {'name': 'Maruti Suzuki',           'market': 'INDIA', 'basePrice': 12000, 'sector': 'Auto'},
+    'SUNPHARMA.NS':  {'name': 'Sun Pharma',              'market': 'INDIA', 'basePrice': 1700,  'sector': 'Pharma'},
+    'TITAN.NS':      {'name': 'Titan Company',           'market': 'INDIA', 'basePrice': 3400,  'sector': 'Consumer'},
+    'WIPRO.NS':      {'name': 'Wipro Ltd.',              'market': 'INDIA', 'basePrice': 450,   'sector': 'IT'},
+    'NTPC.NS':       {'name': 'NTPC Ltd.',               'market': 'INDIA', 'basePrice': 375,   'sector': 'Power'},
+    'POWERGRID.NS':  {'name': 'Power Grid Corp.',        'market': 'INDIA', 'basePrice': 330,   'sector': 'Power'},
+    'ULTRACEMCO.NS': {'name': 'UltraTech Cement',        'market': 'INDIA', 'basePrice': 10500, 'sector': 'Cement'},
+    'NESTLEIND.NS':  {'name': 'Nestle India',            'market': 'INDIA', 'basePrice': 2300,  'sector': 'FMCG'},
+    'TATAMOTORS.NS': {'name': 'Tata Motors',             'market': 'INDIA', 'basePrice': 820,   'sector': 'Auto'},
+    'TECHM.NS':      {'name': 'Tech Mahindra',           'market': 'INDIA', 'basePrice': 1650,  'sector': 'IT'},
+    'HCLTECH.NS':    {'name': 'HCL Technologies',        'market': 'INDIA', 'basePrice': 1800,  'sector': 'IT'},
+    'TATASTEEL.NS':  {'name': 'Tata Steel',              'market': 'INDIA', 'basePrice': 160,   'sector': 'Metals'},
+    'JSWSTEEL.NS':   {'name': 'JSW Steel',               'market': 'INDIA', 'basePrice': 920,   'sector': 'Metals'},
+    'ONGC.NS':       {'name': 'ONGC Ltd.',               'market': 'INDIA', 'basePrice': 270,   'sector': 'Energy'},
+    'DRREDDY.NS':    {'name': "Dr. Reddy's Labs",        'market': 'INDIA', 'basePrice': 6500,  'sector': 'Pharma'},
+    'CIPLA.NS':      {'name': 'Cipla Ltd.',              'market': 'INDIA', 'basePrice': 1550,  'sector': 'Pharma'},
+    'ADANIPORTS.NS': {'name': 'Adani Ports',             'market': 'INDIA', 'basePrice': 1300,  'sector': 'Logistics'},
+    'GRASIM.NS':     {'name': 'Grasim Industries',       'market': 'INDIA', 'basePrice': 2700,  'sector': 'Cement'},
+    'HEROMOTOCO.NS': {'name': 'Hero MotoCorp',           'market': 'INDIA', 'basePrice': 4800,  'sector': 'Auto'},
+    'EICHERMOT.NS':  {'name': 'Eicher Motors',           'market': 'INDIA', 'basePrice': 5100,  'sector': 'Auto'},
+    'BAJAJFINSV.NS': {'name': 'Bajaj Finserv',           'market': 'INDIA', 'basePrice': 1900,  'sector': 'NBFC'},
+    'TATACONSUM.NS': {'name': 'Tata Consumer Products',  'market': 'INDIA', 'basePrice': 1100,  'sector': 'FMCG'},
+    'APOLLOHOSP.NS': {'name': 'Apollo Hospitals',        'market': 'INDIA', 'basePrice': 7200,  'sector': 'Healthcare'},
+    'INDUSINDBK.NS': {'name': 'IndusInd Bank',           'market': 'INDIA', 'basePrice': 950,   'sector': 'Banking'},
+    'BPCL.NS':       {'name': 'BPCL',                   'market': 'INDIA', 'basePrice': 340,   'sector': 'Energy'},
+    'COALINDIA.NS':  {'name': 'Coal India',              'market': 'INDIA', 'basePrice': 490,   'sector': 'Mining'},
+    'SHRIRAMFIN.NS': {'name': 'Shriram Finance',         'market': 'INDIA', 'basePrice': 3100,  'sector': 'NBFC'},
+    'BRITANNIA.NS':  {'name': 'Britannia Industries',    'market': 'INDIA', 'basePrice': 5500,  'sector': 'FMCG'},
+    'DIVISLAB.NS':   {'name': "Divi's Laboratories",     'market': 'INDIA', 'basePrice': 5800,  'sector': 'Pharma'},
+    'HDFCLIFE.NS':   {'name': 'HDFC Life Insurance',     'market': 'INDIA', 'basePrice': 700,   'sector': 'Insurance'},
+    'SBILIFE.NS':    {'name': 'SBI Life Insurance',      'market': 'INDIA', 'basePrice': 1600,  'sector': 'Insurance'},
+    'M&M.NS':        {'name': 'Mahindra & Mahindra',     'market': 'INDIA', 'basePrice': 2900,  'sector': 'Auto'},
+    'HINDALCO.NS':   {'name': 'Hindalco Industries',     'market': 'INDIA', 'basePrice': 680,   'sector': 'Metals'},
+    # INDIA INDICES (for reference / scanner)
+    'NIFTY50.NS':    {'name': 'Nifty 50 Index',          'market': 'INDIA', 'basePrice': 24000, 'sector': 'Index'},
+    'BANKNIFTY.NS':  {'name': 'Bank Nifty Index',        'market': 'INDIA', 'basePrice': 52000, 'sector': 'Index'},
     
     # UK STOCKS
     'HSBA.L': {'name': 'HSBC Holdings', 'market': 'UK', 'basePrice': 750},
@@ -251,6 +292,68 @@ async def _fetch_finnhub_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
         }
     except Exception as e:
         logger.warning(f"Finnhub quote error for {symbol}: {e}")
+        return None
+
+
+# =============================================================================
+# TWELVE DATA REST QUOTE (primary source for Indian NSE/BSE stocks)
+# Free tier: 800 req/day, 8 req/min — enough for 50 stocks × 16 polls/day
+# =============================================================================
+
+def _to_twelvedata_symbol(symbol: str) -> Optional[str]:
+    """
+    Convert internal symbol to Twelve Data format.
+      RELIANCE.NS  →  RELIANCE:NSE
+      HDFCBANK.NS  →  HDFCBANK:NSE
+      RELIANCE.BO  →  RELIANCE:BSE
+      AAPL         →  AAPL  (unchanged — Finnhub handles US)
+    Returns None for non-Indian symbols so caller falls through.
+    """
+    if symbol.endswith(".NS"):
+        return f"{symbol[:-3]}:NSE"
+    if symbol.endswith(".BO"):
+        return f"{symbol[:-3]}:BSE"
+    return None
+
+
+async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Fetch real-time quote from Twelve Data for Indian NSE/BSE stocks.
+    Only called when TWELVE_DATA_API_KEY is set.
+    """
+    if not TWELVE_DATA_KEY:
+        return None
+    td_symbol = _to_twelvedata_symbol(symbol)
+    if not td_symbol:
+        return None          # Not an Indian symbol; let Finnhub/yfinance handle it
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(
+                "https://api.twelvedata.com/quote",
+                params={"symbol": td_symbol, "apikey": TWELVE_DATA_KEY},
+            )
+            d = r.json()
+        if d.get("status") == "error" or "close" not in d:
+            logger.warning(f"Twelve Data no data for {td_symbol}: {d.get('message','')}")
+            return None
+        price      = float(d["close"])
+        prev_close = float(d.get("previous_close") or price)
+        change     = float(d.get("change") or (price - prev_close))
+        change_pct = float(d.get("percent_change") or ((change / prev_close * 100) if prev_close else 0))
+        return {
+            "price":         round(price, 2),
+            "change":        round(change, 2),
+            "changePercent": round(change_pct, 2),
+            "high":          float(d["high"])   if d.get("high")   else None,
+            "low":           float(d["low"])    if d.get("low")    else None,
+            "open":          float(d["open"])   if d.get("open")   else None,
+            "prevClose":     round(prev_close, 2),
+            "volume":        int(d.get("volume") or 0),
+            "dataQuality":   "LIVE",
+            "source":        "TWELVE_DATA",
+        }
+    except Exception as e:
+        logger.warning(f"Twelve Data quote error for {symbol}: {e}")
         return None
 
 
@@ -595,8 +698,17 @@ class MarketDataService:
                 data['cacheAge'] = entry.age_human()
                 return data
         
-        # 2. Try Finnhub REST first (real-time, works from cloud IPs)
-        if FINNHUB_KEY:
+        # 2a. Twelve Data — primary for Indian (NSE/BSE) stocks
+        if TWELVE_DATA_KEY and _to_twelvedata_symbol(symbol):
+            td_data = await _fetch_twelvedata_quote_async(symbol)
+            if td_data:
+                self.cache.set(cache_key, td_data, source="TWELVE_DATA")
+                self.stats["live_fetches"] += 1
+                self.stats["last_live_fetch"] = datetime.now().isoformat()
+                return td_data
+
+        # 2b. Finnhub REST — primary for US stocks (strips .NS/.L → null for non-US)
+        if FINNHUB_KEY and not _to_twelvedata_symbol(symbol):
             fh_data = await _fetch_finnhub_quote_async(symbol)
             if fh_data:
                 self.cache.set(cache_key, fh_data, source="FINNHUB")

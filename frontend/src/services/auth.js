@@ -50,8 +50,9 @@ export async function authFetch(url, options = {}) {
   const response = await fetch(url, { ...options, headers });
 
   if (response.status === 401) {
-    // Token expired or invalid - clear auth state
+    // Token expired or invalid - clear auth state and notify React
     logout();
+    window.dispatchEvent(new CustomEvent('auth:session-expired'));
     throw new Error('Session expired. Please login again.');
   }
 
