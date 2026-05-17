@@ -86,11 +86,13 @@ export const NSE_HOURS = {
 };
 
 // ─── Polling ──────────────────────────────────────────────────────────────────
+// Backend caches NSE quotes for 5 minutes (Twelve Data free tier = 8 req/min).
+// Polling faster than the cache TTL just adds load without fresher data.
 export const POLLING_INTERVALS = {
-  HEALTHY: 60000,
-  DEGRADED: 120000,
-  CRITICAL: 300000,
-  ERROR: 180000,
+  HEALTHY: 300000,  // 5 min — matches backend quote cache TTL
+  DEGRADED: 300000,
+  CRITICAL: 600000,
+  ERROR: 300000,
 };
 
 // ─── Trading styles (India-aware language) ────────────────────────────────────

@@ -108,16 +108,26 @@ export function searchSymbols(query, limit = 8) {
 
   const symbolPrefix = [];
   const nameMatch = [];
+  const seen = new Set();
 
   for (const item of SYMBOL_INDEX) {
+    const bare = item.symbol.toLowerCase().replace(/\.(ns|l|de|pa|t|ax|to)$/, '');
     const sym = item.symbol.toLowerCase();
     const name = item.name.toLowerCase();
-    if (sym.startsWith(q) || sym.replace('.ns', '').startsWith(q)) {
+    const sector = item.sector.toLowerCase();
+
+    const bySymbol = sym.startsWith(q) || bare.startsWith(q);
+    const byName = name.includes(q) || sector.includes(q);
+
+    if (!bySymbol && !byName) continue;
+    if (seen.has(item.symbol)) continue;
+    seen.add(item.symbol);
+
+    if (bySymbol) {
       symbolPrefix.push(item);
-    } else if (name.includes(q) || item.sector.toLowerCase().includes(q)) {
+    } else {
       nameMatch.push(item);
     }
-    if (symbolPrefix.length + nameMatch.length >= limit * 2) break;
   }
 
   return [...symbolPrefix, ...nameMatch].slice(0, limit);
