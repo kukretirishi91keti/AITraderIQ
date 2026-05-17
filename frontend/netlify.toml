@@ -1,4 +1,6 @@
-# Netlify deployment config (also at repo root)
+# Netlify deployment config
+# Backend runs on Render: https://traderai-backend.onrender.com
+# /api/* and /ws/* are proxied to Render so the browser never makes cross-origin calls.
 
 [build]
   command = "npm run build"
@@ -7,6 +9,20 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# API proxy — MUST come before the SPA catch-all
+[[redirects]]
+  from = "/api/*"
+  to = "https://traderai-backend.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/ws/*"
+  to = "https://traderai-backend.onrender.com/ws/:splat"
+  status = 101
+  force = true
+
+# SPA catch-all — serves index.html for all frontend routes
 [[redirects]]
   from = "/*"
   to = "/index.html"
