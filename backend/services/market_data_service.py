@@ -91,6 +91,11 @@ MARKET_CONFIG = {
 
 # =============================================================================
 # GLOBAL STOCKS DATABASE
+# All NSE tickers verified against NSE official symbol list (nseindia.com/market-data/securities-available-for-trading).
+# To verify a new ticker: https://www.nseindia.com/get-quotes/equity?symbol=<TICKER>
+# yfinance appends .NS; Twelve Data uses :NSE suffix (handled by _to_twelvedata_symbol).
+# Index symbols (NIFTY50.NS, BANKNIFTY.NS) are MME-only reference data — live APIs
+# use ^NSEI / ^NSEBANK for indices, which are not fetchable through the stock endpoint.
 # =============================================================================
 
 GLOBAL_STOCKS = {
@@ -158,9 +163,9 @@ GLOBAL_STOCKS = {
     'SBILIFE.NS':    {'name': 'SBI Life Insurance',      'market': 'INDIA', 'basePrice': 1600,  'sector': 'Insurance'},
     'M&M.NS':        {'name': 'Mahindra & Mahindra',     'market': 'INDIA', 'basePrice': 2900,  'sector': 'Auto'},
     'HINDALCO.NS':   {'name': 'Hindalco Industries',     'market': 'INDIA', 'basePrice': 680,   'sector': 'Metals'},
-    # INDIA INDICES
-    'NIFTY50.NS':    {'name': 'Nifty 50 Index',          'market': 'INDIA', 'basePrice': 24000, 'sector': 'Index'},
-    'BANKNIFTY.NS':  {'name': 'Bank Nifty Index',        'market': 'INDIA', 'basePrice': 52000, 'sector': 'Index'},
+    # INDIA INDICES — yfinance uses ^NSEI / ^NSEBANK but these keys are MME-only reference data
+    'NIFTY50.NS':    {'name': 'Nifty 50 Index',          'market': 'INDIA', 'basePrice': 24500, 'sector': 'Index'},
+    'BANKNIFTY.NS':  {'name': 'Bank Nifty Index',        'market': 'INDIA', 'basePrice': 53000, 'sector': 'Index'},
     # ADDITIONAL NSE — Defence, PSU, Mid-cap popular stocks
     'BEL.NS':        {'name': 'Bharat Electronics',       'market': 'INDIA', 'basePrice': 280,   'sector': 'Defence'},
     'HAL.NS':        {'name': 'Hindustan Aeronautics',    'market': 'INDIA', 'basePrice': 4300,  'sector': 'Defence'},
@@ -173,7 +178,7 @@ GLOBAL_STOCKS = {
     'AMBUJACEM.NS':  {'name': 'Ambuja Cements',           'market': 'INDIA', 'basePrice': 620,   'sector': 'Cement'},
     'BANKBARODA.NS': {'name': 'Bank of Baroda',           'market': 'INDIA', 'basePrice': 235,   'sector': 'Banking'},
     'CANBK.NS':      {'name': 'Canara Bank',              'market': 'INDIA', 'basePrice': 105,   'sector': 'Banking'},
-    'PNBBANK.NS':    {'name': 'Punjab National Bank',     'market': 'INDIA', 'basePrice': 105,   'sector': 'Banking'},
+    'PNB.NS':        {'name': 'Punjab National Bank',     'market': 'INDIA', 'basePrice': 105,   'sector': 'Banking'},
     'ZOMATO.NS':     {'name': 'Zomato Ltd.',              'market': 'INDIA', 'basePrice': 230,   'sector': 'Tech'},
     'PAYTM.NS':      {'name': 'Paytm (One 97 Comm.)',    'market': 'INDIA', 'basePrice': 750,   'sector': 'Tech'},
     'NYKAA.NS':      {'name': 'FSN E-Commerce (Nykaa)',  'market': 'INDIA', 'basePrice': 165,   'sector': 'Tech'},
