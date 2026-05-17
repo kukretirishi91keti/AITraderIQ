@@ -27,7 +27,7 @@ DEFAULT_SYMBOLS = [
     "NFLX", "INTC", "SPY", "QQQ", "BTC-USD", "ETH-USD",
 ]
 
-# Nifty 50 scan universe (NSE India)
+# Nifty 50 scan universe (NSE India) — all 50 constituents
 NIFTY_50_SYMBOLS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
     "HINDUNILVR.NS", "ITC.NS", "SBIN.NS", "BHARTIARTL.NS", "BAJFINANCE.NS",
@@ -35,6 +35,10 @@ NIFTY_50_SYMBOLS = [
     "SUNPHARMA.NS", "TITAN.NS", "WIPRO.NS", "NTPC.NS", "POWERGRID.NS",
     "ULTRACEMCO.NS", "NESTLEIND.NS", "TATAMOTORS.NS", "TECHM.NS", "HCLTECH.NS",
     "TATASTEEL.NS", "JSWSTEEL.NS", "ONGC.NS", "DRREDDY.NS", "CIPLA.NS",
+    "ADANIPORTS.NS", "GRASIM.NS", "HEROMOTOCO.NS", "EICHERMOT.NS", "BAJAJFINSV.NS",
+    "TATACONSUM.NS", "APOLLOHOSP.NS", "INDUSINDBK.NS", "BPCL.NS", "COALINDIA.NS",
+    "SHRIRAMFIN.NS", "BRITANNIA.NS", "DIVISLAB.NS", "HDFCLIFE.NS", "SBILIFE.NS",
+    "M&M.NS", "HINDALCO.NS",
 ]
 
 # Cache for AI scores (5-minute TTL)
@@ -201,7 +205,7 @@ async def find_opportunities(
 @router.get("/nifty50")
 async def nifty50_scan(
     trader_type: str = Query("Day", description="Day | Swing | Position | Scalper"),
-    top_n: int = Query(10, ge=1, le=30, description="Number of top picks to return"),
+    top_n: int = Query(20, ge=1, le=50, description="Number of top picks to return"),
 ):
     """
     Nifty 50 Morning Scanner (India).

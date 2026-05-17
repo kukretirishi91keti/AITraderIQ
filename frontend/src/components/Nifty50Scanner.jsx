@@ -40,7 +40,7 @@ export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect }) 
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/scanner/nifty50?trader_type=${ts}&top_n=15`);
+      const res = await fetch(`${API_BASE}/api/scanner/nifty50?trader_type=${ts}&top_n=47`);
       if (!res.ok) throw new Error(`Server error ${res.status}`);
       setData(await res.json());
     } catch (e) {
