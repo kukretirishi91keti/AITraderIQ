@@ -158,10 +158,33 @@ GLOBAL_STOCKS = {
     'SBILIFE.NS':    {'name': 'SBI Life Insurance',      'market': 'INDIA', 'basePrice': 1600,  'sector': 'Insurance'},
     'M&M.NS':        {'name': 'Mahindra & Mahindra',     'market': 'INDIA', 'basePrice': 2900,  'sector': 'Auto'},
     'HINDALCO.NS':   {'name': 'Hindalco Industries',     'market': 'INDIA', 'basePrice': 680,   'sector': 'Metals'},
-    # INDIA INDICES (for reference / scanner)
+    # INDIA INDICES
     'NIFTY50.NS':    {'name': 'Nifty 50 Index',          'market': 'INDIA', 'basePrice': 24000, 'sector': 'Index'},
     'BANKNIFTY.NS':  {'name': 'Bank Nifty Index',        'market': 'INDIA', 'basePrice': 52000, 'sector': 'Index'},
-    
+    # ADDITIONAL NSE — Defence, PSU, Mid-cap popular stocks
+    'BEL.NS':        {'name': 'Bharat Electronics',       'market': 'INDIA', 'basePrice': 280,   'sector': 'Defence'},
+    'HAL.NS':        {'name': 'Hindustan Aeronautics',    'market': 'INDIA', 'basePrice': 4300,  'sector': 'Defence'},
+    'IRFC.NS':       {'name': 'Indian Railway Finance',   'market': 'INDIA', 'basePrice': 175,   'sector': 'Finance'},
+    'PFC.NS':        {'name': 'Power Finance Corp.',      'market': 'INDIA', 'basePrice': 450,   'sector': 'Finance'},
+    'RECLTD.NS':     {'name': 'REC Limited',              'market': 'INDIA', 'basePrice': 530,   'sector': 'Finance'},
+    'IRCTC.NS':      {'name': 'IRCTC',                   'market': 'INDIA', 'basePrice': 900,   'sector': 'Travel'},
+    'PIDILITIND.NS': {'name': 'Pidilite Industries',      'market': 'INDIA', 'basePrice': 3000,  'sector': 'Chemical'},
+    'DMART.NS':      {'name': 'Avenue Supermarts (D-Mart)','market': 'INDIA', 'basePrice': 4200,  'sector': 'Retail'},
+    'AMBUJACEM.NS':  {'name': 'Ambuja Cements',           'market': 'INDIA', 'basePrice': 620,   'sector': 'Cement'},
+    'BANKBARODA.NS': {'name': 'Bank of Baroda',           'market': 'INDIA', 'basePrice': 235,   'sector': 'Banking'},
+    'CANBK.NS':      {'name': 'Canara Bank',              'market': 'INDIA', 'basePrice': 105,   'sector': 'Banking'},
+    'PNBBANK.NS':    {'name': 'Punjab National Bank',     'market': 'INDIA', 'basePrice': 105,   'sector': 'Banking'},
+    'ZOMATO.NS':     {'name': 'Zomato Ltd.',              'market': 'INDIA', 'basePrice': 230,   'sector': 'Tech'},
+    'PAYTM.NS':      {'name': 'Paytm (One 97 Comm.)',    'market': 'INDIA', 'basePrice': 750,   'sector': 'Tech'},
+    'NYKAA.NS':      {'name': 'FSN E-Commerce (Nykaa)',  'market': 'INDIA', 'basePrice': 165,   'sector': 'Tech'},
+    'TRENT.NS':      {'name': 'Trent Ltd.',               'market': 'INDIA', 'basePrice': 6100,  'sector': 'Retail'},
+    'MUTHOOTFIN.NS': {'name': 'Muthoot Finance',          'market': 'INDIA', 'basePrice': 1950,  'sector': 'Finance'},
+    'BAJAJ-AUTO.NS': {'name': 'Bajaj Auto',               'market': 'INDIA', 'basePrice': 9800,  'sector': 'Auto'},
+    'SOLARINDS.NS':  {'name': 'Solar Industries India',   'market': 'INDIA', 'basePrice': 10200, 'sector': 'Defence'},
+    'BHEL.NS':       {'name': 'Bharat Heavy Electricals', 'market': 'INDIA', 'basePrice': 245,   'sector': 'Engineering'},
+    'NHPC.NS':       {'name': 'NHPC Ltd.',                'market': 'INDIA', 'basePrice': 85,    'sector': 'Power'},
+    'SJVN.NS':       {'name': 'SJVN Ltd.',                'market': 'INDIA', 'basePrice': 112,   'sector': 'Power'},
+
     # UK STOCKS
     'HSBA.L': {'name': 'HSBC Holdings', 'market': 'UK', 'basePrice': 750},
     'BP.L': {'name': 'BP plc', 'market': 'UK', 'basePrice': 480},
