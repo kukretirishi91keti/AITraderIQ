@@ -108,21 +108,46 @@ def get_seed(symbol: str) -> int:
 def generate_demo_candles(symbol: str, interval: str = "15m", count: int = 100):
     """Generate realistic demo candles for chart."""
     base_prices = {
+        # US
         "AAPL": 238.47, "MSFT": 430.50, "GOOGL": 175.20, "AMZN": 220.10,
         "NVDA": 933.30, "TSLA": 420.50, "META": 580.00, "AMD": 145.00,
         "NFLX": 850.00, "INTC": 22.50, "SPY": 590.00, "QQQ": 510.00,
         "BTC-USD": 95000.00, "ETH-USD": 3400.00,
-        "RELIANCE.NS": 1250.00, "TCS.NS": 4100.00, "INFY.NS": 1850.00,
-        "HDFCBANK.NS": 1680.00, "ICICIBANK.NS": 1050.00,
+        # NSE — Nifty 50 (all 47 constituents with realistic prices)
+        "RELIANCE.NS": 1280.00, "TCS.NS": 4100.00, "HDFCBANK.NS": 1750.00,
+        "INFY.NS": 1900.00, "ICICIBANK.NS": 1250.00, "HINDUNILVR.NS": 2400.00,
+        "ITC.NS": 490.00, "SBIN.NS": 850.00, "BHARTIARTL.NS": 1650.00,
+        "BAJFINANCE.NS": 7200.00, "KOTAKBANK.NS": 1900.00, "LT.NS": 3500.00,
+        "ASIANPAINT.NS": 2605.00, "AXISBANK.NS": 1100.00, "MARUTI.NS": 12000.00,
+        "SUNPHARMA.NS": 1700.00, "TITAN.NS": 3400.00, "WIPRO.NS": 450.00,
+        "NTPC.NS": 375.00, "POWERGRID.NS": 330.00, "ULTRACEMCO.NS": 10500.00,
+        "NESTLEIND.NS": 2300.00, "TATAMOTORS.NS": 820.00, "TECHM.NS": 1650.00,
+        "HCLTECH.NS": 1800.00, "TATASTEEL.NS": 160.00, "JSWSTEEL.NS": 920.00,
+        "ONGC.NS": 270.00, "DRREDDY.NS": 6500.00, "CIPLA.NS": 1550.00,
+        "ADANIPORTS.NS": 1300.00, "GRASIM.NS": 2700.00, "HEROMOTOCO.NS": 4800.00,
+        "EICHERMOT.NS": 5100.00, "BAJAJFINSV.NS": 1900.00, "TATACONSUM.NS": 1100.00,
+        "APOLLOHOSP.NS": 7200.00, "INDUSINDBK.NS": 950.00, "BPCL.NS": 340.00,
+        "COALINDIA.NS": 490.00, "SHRIRAMFIN.NS": 3100.00, "BRITANNIA.NS": 5500.00,
+        "DIVISLAB.NS": 5800.00, "HDFCLIFE.NS": 700.00, "SBILIFE.NS": 1600.00,
+        "M&M.NS": 2900.00, "HINDALCO.NS": 680.00,
+        # NSE — Additional popular stocks
+        "BEL.NS": 280.00, "HAL.NS": 4300.00, "BHEL.NS": 245.00,
+        "IRFC.NS": 175.00, "PFC.NS": 450.00, "RECLTD.NS": 530.00,
+        "IRCTC.NS": 900.00, "ZOMATO.NS": 230.00, "DMART.NS": 4200.00,
+        "AMBUJACEM.NS": 620.00, "BANKBARODA.NS": 235.00, "PNB.NS": 105.00,
+        "CANBK.NS": 105.00, "TRENT.NS": 6100.00, "BAJAJ-AUTO.NS": 9800.00,
+        # UK
         "HSBA.L": 680.00, "BP.L": 480.00, "AZN.L": 10500.00,
-        "SAP.DE": 180.00, "SIE.DE": 170.00, "VOW3.DE": 110.00,
+        # Europe
+        "SAP.DE": 180.00, "SIE.DE": 170.00,
         "OR.PA": 430.00, "MC.PA": 750.00,
+        # Asia
         "7203.T": 2700.00, "6758.T": 12500.00,
         "9988.HK": 85.00, "0700.HK": 380.00,
         "BHP.AX": 46.00, "CBA.AX": 115.00,
         "005930.KS": 72000.00,
         "D05.SI": 35.00,
-        "NESN.SW": 100.00, "NOVN.SW": 92.00,
+        "NESN.SW": 100.00,
     }
     
     base_price = base_prices.get(symbol.upper(), 100.0)
@@ -300,7 +325,8 @@ async def get_history(
     # Fallback to demo data
     logger.info(f"Using demo candles for {symbol}")
     demo_candles = generate_demo_candles(symbol, interval, lookback)
-    
+    demo_currency = "₹" if symbol.endswith(".NS") or symbol.endswith(".BO") else "USD"
+
     return {
         "success": True,
         "symbol": symbol,
@@ -312,7 +338,7 @@ async def get_history(
         "data": demo_candles,
         "source": "DEMO",
         "dataQuality": "DEMO",
-        "currency": "USD",
+        "currency": demo_currency,
         "timestamp": datetime.now().isoformat()
     }
 
