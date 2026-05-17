@@ -26,6 +26,7 @@ import {
 
 // Constants
 import { MARKETS, STATIC_UNIVERSE } from './constants/markets';
+import { searchSymbols } from './constants/symbolIndex';
 import {
   API_BASE,
   APP_VERSION,
@@ -82,6 +83,8 @@ export default function App() {
   const [selectedMarket, setSelectedMarket] = useState(DEFAULT_MARKET);
   const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_SYMBOL);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchDrop, setShowSearchDrop] = useState(false);
   const [traderStyle, setTraderStyle] = useState('Swing');
   const [chartInterval, setChartInterval] = useState('1d');
 
@@ -493,6 +496,7 @@ export default function App() {
     const upperSymbol = symbol.toUpperCase();
     setSelectedSymbol(upperSymbol);
     setSearchQuery('');
+    setShowSearchDrop(false);
     setAiMessages([]);
     if (upperSymbol.endsWith('.NS') || upperSymbol.endsWith('.BO')) setSelectedMarket('India');
     else if (upperSymbol.endsWith('.L')) setSelectedMarket('UK');
@@ -1064,18 +1068,55 @@ export default function App() {
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  const q = e.target.value;
+                  setSearchQuery(q);
+                  const results = searchSymbols(q, 8);
+                  setSearchResults(results);
+                  setShowSearchDrop(results.length > 0);
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && searchQuery.trim())
-                    handleSymbolSelect(searchQuery.trim().toUpperCase());
+                  if (e.key === 'Enter' && searchQuery.trim()) {
+                    const top = searchResults[0];
+                    handleSymbolSelect(top ? top.symbol : searchQuery.trim().toUpperCase());
+                    setShowSearchDrop(false);
+                    setSearchQuery('');
+                  }
                   if (e.key === 'Escape') {
                     e.target.blur();
                     setSearchQuery('');
+                    setShowSearchDrop(false);
                   }
                 }}
-                placeholder="Search symbols... (press /)"
-                className="bg-gray-700 px-4 py-2 rounded-lg text-sm w-56 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                onBlur={() => setTimeout(() => setShowSearchDrop(false), 150)}
+                placeholder="Search stocks... (press /)"
+                className="bg-gray-700 px-4 py-2 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-cyan-500"
               />
+              {showSearchDrop && (
+                <div className="absolute left-0 top-full mt-1 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl z-50 overflow-hidden">
+                  {searchResults.map((item) => (
+                    <button
+                      key={item.symbol}
+                      onMouseDown={() => {
+                        handleSymbolSelect(item.symbol);
+                        setShowSearchDrop(false);
+                        setSearchQuery('');
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-700 text-left text-sm transition-colors"
+                    >
+                      <div>
+                        <span className="font-mono font-semibold text-cyan-400 text-xs">
+                          {item.symbol.replace('.NS', '').replace('.L', '').replace('.DE', '')}
+                        </span>
+                        <span className="ml-2 text-gray-300 text-xs">{item.name}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 shrink-0 ml-2">
+                        {item.market} · {item.sector}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
