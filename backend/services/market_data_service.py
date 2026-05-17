@@ -424,7 +424,12 @@ async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]
             )
             d = r.json()
         if d.get("status") == "error" or "close" not in d:
-            logger.warning(f"Twelve Data no data for {td_symbol}: {d.get('message','')}")
+            msg = d.get("message", "")
+            is_rate_limit = d.get("code") == 429 or "429" in str(d.get("code", "")) or "run out" in msg.lower() or "too many" in msg.lower()
+            if is_rate_limit:
+                logger.warning(f"Twelve Data RATE LIMIT hit for {td_symbol} — using LKG/MME fallback")
+            else:
+                logger.warning(f"Twelve Data no data for {td_symbol}: {msg}")
             return None
         price      = float(d["close"])
         prev_close = float(d.get("previous_close") or price)
@@ -777,28 +782,43 @@ class MarketDataService:
         """
         symbol = symbol.upper()
         cache_key = f"quote:{symbol}"
-        
+        is_indian = bool(_to_twelvedata_symbol(symbol))
+
         # 1. Check fresh cache (unless force refresh)
+        # Use 5-minute TTL for Indian stocks (Twelve Data free tier = 8 req/min).
+        # yfinance/Finnhub US stocks can stay at 90s.
+        quote_ttl = 300 if is_indian else 90
         if not force_refresh:
-            entry = self.cache.get(cache_key, ttl_seconds=60)  # 1 minute TTL for quotes
+            entry = self.cache.get(cache_key, ttl_seconds=quote_ttl)
             if entry:
                 self.stats["cache_hits"] += 1
                 data = entry.data
                 data['dataQuality'] = 'CACHED'
                 data['cacheAge'] = entry.age_human()
                 return data
-        
+
         # 2a. Twelve Data — primary for Indian (NSE/BSE) stocks
-        if TWELVE_DATA_KEY and _to_twelvedata_symbol(symbol):
+        if TWELVE_DATA_KEY and is_indian:
             td_data = await _fetch_twelvedata_quote_async(symbol)
             if td_data:
                 self.cache.set(cache_key, td_data, source="TWELVE_DATA")
                 self.stats["live_fetches"] += 1
                 self.stats["last_live_fetch"] = datetime.now().isoformat()
                 return td_data
+            # Twelve Data failed (rate limit or error) — serve LKG immediately
+            # rather than burning 15s waiting for blocked yfinance
+            lkg = self.cache.get_lkg(cache_key)
+            if lkg:
+                self.stats["lkg_fallbacks"] += 1
+                data = dict(lkg.data)
+                data['dataQuality'] = 'LKG'
+                data['cacheAge'] = lkg.age_human()
+                data['source'] = 'LKG_CACHE'
+                logger.info(f"Twelve Data failed → LKG for {symbol} ({lkg.age_human()})")
+                return data
 
         # 2b. Finnhub REST — primary for US stocks (strips .NS/.L → null for non-US)
-        if FINNHUB_KEY and not _to_twelvedata_symbol(symbol):
+        if FINNHUB_KEY and not is_indian:
             fh_data = await _fetch_finnhub_quote_async(symbol)
             if fh_data:
                 self.cache.set(cache_key, fh_data, source="FINNHUB")
@@ -815,31 +835,30 @@ class MarketDataService:
 
         try:
             live_data = await self.singleflight.do(f"quote:{symbol}", fetch_live)
-            
+
             if live_data:
-                # Cache the live data
                 self.cache.set(cache_key, live_data, source="LIVE")
                 self.stats["live_fetches"] += 1
                 self.stats["last_live_fetch"] = datetime.now().isoformat()
                 return live_data
-        
+
         except asyncio.TimeoutError:
             logger.warning(f"Live fetch timed out for {symbol} (15s)")
         except Exception as e:
             logger.warning(f"Live fetch failed for {symbol}: {e}")
 
-        # 3. Try LKG cache (any age)
+        # 4. LKG cache (any age)
         lkg = self.cache.get_lkg(cache_key)
         if lkg:
             self.stats["lkg_fallbacks"] += 1
-            data = lkg.data
+            data = dict(lkg.data)
             data['dataQuality'] = 'LKG'
             data['cacheAge'] = lkg.age_human()
             data['source'] = 'LKG_CACHE'
             logger.info(f"Using LKG for {symbol} ({lkg.age_human()})")
             return data
-        
-        # 4. Final fallback: MME simulator
+
+        # 5. Final fallback: MME simulator
         self.stats["mme_fallbacks"] += 1
         logger.info(f"Using MME simulator for {symbol}")
         return _generate_mme_quote(symbol)
