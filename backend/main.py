@@ -69,6 +69,30 @@ VERSION = "6.0.0"
 loaded_routers = []
 
 
+_NIFTY_WARM_SYMBOLS = [
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
+    "BAJFINANCE.NS", "BHARTIARTL.NS", "SBIN.NS", "LT.NS", "KOTAKBANK.NS",
+    "WIPRO.NS", "AXISBANK.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS",
+]
+
+async def _warm_nifty_cache():
+    """Staggered startup fetch for top NSE stocks — populates LKG cache so
+    the first real user request is a cache hit instead of a cold Twelve Data call."""
+    await asyncio.sleep(5)  # Let the server finish starting up first
+    try:
+        from services.market_data_service import get_market_data_service
+        svc = get_market_data_service()
+        for sym in _NIFTY_WARM_SYMBOLS:
+            try:
+                await svc.get_quote(sym)
+                logger.info(f"Cache warm: {sym}")
+            except Exception as e:
+                logger.warning(f"Cache warm failed for {sym}: {e}")
+            await asyncio.sleep(8)  # 8s gap → max ~7.5 req/min, under Twelve Data 8/min limit
+    except Exception as e:
+        logger.warning(f"Cache warmer error: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifecycle management."""
@@ -126,6 +150,9 @@ async def lifespan(app: FastAPI):
     print("  Health Check: http://localhost:8000/api/health")
     print("  WebSocket: ws://localhost:8000/ws/prices")
     print("=" * 70 + "\n")
+
+    # Pre-warm LKG cache for top Nifty 50 stocks so first-user requests hit cache
+    asyncio.create_task(_warm_nifty_cache())
 
     yield
 
