@@ -47,20 +47,13 @@ def validate_environment():
     if "*" in cors:
         warnings.append("CORS_ORIGINS contains '*' - restrict to specific origins in production.")
 
-    # ── P0: Enforce PostgreSQL in production ──
+    # ── Database check (warning only — SQLite is fine for small deployments) ──
     db_url = os.getenv("DATABASE_URL", "")
     if "sqlite" in db_url or not db_url:
-        if demo_mode != "true":
-            errors.append(
-                "CRITICAL: SQLite is not suitable for production. "
-                "Set DATABASE_URL to PostgreSQL: "
-                "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
-            )
-        else:
-            warnings.append(
-                "Using SQLite database. For 100+ concurrent users, switch to PostgreSQL: "
-                "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
-            )
+        warnings.append(
+            "Using SQLite database. For 100+ concurrent users, switch to PostgreSQL: "
+            "DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/traderai"
+        )
 
     stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
     if not stripe_key:
