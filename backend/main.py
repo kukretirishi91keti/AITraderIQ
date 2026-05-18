@@ -440,6 +440,77 @@ async def api_health():
     }
 
 
+@app.get("/api/debug/data-pipeline")
+async def debug_data_pipeline():
+    """
+    Diagnostic: tests every data source for RELIANCE.NS and reports results.
+    Visit this URL in your browser to see exactly why live data is/isn't working.
+    """
+    import os, httpx
+    results = {}
+
+    # 1. Env vars (masked)
+    td_key = os.getenv("TWELVE_DATA_API_KEY", "")
+    fh_key = os.getenv("FINNHUB_API_KEY", "")
+    results["env"] = {
+        "DEMO_MODE": os.getenv("DEMO_MODE", "true"),
+        "TWELVE_DATA_API_KEY": f"{td_key[:6]}...{td_key[-4:]}" if len(td_key) > 10 else ("SET(short)" if td_key else "NOT SET"),
+        "FINNHUB_API_KEY": f"{fh_key[:4]}..." if fh_key else "NOT SET",
+        "GROQ_API_KEY": "SET" if os.getenv("GROQ_API_KEY") else "NOT SET",
+    }
+
+    # 2. Twelve Data test (RELIANCE:NSE)
+    if td_key:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                r = await client.get(
+                    "https://api.twelvedata.com/quote",
+                    params={"symbol": "RELIANCE:NSE", "apikey": td_key},
+                )
+                d = r.json()
+            results["twelve_data"] = {
+                "status": d.get("status", "unknown"),
+                "has_close": "close" in d,
+                "price": d.get("close"),
+                "error": d.get("message") if d.get("status") == "error" else None,
+                "code": d.get("code"),
+            }
+        except Exception as e:
+            results["twelve_data"] = {"error": str(e)}
+    else:
+        results["twelve_data"] = {"error": "TWELVE_DATA_API_KEY not set"}
+
+    # 3. yfinance test (RELIANCE.NS)
+    try:
+        import asyncio
+        from starlette.concurrency import run_in_threadpool
+        import yfinance as yf
+        def _test_yf():
+            t = yf.Ticker("RELIANCE.NS")
+            fi = t.fast_info
+            return {"price": fi.last_price, "currency": fi.currency}
+        yf_result = await asyncio.wait_for(run_in_threadpool(_test_yf), timeout=10.0)
+        results["yfinance"] = {"ok": True, **yf_result}
+    except Exception as e:
+        results["yfinance"] = {"ok": False, "error": str(e)}
+
+    # 4. Service layer result
+    try:
+        from services.market_data_service import get_market_data_service, _circuit_breaker
+        svc = get_market_data_service()
+        quote = await svc.get_quote("RELIANCE.NS", force_refresh=True)
+        results["service_quote"] = {
+            "price": quote.get("price"),
+            "source": quote.get("source"),
+            "dataQuality": quote.get("dataQuality"),
+        }
+        results["circuit_breaker"] = _circuit_breaker.get_status()
+    except Exception as e:
+        results["service_quote"] = {"error": str(e)}
+
+    return results
+
+
 # ============================================================
 # RUN SERVER
 # ============================================================
