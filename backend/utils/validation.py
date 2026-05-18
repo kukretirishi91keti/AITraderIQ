@@ -22,7 +22,7 @@ def sanitize_text(value: str) -> str:
 
 # Valid symbol pattern: alphanumeric, dots, hyphens, equals, carets
 # Examples: AAPL, RELIANCE.NS, BTC-USD, EURUSD=X, GC=F, ^GSPC
-SYMBOL_PATTERN = re.compile(r'^[A-Za-z0-9\.\-\=\^]{1,20}$')
+SYMBOL_PATTERN = re.compile(r'^[A-Za-z0-9\.\-\=\^\&]{1,20}$')
 
 # Valid market names
 VALID_MARKETS = {
