@@ -830,7 +830,7 @@ class MarketDataService:
         async def fetch_live():
             return await asyncio.wait_for(
                 run_in_threadpool(_fetch_yfinance_quote_sync, symbol),
-                timeout=15.0,  # 15s hard timeout for external API
+                timeout=8.0,  # 8s — fast fallback to LKG/MME rather than blocking UI
             )
 
         try:
@@ -889,13 +889,13 @@ class MarketDataService:
                 self.cache.set(cache_key, td_hist, source="TWELVE_DATA")
                 return td_hist, "TWELVE_DATA"
 
-        # 1b. Try yfinance for non-Indian symbols
+        # 1b. yfinance fallback for all symbols
         async def fetch_live():
             return await asyncio.wait_for(
                 run_in_threadpool(
                     _fetch_yfinance_history_sync, symbol, period, interval
                 ),
-                timeout=30.0,
+                timeout=8.0,  # 8s — fast fallback to demo rather than blocking charts
             )
 
         try:
