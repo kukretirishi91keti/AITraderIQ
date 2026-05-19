@@ -453,6 +453,110 @@ async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]
 
 
 # =============================================================================
+# YAHOO FINANCE DIRECT (browser headers — bypasses yfinance rate limit)
+# =============================================================================
+
+_YF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json,text/html,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://finance.yahoo.com/",
+}
+
+async def _fetch_yahoo_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
+    """
+    Direct Yahoo Finance v8 API call with browser User-Agent.
+    Avoids the yfinance library which Yahoo actively rate-limits on shared IPs.
+    """
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS, follow_redirects=True) as client:
+            r = await client.get(url, params={"interval": "1d", "range": "2d"})
+            if r.status_code == 429:
+                logger.warning(f"Yahoo direct: rate limited for {symbol}")
+                return None
+            d = r.json()
+        result = d.get("chart", {}).get("result")
+        if not result:
+            return None
+        meta = result[0].get("meta", {})
+        price = meta.get("regularMarketPrice") or meta.get("previousClose")
+        if not price:
+            return None
+        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or price
+        change = price - prev_close
+        change_pct = (change / prev_close * 100) if prev_close else 0
+        market = _get_market_from_symbol(symbol)
+        currency = get_currency_symbol(market)
+        name = GLOBAL_STOCKS.get(symbol, {}).get("name", symbol)
+        return {
+            "symbol": symbol,
+            "name": name,
+            "price": round(price, 2),
+            "change": round(change, 2),
+            "changePercent": round(change_pct, 2),
+            "high": meta.get("regularMarketDayHigh"),
+            "low": meta.get("regularMarketDayLow"),
+            "open": meta.get("regularMarketOpen"),
+            "prevClose": round(prev_close, 2),
+            "volume": meta.get("regularMarketVolume", 0),
+            "currency": currency,
+            "market": market,
+            "dataQuality": "LIVE",
+            "source": "YAHOO_DIRECT",
+        }
+    except Exception as e:
+        logger.warning(f"Yahoo direct quote error for {symbol}: {e}")
+        return None
+
+
+async def _fetch_yahoo_history_async(symbol: str, period: str = "1mo", interval: str = "1d") -> Optional[List[Dict]]:
+    """Direct Yahoo Finance history with browser headers."""
+    _period_map = {"1d": "1d", "5d": "5d", "1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y", "2y": "2y"}
+    _interval_map = {"1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "60m", "4h": "60m", "1d": "1d", "1w": "1wk", "1wk": "1wk"}
+    yf_period = _period_map.get(period, "1mo")
+    yf_interval = _interval_map.get(interval, "1d")
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    try:
+        async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS, follow_redirects=True) as client:
+            r = await client.get(url, params={"interval": yf_interval, "range": yf_period})
+            if r.status_code == 429:
+                logger.warning(f"Yahoo direct history: rate limited for {symbol}")
+                return None
+            d = r.json()
+        result = d.get("chart", {}).get("result")
+        if not result:
+            return None
+        timestamps = result[0].get("timestamp", [])
+        ohlcv = result[0].get("indicators", {}).get("quote", [{}])[0]
+        opens   = ohlcv.get("open", [])
+        highs   = ohlcv.get("high", [])
+        lows    = ohlcv.get("low", [])
+        closes  = ohlcv.get("close", [])
+        volumes = ohlcv.get("volume", [])
+        candles = []
+        for i, ts in enumerate(timestamps):
+            c = closes[i] if i < len(closes) and closes[i] else None
+            if c is None:
+                continue
+            from datetime import timezone
+            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
+            candles.append({
+                "timestamp": dt.isoformat(),
+                "date": dt.isoformat(),
+                "open":   round(opens[i]   if i < len(opens)   and opens[i]   else c, 2),
+                "high":   round(highs[i]   if i < len(highs)   and highs[i]   else c, 2),
+                "low":    round(lows[i]    if i < len(lows)    and lows[i]    else c, 2),
+                "close":  round(c, 2),
+                "volume": int(volumes[i]) if i < len(volumes) and volumes[i] else 0,
+            })
+        return candles if candles else None
+    except Exception as e:
+        logger.warning(f"Yahoo direct history error for {symbol}: {e}")
+        return None
+
+
+# =============================================================================
 # YFINANCE WRAPPER (fast_info)
 # =============================================================================
 
@@ -797,7 +901,7 @@ class MarketDataService:
                 data['cacheAge'] = entry.age_human()
                 return data
 
-        # 2a. Twelve Data — primary for Indian (NSE/BSE) stocks
+        # 2a. Twelve Data — primary for Indian stocks IF plan supports it
         if TWELVE_DATA_KEY and is_indian:
             td_data = await _fetch_twelvedata_quote_async(symbol)
             if td_data:
@@ -805,19 +909,18 @@ class MarketDataService:
                 self.stats["live_fetches"] += 1
                 self.stats["last_live_fetch"] = datetime.now().isoformat()
                 return td_data
-            # Twelve Data failed (rate limit or error) — serve LKG immediately
-            # rather than burning 15s waiting for blocked yfinance
-            lkg = self.cache.get_lkg(cache_key)
-            if lkg:
-                self.stats["lkg_fallbacks"] += 1
-                data = dict(lkg.data)
-                data['dataQuality'] = 'LKG'
-                data['cacheAge'] = lkg.age_human()
-                data['source'] = 'LKG_CACHE'
-                logger.info(f"Twelve Data failed → LKG for {symbol} ({lkg.age_human()})")
-                return data
 
-        # 2b. Finnhub REST — primary for US stocks (strips .NS/.L → null for non-US)
+        # 2b. Yahoo Finance direct HTTP (browser headers) — works for all symbols
+        # Used as primary for Indian stocks when Twelve Data plan doesn't cover NSE
+        if is_indian:
+            yahoo_data = await _fetch_yahoo_quote_async(symbol)
+            if yahoo_data:
+                self.cache.set(cache_key, yahoo_data, source="YAHOO_DIRECT")
+                self.stats["live_fetches"] += 1
+                self.stats["last_live_fetch"] = datetime.now().isoformat()
+                return yahoo_data
+
+        # 2c. Finnhub REST — primary for US stocks
         if FINNHUB_KEY and not is_indian:
             fh_data = await _fetch_finnhub_quote_async(symbol)
             if fh_data:
@@ -889,13 +992,19 @@ class MarketDataService:
                 self.cache.set(cache_key, td_hist, source="TWELVE_DATA")
                 return td_hist, "TWELVE_DATA"
 
-        # 1b. yfinance fallback for all symbols
+        # 1b. Yahoo Finance direct HTTP — browser headers bypass yfinance rate limit
+        yahoo_hist = await _fetch_yahoo_history_async(symbol, period, interval)
+        if yahoo_hist:
+            self.cache.set(cache_key, yahoo_hist, source="YAHOO_DIRECT")
+            return yahoo_hist, "YAHOO_DIRECT"
+
+        # 1c. yfinance library fallback
         async def fetch_live():
             return await asyncio.wait_for(
                 run_in_threadpool(
                     _fetch_yfinance_history_sync, symbol, period, interval
                 ),
-                timeout=8.0,  # 8s — fast fallback to demo rather than blocking charts
+                timeout=8.0,
             )
 
         try:
@@ -906,7 +1015,7 @@ class MarketDataService:
                 return live_data, "LIVE"
 
         except asyncio.TimeoutError:
-            logger.warning(f"History fetch timed out for {symbol} (30s)")
+            logger.warning(f"History fetch timed out for {symbol} (8s)")
         except Exception as e:
             logger.warning(f"History fetch failed for {symbol}: {e}")
         
