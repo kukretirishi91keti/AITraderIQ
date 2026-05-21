@@ -220,14 +220,14 @@ GLOBAL_STOCKS = {
 class CircuitBreaker:
     """
     Circuit breaker pattern for rate limit protection.
-    
+
     States:
     - CLOSED: Normal operation
     - OPEN: Too many failures, block requests
     - HALF_OPEN: Testing if service recovered
     """
-    
-    def __init__(self, max_failures: int = 5, reset_timeout: int = 60):
+
+    def __init__(self, max_failures: int = 10, reset_timeout: int = 120):
         self.max_failures = max_failures
         self.reset_timeout = reset_timeout
         self.failures = 0
