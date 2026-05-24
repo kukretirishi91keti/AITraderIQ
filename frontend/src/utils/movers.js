@@ -50,6 +50,7 @@ export const fetchTopMovers = async (marketId) => {
 const DEMO_STOCKS = {
   US: ['AAPL', 'NVDA', 'TSLA', 'AMD', 'MSFT', 'GOOGL'],
   India: ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS'],
+  India_BSE: ['RELIANCE.BO', 'TCS.BO', 'HDFCBANK.BO', 'INFY.BO'],
   UK: ['HSBA.L', 'BP.L', 'SHEL.L', 'AZN.L'],
   Germany: ['SAP.DE', 'SIE.DE', 'ALV.DE', 'BMW.DE'],
   France: ['OR.PA', 'MC.PA', 'SAN.PA', 'TTE.PA'],

@@ -498,7 +498,8 @@ export default function App() {
     setSearchQuery('');
     setShowSearchDrop(false);
     setAiMessages([]);
-    if (upperSymbol.endsWith('.NS') || upperSymbol.endsWith('.BO')) setSelectedMarket('India');
+    if (upperSymbol.endsWith('.NS')) setSelectedMarket('India');
+    else if (upperSymbol.endsWith('.BO')) setSelectedMarket('India_BSE');
     else if (upperSymbol.endsWith('.L')) setSelectedMarket('UK');
     else if (upperSymbol.endsWith('.DE')) setSelectedMarket('Germany');
     else if (upperSymbol.endsWith('.T')) setSelectedMarket('Japan');
