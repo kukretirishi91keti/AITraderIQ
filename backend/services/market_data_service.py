@@ -66,7 +66,8 @@ logger = logging.getLogger(__name__)
 
 MARKET_CONFIG = {
     'US': {'currency': '$', 'name': 'United States', 'suffix': ''},
-    'INDIA': {'currency': '₹', 'name': 'India', 'suffix': '.NS'},
+    'INDIA': {'currency': '₹', 'name': 'India (NSE)', 'suffix': '.NS'},
+    'BSE': {'currency': '₹', 'name': 'India (BSE)', 'suffix': '.BO'},
     'UK': {'currency': '£', 'name': 'United Kingdom', 'suffix': '.L'},
     'GERMANY': {'currency': '€', 'name': 'Germany', 'suffix': '.DE'},
     'FRANCE': {'currency': '€', 'name': 'France', 'suffix': '.PA'},
@@ -189,6 +190,52 @@ GLOBAL_STOCKS = {
     'BHEL.NS':       {'name': 'Bharat Heavy Electricals', 'market': 'INDIA', 'basePrice': 245,   'sector': 'Engineering'},
     'NHPC.NS':       {'name': 'NHPC Ltd.',                'market': 'INDIA', 'basePrice': 85,    'sector': 'Power'},
     'SJVN.NS':       {'name': 'SJVN Ltd.',                'market': 'INDIA', 'basePrice': 112,   'sector': 'Power'},
+
+    # INDIA — BSE Sensex 30 (.BO suffix)
+    'RELIANCE.BO':   {'name': 'Reliance Industries',    'market': 'BSE', 'basePrice': 1280,  'sector': 'Energy'},
+    'TCS.BO':        {'name': 'Tata Consultancy Svcs',  'market': 'BSE', 'basePrice': 4100,  'sector': 'IT'},
+    'HDFCBANK.BO':   {'name': 'HDFC Bank',              'market': 'BSE', 'basePrice': 1750,  'sector': 'Banking'},
+    'INFY.BO':       {'name': 'Infosys Ltd.',            'market': 'BSE', 'basePrice': 1900,  'sector': 'IT'},
+    'ICICIBANK.BO':  {'name': 'ICICI Bank',              'market': 'BSE', 'basePrice': 1250,  'sector': 'Banking'},
+    'HINDUNILVR.BO': {'name': 'Hindustan Unilever',      'market': 'BSE', 'basePrice': 2400,  'sector': 'FMCG'},
+    'ITC.BO':        {'name': 'ITC Ltd.',                'market': 'BSE', 'basePrice': 490,   'sector': 'FMCG'},
+    'SBIN.BO':       {'name': 'State Bank of India',     'market': 'BSE', 'basePrice': 850,   'sector': 'Banking'},
+    'BHARTIARTL.BO': {'name': 'Bharti Airtel',           'market': 'BSE', 'basePrice': 1650,  'sector': 'Telecom'},
+    'BAJFINANCE.BO': {'name': 'Bajaj Finance',           'market': 'BSE', 'basePrice': 7200,  'sector': 'NBFC'},
+    'KOTAKBANK.BO':  {'name': 'Kotak Mahindra Bank',     'market': 'BSE', 'basePrice': 1900,  'sector': 'Banking'},
+    'LT.BO':         {'name': 'Larsen & Toubro',         'market': 'BSE', 'basePrice': 3500,  'sector': 'Infra'},
+    'ASIANPAINT.BO': {'name': 'Asian Paints',            'market': 'BSE', 'basePrice': 2800,  'sector': 'Paints'},
+    'AXISBANK.BO':   {'name': 'Axis Bank',               'market': 'BSE', 'basePrice': 1100,  'sector': 'Banking'},
+    'MARUTI.BO':     {'name': 'Maruti Suzuki',           'market': 'BSE', 'basePrice': 12000, 'sector': 'Auto'},
+    'SUNPHARMA.BO':  {'name': 'Sun Pharma',              'market': 'BSE', 'basePrice': 1700,  'sector': 'Pharma'},
+    'TITAN.BO':      {'name': 'Titan Company',           'market': 'BSE', 'basePrice': 3400,  'sector': 'Consumer'},
+    'WIPRO.BO':      {'name': 'Wipro Ltd.',              'market': 'BSE', 'basePrice': 450,   'sector': 'IT'},
+    'NTPC.BO':       {'name': 'NTPC Ltd.',               'market': 'BSE', 'basePrice': 375,   'sector': 'Power'},
+    'POWERGRID.BO':  {'name': 'Power Grid Corp.',        'market': 'BSE', 'basePrice': 330,   'sector': 'Power'},
+    'ULTRACEMCO.BO': {'name': 'UltraTech Cement',        'market': 'BSE', 'basePrice': 10500, 'sector': 'Cement'},
+    'NESTLEIND.BO':  {'name': 'Nestle India',            'market': 'BSE', 'basePrice': 2300,  'sector': 'FMCG'},
+    'TATAMOTORS.BO': {'name': 'Tata Motors',             'market': 'BSE', 'basePrice': 820,   'sector': 'Auto'},
+    'HCLTECH.BO':    {'name': 'HCL Technologies',        'market': 'BSE', 'basePrice': 1800,  'sector': 'IT'},
+    'TATASTEEL.BO':  {'name': 'Tata Steel',              'market': 'BSE', 'basePrice': 160,   'sector': 'Metals'},
+    'ONGC.BO':       {'name': 'ONGC Ltd.',               'market': 'BSE', 'basePrice': 270,   'sector': 'Energy'},
+    'BAJAJFINSV.BO': {'name': 'Bajaj Finserv',           'market': 'BSE', 'basePrice': 1900,  'sector': 'NBFC'},
+    'TATACONSUM.BO': {'name': 'Tata Consumer Products',  'market': 'BSE', 'basePrice': 1100,  'sector': 'FMCG'},
+    'INDUSINDBK.BO': {'name': 'IndusInd Bank',           'market': 'BSE', 'basePrice': 950,   'sector': 'Banking'},
+    'M&M.BO':        {'name': 'Mahindra & Mahindra',     'market': 'BSE', 'basePrice': 2900,  'sector': 'Auto'},
+    'ADANIPORTS.BO': {'name': 'Adani Ports',             'market': 'BSE', 'basePrice': 1300,  'sector': 'Logistics'},
+    'DRREDDY.BO':    {'name': "Dr. Reddy's Labs",        'market': 'BSE', 'basePrice': 6500,  'sector': 'Pharma'},
+    'CIPLA.BO':      {'name': 'Cipla Ltd.',              'market': 'BSE', 'basePrice': 1550,  'sector': 'Pharma'},
+    'DIVISLAB.BO':   {'name': "Divi's Laboratories",     'market': 'BSE', 'basePrice': 5800,  'sector': 'Pharma'},
+    'HDFCLIFE.BO':   {'name': 'HDFC Life Insurance',     'market': 'BSE', 'basePrice': 700,   'sector': 'Insurance'},
+    'SBILIFE.BO':    {'name': 'SBI Life Insurance',      'market': 'BSE', 'basePrice': 1600,  'sector': 'Insurance'},
+    'HINDALCO.BO':   {'name': 'Hindalco Industries',     'market': 'BSE', 'basePrice': 680,   'sector': 'Metals'},
+    'JSWSTEEL.BO':   {'name': 'JSW Steel',               'market': 'BSE', 'basePrice': 920,   'sector': 'Metals'},
+    'HEROMOTOCO.BO': {'name': 'Hero MotoCorp',           'market': 'BSE', 'basePrice': 4800,  'sector': 'Auto'},
+    'EICHERMOT.BO':  {'name': 'Eicher Motors',           'market': 'BSE', 'basePrice': 5100,  'sector': 'Auto'},
+    'GRASIM.BO':     {'name': 'Grasim Industries',       'market': 'BSE', 'basePrice': 2700,  'sector': 'Cement'},
+    'ZOMATO.BO':     {'name': 'Zomato Ltd.',              'market': 'BSE', 'basePrice': 230,   'sector': 'Tech'},
+    'BEL.BO':        {'name': 'Bharat Electronics',      'market': 'BSE', 'basePrice': 280,   'sector': 'Defence'},
+    'HAL.BO':        {'name': 'Hindustan Aeronautics',   'market': 'BSE', 'basePrice': 4300,  'sector': 'Defence'},
 
     # UK STOCKS
     'HSBA.L': {'name': 'HSBC Holdings', 'market': 'UK', 'basePrice': 750},
@@ -805,6 +852,8 @@ def _get_market_from_symbol(symbol: str) -> str:
     
     if '.NS' in symbol:
         return 'INDIA'
+    elif '.BO' in symbol:
+        return 'BSE'
     elif '.L' in symbol:
         return 'UK'
     elif '.DE' in symbol:

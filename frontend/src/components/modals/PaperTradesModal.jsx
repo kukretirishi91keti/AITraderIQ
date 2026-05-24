@@ -130,7 +130,7 @@ const PaperTradesModal = ({ onClose }) => {
                         <input
                           type="number"
                           step="0.01"
-                          placeholder="e.g. 148.00"
+                          placeholder="Stop price"
                           value={lvl.stopLoss || ''}
                           onChange={(e) => updateLevel(trade.id, 'stopLoss', e.target.value)}
                           className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-red-300 placeholder-gray-500 focus:outline-none focus:border-red-500"
@@ -140,7 +140,7 @@ const PaperTradesModal = ({ onClose }) => {
                         <input
                           type="number"
                           step="0.01"
-                          placeholder="e.g. 165.00"
+                          placeholder="Target price"
                           value={lvl.takeProfit || ''}
                           onChange={(e) => updateLevel(trade.id, 'takeProfit', e.target.value)}
                           className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-green-300 placeholder-gray-500 focus:outline-none focus:border-green-500"

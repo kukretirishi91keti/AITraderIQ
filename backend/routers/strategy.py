@@ -176,6 +176,7 @@ async def apply_strategy(
     try:
         quote = await svc.get_quote(symbol)
         current_price = quote.get("price")
+        currency_sym = quote.get("currency", "$")
         if not current_price or current_price <= 0:
             raise ValueError("Invalid price")
     except Exception:
@@ -197,7 +198,7 @@ async def apply_strategy(
     if quantity <= 0:
         raise HTTPException(
             status_code=400,
-            detail=f"Capital too low to buy even a fractional share of {symbol} at ${current_price:.2f}",
+            detail=f"Capital too low to buy even a fractional share of {symbol} at {currency_sym}{current_price:.2f}",
         )
 
     # 3. Create a PaperTrade record
@@ -211,7 +212,7 @@ async def apply_strategy(
         strategy=request.strategy_name,
         notes=f"Auto-created via strategy apply. "
               f"Risk tolerance: {request.risk_tolerance}, "
-              f"Capital allocated: ${position_capital:.2f} of ${request.capital:.2f}",
+              f"Capital allocated: {currency_sym}{position_capital:.2f} of {currency_sym}{request.capital:.2f}",
     )
     db.add(trade)
     await db.commit()
