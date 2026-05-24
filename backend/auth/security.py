@@ -6,7 +6,19 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from jose import JWTError, jwt
+try:
+    from jose import JWTError, jwt as jose_jwt
+    def _jwt_encode(data, key, algorithm):
+        return jose_jwt.encode(data, key, algorithm=algorithm)
+    def _jwt_decode(token, key, algorithms):
+        return jose_jwt.decode(token, key, algorithms=algorithms)
+except Exception:
+    import jwt as _pyjwt
+    JWTError = _pyjwt.PyJWTError
+    def _jwt_encode(data, key, algorithm):
+        return _pyjwt.encode(data, key, algorithm=algorithm)
+    def _jwt_decode(token, key, algorithms):
+        return _pyjwt.decode(token, key, algorithms=algorithms)
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,7 +58,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return _jwt_encode(to_encode, SECRET_KEY, ALGORITHM)
 
 
 async def get_current_user(
@@ -62,7 +74,7 @@ async def get_current_user(
         return None
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = _jwt_decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         raw_id = payload.get("sub")
         if raw_id is None:
             raise HTTPException(
