@@ -170,7 +170,7 @@ export default function App() {
   const [healthStatus, setHealthStatus] = useState('HEALTHY');
   const [pollingInterval, setPollingInterval] = useState(POLLING_INTERVALS.HEALTHY);
   const [lastFetchTime, setLastFetchTime] = useState(null);
-  const [demoMode, setDemoMode] = useState(true); // assume demo until health check says otherwise
+  const [demoMode, setDemoMode] = useState(false);
 
   // User GROQ API key (stored in localStorage, sent with AI requests)
   const [groqApiKey, setGroqApiKey] = useState(() => localStorage.getItem('groqApiKey') || '');
@@ -596,7 +596,7 @@ export default function App() {
                 fiftyTwoWeekHigh: f['52_week_high'] || f.fiftyTwoWeekHigh,
                 fiftyTwoWeekLow: f['52_week_low'] || f.fiftyTwoWeekLow,
                 profitMargin: f.profit_margin ? `${f.profit_margin.toFixed(1)}%` : 'N/A',
-                dataQuality: data.source || 'DEMO',
+                dataQuality: data.dataQuality || data.source || 'CACHED',
               });
             } else if (data.marketCap || data.peRatio) {
               setFinancials(data);
@@ -1597,8 +1597,10 @@ export default function App() {
                 <h2 className="text-2xl font-bold">{selectedSymbol}</h2>
                 {(() => {
                   const dq = quote?.dataQuality || (demoMode ? 'DEMO' : 'LIVE');
-                  const isLive = dq === 'LIVE' || dq === 'REALTIME';
-                  const isDelayed = dq === 'DELAYED' || dq === '15min';
+                  const _demoQualities = new Set(['DEMO', 'MME', 'SIMULATED']);
+                  const isLive = !_demoQualities.has(dq);
+                  const isDelayed =
+                    dq === 'DELAYED' || dq === '15min' || dq === 'LKG' || dq === 'LKG_CACHE';
                   return (
                     <span
                       title={
