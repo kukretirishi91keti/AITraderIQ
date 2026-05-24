@@ -60,6 +60,7 @@ class WatchlistRequest(BaseModel):
 MARKET_SYMBOLS = {
     "US": ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "AMD", "NFLX", "INTC", "JPM", "V", "JNJ", "WMT", "PG"],
     "INDIA": ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS", "WIPRO.NS", "BHARTIARTL.NS", "ITC.NS", "KOTAKBANK.NS", "LT.NS"],
+    "INDIA_BSE": ["RELIANCE.BO", "TCS.BO", "HDFCBANK.BO", "INFY.BO", "ICICIBANK.BO", "SBIN.BO", "BHARTIARTL.BO", "ITC.BO", "KOTAKBANK.BO", "LT.BO"],
     "UK": ["HSBA.L", "BP.L", "SHEL.L", "AZN.L", "GSK.L", "ULVR.L", "RIO.L", "LLOY.L", "BARC.L", "VOD.L"],
     "GERMANY": ["SAP.DE", "SIE.DE", "VOW3.DE", "ALV.DE", "BAS.DE", "BAYN.DE", "BMW.DE", "MBG.DE", "DTE.DE", "ADS.DE"],
     "FRANCE": ["OR.PA", "MC.PA", "SAN.PA", "AIR.PA", "TTE.PA", "BNP.PA", "SU.PA", "AI.PA", "KER.PA", "DG.PA"],
@@ -81,7 +82,7 @@ MARKET_SYMBOLS = {
 # Aliases for market names
 MARKET_ALIASES = {
     "EUROPE": "GERMANY",
-    "EU": "GERMANY", 
+    "EU": "GERMANY",
     "DE": "GERMANY",
     "FR": "FRANCE",
     "JP": "JAPAN",
@@ -93,6 +94,7 @@ MARKET_ALIASES = {
     "KR": "KOREA",
     "SG": "SINGAPORE",
     "CH": "SWITZERLAND",
+    "BSE": "INDIA_BSE",
 }
 
 
