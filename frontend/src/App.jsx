@@ -1598,9 +1598,9 @@ export default function App() {
                 {(() => {
                   const dq = quote?.dataQuality || (demoMode ? 'DEMO' : 'LIVE');
                   const _demoQualities = new Set(['DEMO', 'MME', 'SIMULATED']);
-                  const isLive = !_demoQualities.has(dq);
-                  const isDelayed =
-                    dq === 'DELAYED' || dq === '15min' || dq === 'LKG' || dq === 'LKG_CACHE';
+                  const _delayedQualities = new Set(['DELAYED', '15min', 'LKG', 'LKG_CACHE']);
+                  const isDelayed = _delayedQualities.has(dq);
+                  const isLive = !_demoQualities.has(dq) && !isDelayed;
                   return (
                     <span
                       title={
