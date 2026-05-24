@@ -76,6 +76,42 @@ export const SYMBOL_INDEX = [
   { symbol: 'SOLARINDS.NS', name: 'Solar Industries India', market: 'India', sector: 'Defence' },
   { symbol: 'NHPC.NS', name: 'NHPC', market: 'India', sector: 'Power' },
   { symbol: 'SJVN.NS', name: 'SJVN', market: 'India', sector: 'Power' },
+  // ── BSE India — Sensex 30 + popular stocks (.BO) ────────────────────────────
+  { symbol: 'RELIANCE.BO', name: 'Reliance Industries (BSE)', market: 'India', sector: 'Energy' },
+  { symbol: 'TCS.BO', name: 'Tata Consultancy Services (BSE)', market: 'India', sector: 'IT' },
+  { symbol: 'HDFCBANK.BO', name: 'HDFC Bank (BSE)', market: 'India', sector: 'Banking' },
+  { symbol: 'INFY.BO', name: 'Infosys (BSE)', market: 'India', sector: 'IT' },
+  { symbol: 'ICICIBANK.BO', name: 'ICICI Bank (BSE)', market: 'India', sector: 'Banking' },
+  { symbol: 'HINDUNILVR.BO', name: 'Hindustan Unilever (BSE)', market: 'India', sector: 'FMCG' },
+  { symbol: 'ITC.BO', name: 'ITC (BSE)', market: 'India', sector: 'FMCG' },
+  { symbol: 'SBIN.BO', name: 'State Bank of India (BSE)', market: 'India', sector: 'Banking' },
+  { symbol: 'BHARTIARTL.BO', name: 'Bharti Airtel (BSE)', market: 'India', sector: 'Telecom' },
+  { symbol: 'BAJFINANCE.BO', name: 'Bajaj Finance (BSE)', market: 'India', sector: 'NBFC' },
+  { symbol: 'KOTAKBANK.BO', name: 'Kotak Mahindra Bank (BSE)', market: 'India', sector: 'Banking' },
+  { symbol: 'LT.BO', name: 'Larsen & Toubro (BSE)', market: 'India', sector: 'Infra' },
+  { symbol: 'AXISBANK.BO', name: 'Axis Bank (BSE)', market: 'India', sector: 'Banking' },
+  { symbol: 'MARUTI.BO', name: 'Maruti Suzuki (BSE)', market: 'India', sector: 'Auto' },
+  { symbol: 'SUNPHARMA.BO', name: 'Sun Pharmaceutical (BSE)', market: 'India', sector: 'Pharma' },
+  { symbol: 'TITAN.BO', name: 'Titan Company (BSE)', market: 'India', sector: 'Consumer' },
+  { symbol: 'WIPRO.BO', name: 'Wipro (BSE)', market: 'India', sector: 'IT' },
+  { symbol: 'TATAMOTORS.BO', name: 'Tata Motors (BSE)', market: 'India', sector: 'Auto' },
+  { symbol: 'HCLTECH.BO', name: 'HCL Technologies (BSE)', market: 'India', sector: 'IT' },
+  { symbol: 'TATASTEEL.BO', name: 'Tata Steel (BSE)', market: 'India', sector: 'Metals' },
+  { symbol: 'ONGC.BO', name: 'ONGC (BSE)', market: 'India', sector: 'Energy' },
+  { symbol: 'BAJAJFINSV.BO', name: 'Bajaj Finserv (BSE)', market: 'India', sector: 'NBFC' },
+  { symbol: 'M&M.BO', name: 'Mahindra & Mahindra (BSE)', market: 'India', sector: 'Auto' },
+  { symbol: 'ADANIPORTS.BO', name: 'Adani Ports (BSE)', market: 'India', sector: 'Logistics' },
+  {
+    symbol: 'DRREDDY.BO',
+    name: "Dr. Reddy's Laboratories (BSE)",
+    market: 'India',
+    sector: 'Pharma',
+  },
+  { symbol: 'CIPLA.BO', name: 'Cipla (BSE)', market: 'India', sector: 'Pharma' },
+  { symbol: 'HINDALCO.BO', name: 'Hindalco Industries (BSE)', market: 'India', sector: 'Metals' },
+  { symbol: 'ZOMATO.BO', name: 'Zomato (BSE)', market: 'India', sector: 'Tech' },
+  { symbol: 'BEL.BO', name: 'Bharat Electronics (BSE)', market: 'India', sector: 'Defence' },
+  { symbol: 'HAL.BO', name: 'Hindustan Aeronautics (BSE)', market: 'India', sector: 'Defence' },
   // ── US Tech ─────────────────────────────────────────────────────────────────
   { symbol: 'AAPL', name: 'Apple', market: 'US', sector: 'Tech' },
   { symbol: 'MSFT', name: 'Microsoft', market: 'US', sector: 'Tech' },
@@ -111,7 +147,7 @@ export function searchSymbols(query, limit = 8) {
   const seen = new Set();
 
   for (const item of SYMBOL_INDEX) {
-    const bare = item.symbol.toLowerCase().replace(/\.(ns|l|de|pa|t|ax|to)$/, '');
+    const bare = item.symbol.toLowerCase().replace(/\.(ns|bo|l|de|pa|t|ax|to)$/, '');
     const sym = item.symbol.toLowerCase();
     const name = item.name.toLowerCase();
     const sector = item.sector.toLowerCase();

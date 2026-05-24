@@ -41,6 +41,16 @@ NIFTY_50_SYMBOLS = [
     "M&M.NS", "HINDALCO.NS",
 ]
 
+# BSE Sensex 30 scan universe
+SENSEX_30_SYMBOLS = [
+    "RELIANCE.BO", "TCS.BO", "HDFCBANK.BO", "INFY.BO", "ICICIBANK.BO",
+    "HINDUNILVR.BO", "ITC.BO", "SBIN.BO", "BHARTIARTL.BO", "BAJFINANCE.BO",
+    "KOTAKBANK.BO", "LT.BO", "AXISBANK.BO", "MARUTI.BO", "SUNPHARMA.BO",
+    "TITAN.BO", "WIPRO.BO", "NTPC.BO", "ULTRACEMCO.BO", "NESTLEIND.BO",
+    "TATAMOTORS.BO", "HCLTECH.BO", "TATASTEEL.BO", "ONGC.BO", "BAJAJFINSV.BO",
+    "TATACONSUM.BO", "INDUSINDBK.BO", "M&M.BO", "ADANIPORTS.BO", "HINDALCO.BO",
+]
+
 # Cache for AI scores (5-minute TTL)
 _scanner_cache = get_cache_manager("scanner")
 SCANNER_CACHE_TTL = 300  # 5 minutes
@@ -206,18 +216,21 @@ async def find_opportunities(
 async def nifty50_scan(
     trader_type: str = Query("Day", description="Day | Swing | Position | Scalper"),
     top_n: int = Query(20, ge=1, le=50, description="Number of top picks to return"),
+    market: str = Query("NSE", description="NSE | BSE"),
 ):
     """
-    Nifty 50 Morning Scanner (India).
+    India Morning Scanner — Nifty 50 (NSE) or Sensex 30 (BSE).
 
-    Scans all 30 liquid Nifty 50 stocks and returns the top picks ranked by
-    composite AI score (technical 40% + backtest accuracy 25% + sentiment 20%
-    + risk-adjusted 15%).  Designed to run at market open (9:15 AM IST).
-
-    Also returns overall market bias for the session.
+    Scans all constituents and returns the top picks ranked by composite AI score
+    (technical 40% + backtest accuracy 25% + sentiment 20% + risk-adjusted 15%).
+    Designed to run at market open (9:15 AM IST).
     """
-    # Parallel scoring — all 30 symbols simultaneously
-    tasks = [_compute_ai_score_cached(sym, trader_type) for sym in NIFTY_50_SYMBOLS]
+    use_bse = market.upper() == "BSE"
+    scan_symbols = SENSEX_30_SYMBOLS if use_bse else NIFTY_50_SYMBOLS
+    market_label = "BSE India — Sensex 30" if use_bse else "NSE India — Nifty 50"
+
+    # Parallel scoring — all symbols simultaneously
+    tasks = [_compute_ai_score_cached(sym, trader_type) for sym in scan_symbols]
     all_scores = await asyncio.gather(*tasks)
 
     all_scores.sort(key=lambda x: x["ai_score"], reverse=True)
@@ -253,7 +266,7 @@ async def nifty50_scan(
 
     return {
         "success": True,
-        "market": "NSE India — Nifty 50",
+        "market": market_label,
         "trader_type": trader_type,
         "session": session,
         "market_bias": market_bias,

@@ -6,11 +6,19 @@
 export const MARKETS = [
   {
     id: 'India',
-    name: 'India',
+    name: 'India NSE',
     flag: '\u{1F1EE}\u{1F1F3}',
     currency: '\u20B9',
     currencyName: 'INR',
     defaultSymbol: 'RELIANCE.NS',
+  },
+  {
+    id: 'India_BSE',
+    name: 'India BSE',
+    flag: '\u{1F1EE}\u{1F1F3}',
+    currency: '\u20B9',
+    currencyName: 'INR',
+    defaultSymbol: 'RELIANCE.BO',
   },
   {
     id: 'US',
@@ -201,6 +209,14 @@ export const STATIC_UNIVERSE = {
     { symbol: 'ICICIBANK.NS', name: 'ICICI Bank', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
     { symbol: 'HINDUNILVR.NS', name: 'HUL', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
   ],
+  India_BSE: [
+    { symbol: 'RELIANCE.BO', name: 'Reliance', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+    { symbol: 'TCS.BO', name: 'TCS', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+    { symbol: 'HDFCBANK.BO', name: 'HDFC Bank', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+    { symbol: 'INFY.BO', name: 'Infosys', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+    { symbol: 'ICICIBANK.BO', name: 'ICICI Bank', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+    { symbol: 'SBIN.BO', name: 'SBI', flag: '\u{1F1EE}\u{1F1F3}', currency: '\u20B9' },
+  ],
   UK: [
     { symbol: 'HSBA.L', name: 'HSBC', flag: '\u{1F1EC}\u{1F1E7}', currency: '\u00A3' },
     { symbol: 'BP.L', name: 'BP', flag: '\u{1F1EC}\u{1F1E7}', currency: '\u00A3' },
@@ -329,6 +345,7 @@ export const STATIC_UNIVERSE = {
 export const MARKET_MOVERS = {
   US: ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'AMD', 'META'],
   India: ['RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS'],
+  India_BSE: ['RELIANCE.BO', 'TCS.BO', 'HDFCBANK.BO', 'INFY.BO'],
   UK: ['HSBA.L', 'BP.L', 'SHEL.L', 'AZN.L'],
   Germany: ['SAP.DE', 'SIE.DE', 'VOW3.DE', 'BMW.DE'],
   France: ['OR.PA', 'MC.PA', 'AIR.PA', 'TTE.PA'],

@@ -52,6 +52,18 @@ STATIC_UNIVERSE = {
         'BAJAJ-AUTO.NS',
     ],
     
+    # === India — BSE Sensex 30 + popular mid-caps (.BO) ===
+    'India_BSE': [
+        'RELIANCE.BO', 'TCS.BO', 'HDFCBANK.BO', 'INFY.BO', 'ICICIBANK.BO',
+        'HINDUNILVR.BO', 'ITC.BO', 'SBIN.BO', 'BHARTIARTL.BO', 'BAJFINANCE.BO',
+        'KOTAKBANK.BO', 'LT.BO', 'ASIANPAINT.BO', 'AXISBANK.BO', 'MARUTI.BO',
+        'SUNPHARMA.BO', 'TITAN.BO', 'WIPRO.BO', 'NTPC.BO', 'POWERGRID.BO',
+        'ULTRACEMCO.BO', 'NESTLEIND.BO', 'TATAMOTORS.BO', 'HCLTECH.BO', 'TATASTEEL.BO',
+        'ONGC.BO', 'BAJAJFINSV.BO', 'TATACONSUM.BO', 'INDUSINDBK.BO', 'M&M.BO',
+        'ADANIPORTS.BO', 'DRREDDY.BO', 'CIPLA.BO', 'HINDALCO.BO', 'JSWSTEEL.BO',
+        'HEROMOTOCO.BO', 'EICHERMOT.BO', 'GRASIM.BO', 'ZOMATO.BO', 'BEL.BO',
+    ],
+
     # === UK ===
     'UK': [
         'HSBA.L', 'BP.L', 'SHEL.L', 'AZN.L', 'GSK.L', 'VOD.L', 'LLOY.L'

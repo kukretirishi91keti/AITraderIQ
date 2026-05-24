@@ -32,6 +32,7 @@ VALID_MARKETS = {
     "SWEDEN", "TAIWAN", "CRYPTO", "ETF", "FOREX", "COMMODITIES",
     # Aliases
     "EUROPE", "EU", "DE", "FR", "JP", "CN", "HK", "AU", "CA", "BR", "KR", "SG", "CH",
+    "BSE",
 }
 
 # Valid intervals

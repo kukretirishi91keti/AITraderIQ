@@ -81,6 +81,8 @@ export default function TradeJournalModal({ onClose }) {
   const m = data?.metrics || {};
   const trades = data?.trades || [];
   const curve = data?.equity_curve || [];
+  // derive currency symbol from the first closed trade (₹ for Indian, $ for US, etc.)
+  const curSym = trades[0]?.currency || '$';
 
   return (
     <div
@@ -122,7 +124,7 @@ export default function TradeJournalModal({ onClose }) {
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                     <MetricCard
                       label="Total P&L"
-                      value={`${m.total_pnl >= 0 ? '+' : ''}$${m.total_pnl?.toFixed(2)}`}
+                      value={`${m.total_pnl >= 0 ? '+' : ''}${curSym}${m.total_pnl?.toFixed(2)}`}
                       color={m.total_pnl >= 0 ? 'text-green-400' : 'text-red-400'}
                       sub={`${m.total_closed} closed trades`}
                     />
@@ -134,13 +136,13 @@ export default function TradeJournalModal({ onClose }) {
                     />
                     <MetricCard
                       label="Avg Win"
-                      value={`+$${m.avg_win?.toFixed(2)}`}
+                      value={`+${curSym}${m.avg_win?.toFixed(2)}`}
                       color="text-green-400"
                       sub="per winning trade"
                     />
                     <MetricCard
                       label="Avg Loss"
-                      value={`$${m.avg_loss?.toFixed(2)}`}
+                      value={`${curSym}${m.avg_loss?.toFixed(2)}`}
                       color="text-red-400"
                       sub="per losing trade"
                     />
@@ -160,18 +162,18 @@ export default function TradeJournalModal({ onClose }) {
                     />
                     <MetricCard
                       label="Max Drawdown"
-                      value={`-$${m.max_drawdown?.toFixed(2)}`}
+                      value={`-${curSym}${m.max_drawdown?.toFixed(2)}`}
                       color="text-orange-400"
                       sub="largest peak→trough"
                     />
                     <MetricCard
                       label="Best Trade"
-                      value={`+$${m.best_trade?.toFixed(2)}`}
+                      value={`+${curSym}${m.best_trade?.toFixed(2)}`}
                       color="text-green-400"
                     />
                     <MetricCard
                       label="Worst Trade"
-                      value={`$${m.worst_trade?.toFixed(2)}`}
+                      value={`${curSym}${m.worst_trade?.toFixed(2)}`}
                       color="text-red-400"
                     />
                   </div>
@@ -200,7 +202,8 @@ export default function TradeJournalModal({ onClose }) {
                               : 'text-red-400'
                           }
                         >
-                          {curve[curve.length - 1]?.cumulative_pnl >= 0 ? '+' : ''}$
+                          {curve[curve.length - 1]?.cumulative_pnl >= 0 ? '+' : ''}
+                          {curSym}
                           {curve[curve.length - 1]?.cumulative_pnl?.toFixed(2)}
                         </span>
                       </span>

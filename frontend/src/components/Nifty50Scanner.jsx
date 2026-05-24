@@ -23,36 +23,46 @@ const DIRECTION_BADGE = {
 };
 
 const SESSION_LABEL = {
-  OPEN: { label: 'NSE Open', cls: 'text-green-400' },
+  OPEN: { label: 'Open', cls: 'text-green-400' },
   PRE_OPEN: { label: 'Pre-open', cls: 'text-yellow-400' },
   PRE_MARKET: { label: 'Pre-market', cls: 'text-gray-400' },
   CLOSED: { label: 'Market Closed', cls: 'text-gray-500' },
   CLOSED_WEEKEND: { label: 'Weekend', cls: 'text-gray-500' },
 };
 
-export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect }) {
+export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect, market = 'India' }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [style, setStyle] = useState(traderStyle);
 
-  const load = useCallback(async (ts) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/scanner/nifty50?trader_type=${ts}&top_n=47`);
-      if (!res.ok) throw new Error(`Server error ${res.status}`);
-      setData(await res.json());
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const isBSE = market === 'India_BSE';
+  const exchange = isBSE ? 'BSE' : 'NSE';
+  const scannerTitle = isBSE ? 'Sensex 30 Scanner' : 'Nifty 50 Scanner';
+
+  const load = useCallback(
+    async (ts) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const exchangeParam = isBSE ? 'BSE' : 'NSE';
+        const res = await fetch(
+          `${API_BASE}/api/scanner/nifty50?trader_type=${ts}&top_n=30&market=${exchangeParam}`
+        );
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        setData(await res.json());
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isBSE]
+  );
 
   useEffect(() => {
     load(style);
-  }, [style, load]);
+  }, [style, load, market]);
 
   const session = data ? SESSION_LABEL[data.session] || SESSION_LABEL.CLOSED : null;
 
@@ -61,8 +71,12 @@ export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect }) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-white">Nifty 50 Scanner</h3>
-          {session && <span className={`text-xs ${session.cls}`}>{session.label}</span>}
+          <h3 className="font-semibold text-white">{scannerTitle}</h3>
+          {session && (
+            <span className={`text-xs ${session.cls}`}>
+              {exchange} {session.label}
+            </span>
+          )}
         </div>
         <select
           value={style}
@@ -109,7 +123,9 @@ export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect }) 
       )}
 
       {loading && (
-        <div className="text-center py-6 text-gray-400 text-sm">Scanning Nifty 50...</div>
+        <div className="text-center py-6 text-gray-400 text-sm">
+          Scanning {isBSE ? 'Sensex 30' : 'Nifty 50'}...
+        </div>
       )}
 
       {error && (
@@ -127,7 +143,7 @@ export default function Nifty50Scanner({ traderStyle = 'Day', onSymbolSelect }) 
           {data.top_picks.map((pick) => {
             const badge = DIRECTION_BADGE[pick.direction] || DIRECTION_BADGE.NEUTRAL;
             const barW = `${Math.round(pick.ai_score)}%`;
-            const symbol = pick.symbol.replace('.NS', '');
+            const symbol = pick.symbol.replace('.NS', '').replace('.BO', '');
             return (
               <button
                 key={pick.symbol}

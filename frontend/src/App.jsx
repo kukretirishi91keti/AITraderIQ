@@ -1616,7 +1616,7 @@ export default function App() {
                     </span>
                   );
                 })()}
-                {selectedMarket === 'India' &&
+                {(selectedMarket === 'India' || selectedMarket === 'India_BSE') &&
                   (() => {
                     const now = new Date();
                     const ist = new Date(
@@ -1627,18 +1627,23 @@ export default function App() {
                     const isWeekday = day >= 1 && day <= 5;
                     const isOpen = isWeekday && hhmm >= 915 && hhmm < 1530;
                     const isPreOpen = isWeekday && hhmm >= 900 && hhmm < 915;
+                    const exchange = selectedMarket === 'India_BSE' ? 'BSE' : 'NSE';
                     return (
                       <span
                         title={
                           isOpen
-                            ? 'NSE regular session (9:15–15:30 IST)'
+                            ? `${exchange} regular session (9:15–15:30 IST)`
                             : isPreOpen
-                              ? 'NSE pre-open (9:00–9:15 IST)'
-                              : 'NSE market closed'
+                              ? `${exchange} pre-open (9:00–9:15 IST)`
+                              : `${exchange} market closed`
                         }
                         className={`px-2 py-0.5 text-xs rounded cursor-help ${isOpen ? 'bg-green-700/30 text-green-300' : isPreOpen ? 'bg-yellow-700/30 text-yellow-300' : 'bg-gray-700/40 text-gray-400'}`}
                       >
-                        {isOpen ? '🟢 NSE Open' : isPreOpen ? '🟡 Pre-open' : '🔴 NSE Closed'}
+                        {isOpen
+                          ? `🟢 ${exchange} Open`
+                          : isPreOpen
+                            ? `🟡 Pre-open`
+                            : `🔴 ${exchange} Closed`}
                       </span>
                     );
                   })()}
@@ -1730,7 +1735,11 @@ export default function App() {
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
                 >
-                  {tab === 'AI scanner' && selectedMarket === 'India' ? 'Nifty 50' : tab}
+                  {tab === 'AI scanner' && selectedMarket === 'India'
+                    ? 'Nifty 50'
+                    : tab === 'AI scanner' && selectedMarket === 'India_BSE'
+                      ? 'Sensex'
+                      : tab}
                 </button>
               )
             )}
@@ -1988,10 +1997,11 @@ export default function App() {
             )}
             {activeTab === 'sentiment' && <SentimentDashboard symbol={selectedSymbol} />}
             {activeTab === 'AI scanner' &&
-              (selectedMarket === 'India' ? (
+              (selectedMarket === 'India' || selectedMarket === 'India_BSE' ? (
                 <Nifty50Scanner
                   traderStyle={traderStyle || 'Day'}
                   onSymbolSelect={handleSymbolSelect}
+                  market={selectedMarket}
                 />
               ) : (
                 <AIScanner
