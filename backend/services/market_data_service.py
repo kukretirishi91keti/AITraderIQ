@@ -513,6 +513,7 @@ async def _fetch_yahoo_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
 async def _fetch_yahoo_history_async(symbol: str, period: str = "1mo", interval: str = "1d") -> Optional[List[Dict]]:
     """Direct Yahoo Finance history with browser headers."""
     _period_map = {"1d": "1d", "5d": "5d", "1mo": "1mo", "3mo": "3mo", "6mo": "6mo", "1y": "1y", "2y": "2y"}
+    # Yahoo Finance has no native 4h interval; use 1h candles and return more of them
     _interval_map = {"1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "60m", "4h": "60m", "1d": "1d", "1w": "1wk", "1wk": "1wk"}
     yf_period = _period_map.get(period, "1mo")
     yf_interval = _interval_map.get(interval, "1d")

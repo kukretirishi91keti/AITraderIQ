@@ -440,12 +440,15 @@ async def api_health():
     }
 
 
+_DEBUG_TOKEN = os.getenv("DEBUG_SECRET", "")
+
+
 @app.get("/api/debug/data-pipeline")
-async def debug_data_pipeline():
-    """
-    Diagnostic: tests every data source for RELIANCE.NS and reports results.
-    Visit this URL in your browser to see exactly why live data is/isn't working.
-    """
+async def debug_data_pipeline(token: str = ""):
+    """Diagnostic endpoint — only active when DEBUG_SECRET env var is set and token matches."""
+    if not _DEBUG_TOKEN or token != _DEBUG_TOKEN:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "Not found"}, status_code=404)
     import os, httpx
     results = {}
 
