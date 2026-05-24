@@ -202,7 +202,8 @@ export default function TradeJournalModal({ onClose }) {
                               : 'text-red-400'
                           }
                         >
-                          {curve[curve.length - 1]?.cumulative_pnl >= 0 ? '+' : ''}{curSym}
+                          {curve[curve.length - 1]?.cumulative_pnl >= 0 ? '+' : ''}
+                          {curSym}
                           {curve[curve.length - 1]?.cumulative_pnl?.toFixed(2)}
                         </span>
                       </span>

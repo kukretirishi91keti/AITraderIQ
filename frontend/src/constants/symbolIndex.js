@@ -101,7 +101,12 @@ export const SYMBOL_INDEX = [
   { symbol: 'BAJAJFINSV.BO', name: 'Bajaj Finserv (BSE)', market: 'India', sector: 'NBFC' },
   { symbol: 'M&M.BO', name: 'Mahindra & Mahindra (BSE)', market: 'India', sector: 'Auto' },
   { symbol: 'ADANIPORTS.BO', name: 'Adani Ports (BSE)', market: 'India', sector: 'Logistics' },
-  { symbol: 'DRREDDY.BO', name: "Dr. Reddy's Laboratories (BSE)", market: 'India', sector: 'Pharma' },
+  {
+    symbol: 'DRREDDY.BO',
+    name: "Dr. Reddy's Laboratories (BSE)",
+    market: 'India',
+    sector: 'Pharma',
+  },
   { symbol: 'CIPLA.BO', name: 'Cipla (BSE)', market: 'India', sector: 'Pharma' },
   { symbol: 'HINDALCO.BO', name: 'Hindalco Industries (BSE)', market: 'India', sector: 'Metals' },
   { symbol: 'ZOMATO.BO', name: 'Zomato (BSE)', market: 'India', sector: 'Tech' },
