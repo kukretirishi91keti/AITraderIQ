@@ -239,7 +239,7 @@ async def probe_paper_trade(client) -> dict:
         jtrades = jd.get("trades", [])
         results["journal"] = {
             "total_closed": metrics.get("total_closed", len(jtrades)),
-            "total_pnl": metrics.get("total_pnl") or metrics.get("total_realized_pnl"),
+            "total_pnl": metrics.get("total_pnl") if metrics.get("total_pnl") is not None else metrics.get("total_realized_pnl"),
             "win_rate": metrics.get("win_rate"),
             "sample_trade_currencies": [t.get("currency") for t in jtrades[:3]],
         }

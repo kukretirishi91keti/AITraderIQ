@@ -365,7 +365,7 @@ async def get_signals(symbol: str):
 
     try:
         svc = get_market_data_service()
-        candles_raw, hist_source = await svc.get_history(symbol, period="1mo", interval="1d")
+        candles_raw, hist_source = await svc.get_history(symbol, period="3mo", interval="1d")
 
         if not candles_raw or len(candles_raw) < 26:
             raise ValueError("Insufficient data")
