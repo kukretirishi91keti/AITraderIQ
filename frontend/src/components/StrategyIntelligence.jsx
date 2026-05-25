@@ -49,15 +49,34 @@ const RISK_COLOR = {
   very_high: 'bg-red-500/20 text-red-400 border-red-500/30',
 };
 
+const isIndianSymbol = (sym) => /\.(NS|BO)$/i.test(sym);
+
+// Indian quick-select amounts in ₹; US amounts in $
+const CAPITAL_PRESETS = (indian) =>
+  indian
+    ? [10000, 25000, 50000, 100000, 250000, 500000]
+    : [1000, 5000, 10000, 25000, 50000, 100000];
+
+const formatPreset = (amt, indian) => {
+  if (indian) {
+    if (amt >= 100000) return `₹${amt / 100000}L`;
+    return `₹${amt / 1000}K`;
+  }
+  return `$${amt >= 1000 ? `${amt / 1000}K` : amt}`;
+};
+
 export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
+  const indian = isIndianSymbol(symbol);
+  const currency = indian ? '₹' : '$';
+
   // Wizard state
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
 
-  // User inputs (Step 1)
-  const [capital, setCapital] = useState(10000);
+  // User inputs (Step 1) — default capital is ₹50K for India, $10K for others
+  const [capital, setCapital] = useState(indian ? 50000 : 10000);
   const [growthTarget, setGrowthTarget] = useState(15);
   const [riskTolerance, setRiskTolerance] = useState('moderate');
   const [timeHorizon, setTimeHorizon] = useState('medium');
@@ -165,18 +184,20 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
           How much capital are you investing?
         </label>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">$</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+            {currency}
+          </span>
           <input
             type="number"
             value={capital}
             onChange={(e) => setCapital(Math.max(100, Number(e.target.value)))}
             className="w-full bg-gray-800 border border-gray-600 rounded-lg px-8 py-3 text-white text-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none"
             min={100}
-            step={1000}
+            step={indian ? 5000 : 1000}
           />
         </div>
         <div className="flex gap-2 mt-2">
-          {[1000, 5000, 10000, 25000, 50000, 100000].map((amt) => (
+          {CAPITAL_PRESETS(indian).map((amt) => (
             <button
               key={amt}
               onClick={() => setCapital(amt)}
@@ -186,7 +207,7 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                   : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               }`}
             >
-              ${amt >= 1000 ? `${amt / 1000}K` : amt}
+              {formatPreset(amt, indian)}
             </button>
           ))}
         </div>
@@ -198,8 +219,9 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
           How much do you want to grow?{' '}
           <span className="text-cyan-400 font-bold">{growthTarget}%</span>
           <span className="text-gray-500 ml-2">
-            (${capital.toLocaleString()} → $
-            {targetAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+            ({currency}
+            {capital.toLocaleString('en-IN')} → {currency}
+            {targetAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })})
           </span>
         </label>
         <input
@@ -395,8 +417,8 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div className="text-center">
               <div className="text-xs text-gray-500">Worst Case</div>
               <div className="text-lg font-bold text-red-400">
-                $
-                {growth_plan.projections.worst_case.toLocaleString(undefined, {
+                {currency}
+                {growth_plan.projections.worst_case.toLocaleString('en-IN', {
                   maximumFractionDigits: 0,
                 })}
               </div>
@@ -404,8 +426,8 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div className="text-center">
               <div className="text-xs text-gray-500">Expected</div>
               <div className="text-lg font-bold text-green-400">
-                $
-                {growth_plan.projections.expected.toLocaleString(undefined, {
+                {currency}
+                {growth_plan.projections.expected.toLocaleString('en-IN', {
                   maximumFractionDigits: 0,
                 })}
               </div>
@@ -413,8 +435,8 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
             <div className="text-center">
               <div className="text-xs text-gray-500">Best Case</div>
               <div className="text-lg font-bold text-cyan-400">
-                $
-                {growth_plan.projections.best_case.toLocaleString(undefined, {
+                {currency}
+                {growth_plan.projections.best_case.toLocaleString('en-IN', {
                   maximumFractionDigits: 0,
                 })}
               </div>
@@ -422,8 +444,10 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">
-              ${growth_plan.initial_capital.toLocaleString()} → $
-              {growth_plan.target_amount.toLocaleString()} ({growth_plan.growth_target_pct}% target)
+              {currency}
+              {growth_plan.initial_capital.toLocaleString('en-IN')} → {currency}
+              {growth_plan.target_amount.toLocaleString('en-IN')} ({growth_plan.growth_target_pct}%
+              target)
             </span>
             {growth_plan.best_strategy_months_to_target && (
               <span className="text-cyan-400 font-semibold">
@@ -654,8 +678,8 @@ export default function StrategyIntelligence({ symbol = 'AAPL', onClose }) {
                       <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
                         ✓ Trade placed:{' '}
                         <span className="font-semibold">{applyResult.strategyName}</span> —{' '}
-                        {applyResult.qty} × {applyResult.symbol} @ ${applyResult.price.toFixed(2)}{' '}
-                        (ID #{applyResult.tradeId})
+                        {applyResult.qty} × {applyResult.symbol} @ {currency}
+                        {applyResult.price.toFixed(2)} (ID #{applyResult.tradeId})
                       </div>
                     ) : (
                       <>
