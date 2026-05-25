@@ -26,6 +26,9 @@ PYTEST_HTML="$REPORT_DIR/${TODAY}_tests.html"
 echo "━━━ Running test suite ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 cd "$(dirname "$0")"
 
+# Ensure report plugins are installed (no-op if already present)
+pip install --quiet pytest-html>=4.0.0 pytest-json-report>=1.5.0 2>/dev/null || true
+
 DEMO_MODE=true pytest tests/ \
   --json-report --json-report-file="$PYTEST_JSON" \
   --html="$PYTEST_HTML" --self-contained-html \
