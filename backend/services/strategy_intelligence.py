@@ -486,6 +486,14 @@ def _generate_indicators(symbol: str) -> Dict[str, Any]:
 # =============================================================================
 
 
+def _currency_for_symbol(symbol: str) -> str:
+    """Return the correct currency symbol for a given ticker."""
+    upper = symbol.upper()
+    if upper.endswith(".NS") or upper.endswith(".BO"):
+        return "₹"
+    return "$"
+
+
 def _generate_ai_narrative(
     symbol: str,
     top_strategy: Dict,
@@ -497,6 +505,9 @@ def _generate_ai_narrative(
 
     Tries Groq LLM first, falls back to template-based narrative.
     """
+    currency = _currency_for_symbol(symbol)
+    capital_display = f"{currency}{user_profile.get('capital', 10000):,.0f}"
+
     try:
         from services.genai_services import _get_groq_client, GROQ_MODEL
 
@@ -507,12 +518,12 @@ def _generate_ai_narrative(
 Symbol: {symbol}
 Market: {market_condition['summary']}
 Recommended Strategy: {top_strategy['name']} - {top_strategy['description']}
-User Profile: Capital ${user_profile.get('capital', 10000):,.0f}, Risk: {user_profile.get('risk_tolerance', 'moderate')}, Target: {user_profile.get('growth_target_pct', 10)}% growth
+User Profile: Capital {capital_display}, Risk: {user_profile.get('risk_tolerance', 'moderate')}, Target: {user_profile.get('growth_target_pct', 10)}% growth
 Projected Monthly Return: {growth_projection['monthly_return_expected_pct']}%
 Win Rate: {growth_projection['risk_metrics']['win_rate']}%
 Time to Target: {growth_projection.get('months_to_target', 'N/A')} months
 
-Write a personalized action plan. Include: why this strategy fits them, the key entry signal to watch for, and one critical risk to manage. Be direct and actionable."""
+Write a personalized action plan. Include: why this strategy fits them, the key entry signal to watch for, and one critical risk to manage. Be direct and actionable. Use {currency} for currency amounts."""
 
             response = client.chat.completions.create(
                 model=GROQ_MODEL,
@@ -537,7 +548,7 @@ Write a personalized action plan. Include: why this strategy fits them, the key 
         f"With a {growth_projection['risk_metrics']['win_rate']}% historical win rate and "
         f"{growth_projection['monthly_return_expected_pct']}% expected monthly return, "
         f"reaching your {user_profile.get('growth_target_pct', 10)}% growth target on "
-        f"${user_profile.get('capital', 10000):,.0f} should take {months_text}. "
+        f"{capital_display} should take {months_text}. "
         f"Watch for: {top_strategy['entry_rules'][0]}. "
         f"Key risk: Max drawdown of {growth_projection['risk_metrics']['max_drawdown_pct']}% — "
         f"always use stop losses at the levels specified in the strategy rules."
