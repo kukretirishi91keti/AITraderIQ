@@ -1090,9 +1090,9 @@ export default function App() {
                 onChange={(e) => {
                   const q = e.target.value;
                   setSearchQuery(q);
-                  const results = searchSymbols(q, 8);
+                  const results = searchSymbols(q, 10);
                   setSearchResults(results);
-                  setShowSearchDrop(results.length > 0);
+                  setShowSearchDrop(q.trim().length > 0);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && searchQuery.trim()) {
@@ -1123,17 +1123,54 @@ export default function App() {
                       }}
                       className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-700 text-left text-sm transition-colors"
                     >
-                      <div>
-                        <span className="font-mono font-semibold text-cyan-400 text-xs">
-                          {item.symbol.replace('.NS', '').replace('.L', '').replace('.DE', '')}
+                      <div className="flex items-center min-w-0">
+                        <span
+                          className={`inline-block shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full mr-1.5 ${
+                            item.market === 'India' && item.symbol.endsWith('.NS')
+                              ? 'bg-blue-600 text-white'
+                              : item.market === 'India' && item.symbol.endsWith('.BO')
+                                ? 'bg-orange-500 text-white'
+                                : item.market === 'US'
+                                  ? 'bg-green-600 text-white'
+                                  : item.market === 'Crypto'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-gray-600 text-white'
+                          }`}
+                        >
+                          {item.market === 'India' && item.symbol.endsWith('.NS')
+                            ? 'NSE'
+                            : item.market === 'India' && item.symbol.endsWith('.BO')
+                              ? 'BSE'
+                              : item.market === 'Crypto'
+                                ? 'CRYPTO'
+                                : item.market}
                         </span>
-                        <span className="ml-2 text-gray-300 text-xs">{item.name}</span>
+                        <span className="font-mono font-semibold text-cyan-400 text-xs shrink-0">
+                          {item.symbol
+                            .replace('.NS', '')
+                            .replace('.BO', '')
+                            .replace('.L', '')
+                            .replace('.DE', '')}
+                        </span>
+                        <span className="ml-2 text-gray-300 text-xs truncate">{item.name}</span>
                       </div>
-                      <span className="text-[10px] text-gray-500 shrink-0 ml-2">
-                        {item.market} · {item.sector}
-                      </span>
+                      <span className="text-[10px] text-gray-500 shrink-0 ml-2">{item.sector}</span>
                     </button>
                   ))}
+                  {searchQuery.trim() && (
+                    <button
+                      onMouseDown={() => {
+                        handleSymbolSelect(searchQuery.trim().toUpperCase());
+                        setShowSearchDrop(false);
+                        setSearchQuery('');
+                      }}
+                      className="w-full flex items-center px-3 py-2 hover:bg-gray-700 text-left text-sm transition-colors border-t border-gray-700"
+                    >
+                      <span className="text-gray-400 text-xs">
+                        Search &ldquo;{searchQuery.trim()}&rdquo; directly →
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
