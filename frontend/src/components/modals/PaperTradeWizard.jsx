@@ -54,8 +54,11 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
     setError(null);
     try {
       const headers = { 'Content-Type': 'application/json' };
+      const endpoint = token
+        ? `${API_BASE}/api/paper-trade`
+        : `${API_BASE}/api/paper-trade/simulate`;
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE}/api/paper-trade`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({ symbol, side, quantity: shares }),
