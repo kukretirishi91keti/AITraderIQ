@@ -203,7 +203,10 @@ async def get_quote(symbol: str):
     try:
         svc = get_market_data_service()
         quote = await svc.get_quote(symbol)
-        return {"success": True, **quote}
+        result = {"success": True, **quote}
+        result.setdefault("symbol", symbol)
+        result.setdefault("timestamp", datetime.now().isoformat())
+        return result
     except Exception as e:
         logger.error(f"Quote error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch quote")
@@ -667,12 +670,12 @@ async def get_top_movers(
         
         batch = await svc.get_quotes_batch(symbols)
         
-        quotes = list(batch["results"].values())
+        quotes = [{**q, "symbol": q.get("symbol") or sym} for sym, q in batch["results"].items()]
         quotes.sort(key=lambda x: x.get("changePercent") or 0, reverse=True)
-        
+
         gainers = [
             {
-                "ticker": q["symbol"], 
+                "ticker": q["symbol"],
                 "name": q.get("name", q["symbol"]),
                 "price": q["price"], 
                 "changePercent": q.get("changePercent") or 0,
