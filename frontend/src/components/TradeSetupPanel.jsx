@@ -14,6 +14,7 @@
  */
 import React from 'react';
 import { getSignalValue } from '../utils/formatters';
+import GlossaryTooltip from './GlossaryTooltip';
 
 const BUY_SIGNALS = new Set(['BUY', 'STRONG_BUY', 'STRONG BUY']);
 const SELL_SIGNALS = new Set(['SELL', 'STRONG_SELL', 'STRONG SELL']);
@@ -44,9 +45,60 @@ function rrLabel(rr) {
 function DataPoint({ label, value, sub, valueClass = 'text-white' }) {
   return (
     <div className="bg-gray-700/40 rounded-lg p-2.5 space-y-0.5">
-      <p className="text-[10px] text-gray-400 uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] text-gray-400 uppercase tracking-wider select-none">{label}</p>
       <p className={`text-sm font-semibold ${valueClass}`}>{value}</p>
       {sub && <p className="text-[10px] text-gray-500">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Skeleton shown while signals are loading ──────────────────────────────────
+function TradeSetupSkeleton() {
+  return (
+    <div className="bg-gray-800 border border-gray-700 rounded-2xl p-4 space-y-4 animate-pulse">
+      <div className="flex justify-between items-center">
+        <div className="h-4 bg-gray-700 rounded w-32" />
+        <div className="h-5 bg-gray-700 rounded-full w-20" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="bg-gray-700/40 rounded-lg p-2.5 space-y-1.5">
+            <div className="h-2.5 bg-gray-600 rounded w-16" />
+            <div className="h-5 bg-gray-600 rounded w-24" />
+          </div>
+        ))}
+      </div>
+      <div className="h-20 bg-gray-700/40 rounded-xl" />
+    </div>
+  );
+}
+
+// ── Fallback shown when price is known but ATR is unavailable ─────────────────
+function TradeSetupNoATR({ symbol, entry, currency, signal }) {
+  return (
+    <div className="bg-gray-800 border border-gray-700/60 rounded-2xl p-4 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-white">Trade Setup</h3>
+          <span className="text-xs text-gray-400 font-mono">{symbol}</span>
+        </div>
+        {signal && (
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-700 text-gray-300 border border-gray-600">
+            {signal}
+          </span>
+        )}
+      </div>
+      <div className="bg-gray-700/40 rounded-lg p-2.5 inline-block">
+        <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Entry</p>
+        <p className="text-sm font-semibold text-white">
+          {currency}
+          {entry.toFixed(2)}
+        </p>
+      </div>
+      <p className="text-xs text-gray-500">
+        Stop/target estimates need more price history (
+        <GlossaryTooltip term="ATR">ATR</GlossaryTooltip> unavailable).
+      </p>
     </div>
   );
 }
@@ -59,13 +111,24 @@ export default function TradeSetupPanel({
   investorProfile,
   currency = '₹',
   onPaperTrade,
+  loading = false,
 }) {
-  // Guard: need valid price and ATR
+  // Show skeleton while data is in-flight
+  if (loading) return <TradeSetupSkeleton />;
+
   const entry = quote?.price ? parseFloat(quote.price) : null;
   const atrRaw = signals?.atr !== undefined ? getSignalValue(signals.atr) : null;
   const atr = atrRaw !== null ? parseFloat(atrRaw) : null;
 
-  if (!entry || !atr || isNaN(entry) || isNaN(atr) || atr <= 0) return null;
+  // Need at least a price to show anything
+  if (!entry || isNaN(entry)) return null;
+
+  // Have price but no usable ATR — show partial card
+  if (!atr || isNaN(atr) || atr <= 0) {
+    return (
+      <TradeSetupNoATR symbol={symbol} entry={entry} currency={currency} signal={signals?.signal} />
+    );
+  }
 
   // Normalise signal
   const signalRaw = (signals?.signal || '').toUpperCase().replace(/\s+/g, '_');
@@ -131,19 +194,19 @@ export default function TradeSetupPanel({
             valueClass="text-white"
           />
           <DataPoint
-            label="Stop Loss"
+            label={<GlossaryTooltip term="Stop Loss">Stop Loss</GlossaryTooltip>}
             value={`${currency}${stop.toFixed(2)}`}
             sub="ATR-based"
             valueClass="text-red-400"
           />
           <DataPoint
-            label="Target"
+            label={<GlossaryTooltip term="Take Profit">Target</GlossaryTooltip>}
             value={`${currency}${target1.toFixed(2)}`}
             sub={`/ ${currency}${target2.toFixed(2)} aggr.`}
             valueClass="text-green-400"
           />
           <DataPoint
-            label="Risk : Reward"
+            label={<GlossaryTooltip term="Risk:Reward">Risk : Reward</GlossaryTooltip>}
             value={`${rr.toFixed(1)} : 1`}
             sub={rrLabel(rr)}
             valueClass={rrColorClass(rr)}
