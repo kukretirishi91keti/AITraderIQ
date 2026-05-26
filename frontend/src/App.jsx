@@ -1769,23 +1769,29 @@ export default function App() {
 
           {/* Tabs */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner', 'sectors'].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                  {tab === 'AI scanner' && selectedMarket === 'India'
-                    ? 'Nifty 50'
-                    : tab === 'AI scanner' && selectedMarket === 'India_BSE'
-                      ? 'Sensex'
-                      : tab === 'sectors'
-                        ? '🏭 Sectors'
-                        : tab}
-                </button>
-              )
-            )}
+            {[
+              'technicals',
+              'backtest',
+              'sentiment',
+              'fundamentals',
+              'news',
+              'AI scanner',
+              'sectors',
+            ].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded text-sm font-medium capitalize whitespace-nowrap ${activeTab === tab ? 'bg-cyan-600 text-white' : 'bg-gray-700 hover:bg-gray-600'}`}
+              >
+                {tab === 'AI scanner' && selectedMarket === 'India'
+                  ? 'Nifty 50'
+                  : tab === 'AI scanner' && selectedMarket === 'India_BSE'
+                    ? 'Sensex'
+                    : tab === 'sectors'
+                      ? '🏭 Sectors'
+                      : tab}
+              </button>
+            ))}
           </div>
 
           {/* Tab Content */}
@@ -2294,7 +2300,10 @@ export default function App() {
             portfolio={portfolio}
             apiBase={API_BASE}
             investorProfile={investorProfile}
-            onSymbolSelect={(sym) => { handleSymbolSelect(sym); setShowPortfolioIntelligence(false); }}
+            onSymbolSelect={(sym) => {
+              handleSymbolSelect(sym);
+              setShowPortfolioIntelligence(false);
+            }}
             isLoggedIn={isLoggedIn}
           />
         )}
