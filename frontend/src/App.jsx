@@ -71,6 +71,7 @@ const PaperTradeWizard = lazy(() => import('./components/modals/PaperTradeWizard
 import DailyBriefing from './components/DailyBriefing';
 import TradeSetupPanel from './components/TradeSetupPanel';
 import SectorHeatmap from './components/SectorHeatmap';
+import GlossaryTooltip from './components/GlossaryTooltip';
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -1798,6 +1799,7 @@ export default function App() {
             signals={signals}
             investorProfile={investorProfile}
             currency={currentMarket.currency}
+            loading={loading}
             onPaperTrade={(prefill) => {
               setPaperTradeWizardPrefill(prefill);
               setShowPaperTradeWizard(true);
@@ -1840,7 +1842,8 @@ export default function App() {
                   title="Relative Strength Index: measures how fast the price has moved. Below 30 = possibly oversold (bounce candidate). Above 70 = possibly overbought (pullback risk)."
                 >
                   <h4 className="text-sm text-gray-400 mb-1">
-                    RSI <span className="text-gray-600 text-xs">(momentum 0–100)</span>
+                    <GlossaryTooltip term="RSI">RSI</GlossaryTooltip>{' '}
+                    <span className="text-gray-600 text-xs">(momentum 0–100)</span>
                   </h4>
                   <div
                     className={`text-2xl font-bold ${getRsiColor(getSignalValue(signals?.rsi))}`}
@@ -1874,7 +1877,8 @@ export default function App() {
                   title="Simple Moving Average of the last 20 closing prices. Price above SMA20 = short-term uptrend. Price below = downtrend."
                 >
                   <h4 className="text-sm text-gray-400 mb-1">
-                    SMA 20 <span className="text-gray-600 text-xs">(20-day avg price)</span>
+                    <GlossaryTooltip term="SMA">SMA 20</GlossaryTooltip>{' '}
+                    <span className="text-gray-600 text-xs">(20-day avg price)</span>
                   </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(
@@ -1895,7 +1899,8 @@ export default function App() {
                   title="Exponential Moving Average: like a moving average but gives more weight to recent prices. Reacts faster to price changes than SMA."
                 >
                   <h4 className="text-sm text-gray-400 mb-1">
-                    EMA 12 <span className="text-gray-600 text-xs">(fast-reacting avg)</span>
+                    <GlossaryTooltip term="EMA">EMA 12</GlossaryTooltip>{' '}
+                    <span className="text-gray-600 text-xs">(fast-reacting avg)</span>
                   </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(
@@ -1910,7 +1915,8 @@ export default function App() {
                   title="Volume-Weighted Average Price: the average price weighted by trading volume. Institutions use this as a benchmark — price above VWAP is bullish intraday."
                 >
                   <h4 className="text-sm text-gray-400 mb-1">
-                    VWAP <span className="text-gray-600 text-xs">(volume avg price)</span>
+                    <GlossaryTooltip term="VWAP">VWAP</GlossaryTooltip>{' '}
+                    <span className="text-gray-600 text-xs">(volume avg price)</span>
                   </h4>
                   <div className="text-2xl font-bold text-cyan-400">
                     {formatPrice(getSignalValue(signals?.vwap), currentMarket.currency)}
@@ -1928,7 +1934,8 @@ export default function App() {
                   title="Average True Range: measures how much the price typically moves per day. High ATR = volatile stock. Use it to size your stop-loss — e.g. stop = 1.5× ATR below entry."
                 >
                   <h4 className="text-sm text-gray-400 mb-1">
-                    ATR <span className="text-gray-600 text-xs">(daily move range)</span>
+                    <GlossaryTooltip term="ATR">ATR</GlossaryTooltip>{' '}
+                    <span className="text-gray-600 text-xs">(daily move range)</span>
                   </h4>
                   <div className="text-2xl font-bold text-orange-400">
                     {formatPrice(getSignalValue(signals?.atr), currentMarket.currency)}
