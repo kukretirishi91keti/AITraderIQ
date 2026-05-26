@@ -13,7 +13,7 @@ import logging
 
 from database.engine import get_db
 from database.models import User, PaperTrade
-from auth.security import require_auth
+from auth.security import require_auth, get_current_user
 from utils.validation import validate_symbol, sanitize_text
 from services.market_data_service import get_market_data_service
 
@@ -45,10 +45,10 @@ class SetLevels(BaseModel):
 @router.post("", status_code=201)
 async def place_paper_trade(
     request: PlaceTrade,
-    user: User = Depends(require_auth),
+    user: Optional[User] = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Place a new paper trade (buy or sell)."""
+    """Place a new paper trade (buy or sell). Works with or without login (guest mode)."""
     symbol = validate_symbol(request.symbol)
 
     # Fetch current market price
@@ -63,6 +63,20 @@ async def place_paper_trade(
     except Exception as e:
         logger.error(f"Failed to fetch quote for {symbol}: {e}")
         raise HTTPException(status_code=502, detail=f"Could not fetch current price for {symbol}")
+
+    # Guest mode — simulate without DB persistence
+    if user is None:
+        return {
+            "id": None,
+            "symbol": symbol,
+            "side": request.side,
+            "quantity": request.quantity,
+            "entry_price": price,
+            "currency": currency,
+            "status": "open",
+            "guest": True,
+            "message": f"Paper {request.side} simulated for {request.quantity} shares of {symbol} at {currency}{price:.2f} (guest — log in to save trades)",
+        }
 
     trade = PaperTrade(
         user_id=user.id,

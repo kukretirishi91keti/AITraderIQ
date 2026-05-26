@@ -177,19 +177,22 @@ export default function DailyBriefing({ apiBase, market, onSymbolSelect, isColla
   const [error, setError] = useState(null);
   const [session] = useState(() => getISTSession());
   const [today] = useState(() => formatDate(new Date()));
+  const [selectedMarket, setSelectedMarket] = useState(market === 'India_BSE' ? 'BSE' : 'NSE');
+  const [showAll, setShowAll] = useState(false);
   const abortRef = useRef(null);
 
-  // ── Fetch scanner data on mount ────────────────────────────────────────────
+  // ── Fetch scanner data when market changes ─────────────────────────────────
   useEffect(() => {
     const controller = new AbortController();
     abortRef.current = controller;
 
     const base = apiBase || '';
-    // Always use NSE endpoint — the scanner works for both markets
-    const url = `${base}/api/scanner/nifty50?top_n=5&market=NSE`;
+    const url = `${base}/api/scanner/nifty50?top_n=50&market=${selectedMarket}`;
 
     setLoading(true);
     setError(null);
+    setData(null);
+    setShowAll(false);
 
     fetch(url, { signal: controller.signal })
       .then((r) => {
@@ -208,11 +211,12 @@ export default function DailyBriefing({ apiBase, market, onSymbolSelect, isColla
       });
 
     return () => controller.abort();
-  }, [apiBase, market]);
+  }, [apiBase, selectedMarket]);
 
   // ── Derived mood ───────────────────────────────────────────────────────────
   const mood = data ? moodBadge(data.market_bias) : null;
-  const picks = data?.top_picks?.slice(0, 3) ?? [];
+  const allPicks = data?.top_picks ?? [];
+  const picks = showAll ? allPicks : allPicks.slice(0, 5);
 
   const sessCls = sessionBadge(session);
 
@@ -262,8 +266,26 @@ export default function DailyBriefing({ apiBase, market, onSymbolSelect, isColla
       {/* ── Expandable body ── */}
       {!isCollapsed && (
         <div className="border-t border-gray-700/40">
+          {/* Market toggle (NSE / BSE) */}
+          <div className="flex items-center gap-2 px-4 pt-3 pb-1">
+            <span className="text-xs text-gray-500">Market:</span>
+            {['NSE', 'BSE'].map((m) => (
+              <button
+                key={m}
+                onClick={() => setSelectedMarket(m)}
+                className={`px-3 py-0.5 rounded-full text-xs font-semibold transition-colors ${
+                  selectedMarket === m
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                {m === 'NSE' ? 'NSE — Nifty 50' : 'BSE — Sensex 30'}
+              </button>
+            ))}
+          </div>
+
           {/* Mobile date / session row */}
-          <div className="flex items-center gap-2 px-4 pt-3 pb-1 sm:hidden flex-wrap">
+          <div className="flex items-center gap-2 px-4 pt-2 pb-1 sm:hidden flex-wrap">
             <span className="text-gray-400 text-xs">{today}</span>
             <span className="text-gray-500 text-xs">•</span>
             <span className={`text-xs font-medium ${sessCls}`}>Session: {session}</span>
@@ -296,7 +318,7 @@ export default function DailyBriefing({ apiBase, market, onSymbolSelect, isColla
                 </p>
               )}
 
-              {/* Top 3 picks */}
+              {/* Picks */}
               {picks.length > 0 ? (
                 picks.map((pick, idx) => (
                   <PickRow
@@ -308,6 +330,18 @@ export default function DailyBriefing({ apiBase, market, onSymbolSelect, isColla
                 ))
               ) : (
                 <p className="text-xs text-gray-500 py-2">No picks available right now.</p>
+              )}
+
+              {/* Show all / show less toggle */}
+              {allPicks.length > 5 && (
+                <button
+                  onClick={() => setShowAll((v) => !v)}
+                  className="w-full text-xs text-cyan-500 hover:text-cyan-400 py-1.5 transition-colors"
+                >
+                  {showAll
+                    ? `↑ Show top 5 only`
+                    : `↓ Show all ${allPicks.length} ${selectedMarket === 'BSE' ? 'Sensex 30' : 'Nifty 50'} stocks`}
+                </button>
               )}
 
               {/* Footer note */}
