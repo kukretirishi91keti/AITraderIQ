@@ -230,7 +230,7 @@ export default function DailyBriefing({
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-700/30 transition-colors"
       >
         <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <span className="font-semibold text-white text-sm shrink-0">Today's Briefing</span>
+          <span className="font-semibold text-white text-sm shrink-0">Today&apos;s Briefing</span>
           <span className="text-gray-500 text-xs hidden sm:inline">•</span>
           <span className="text-gray-400 text-xs hidden sm:inline">{today}</span>
           <span className="text-gray-500 text-xs hidden sm:inline">•</span>

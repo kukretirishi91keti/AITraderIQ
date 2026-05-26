@@ -194,7 +194,7 @@ function HoldingCard({ pos, liveData, onSymbolSelect, onClose }) {
 
       {/* Projection */}
       <div className="flex items-start gap-2 text-xs text-gray-400">
-        <span className="shrink-0 text-gray-500">Where it's headed:</span>
+        <span className="shrink-0 text-gray-500">Where it&apos;s headed:</span>
         <span>{projection}</span>
       </div>
 
