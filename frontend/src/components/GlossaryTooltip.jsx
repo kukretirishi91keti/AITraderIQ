@@ -71,8 +71,7 @@ const GLOSSARY = {
   BOLLINGER: {
     full: 'Bollinger Bands',
     what: 'Bands that show price volatility — upper and lower bounds.',
-    howToUse:
-      'Price touching lower band = potential bounce. Upper band = potential reversal.',
+    howToUse: 'Price touching lower band = potential bounce. Upper band = potential reversal.',
     range: '20-day SMA ± 2 standard deviations',
   },
 };
@@ -101,25 +100,33 @@ function GlossaryPopup({ term, entry, position }) {
       {/* Arrow — points toward the term */}
       {isAbove ? (
         <>
-          <span className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0
             border-l-[6px] border-l-transparent
             border-r-[6px] border-r-transparent
-            border-t-[6px] border-t-gray-600" />
-          <span className="absolute left-1/2 -translate-x-1/2 top-full mt-[-1px] w-0 h-0
+            border-t-[6px] border-t-gray-600"
+          />
+          <span
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-[-1px] w-0 h-0
             border-l-[5px] border-l-transparent
             border-r-[5px] border-r-transparent
-            border-t-[5px] border-t-gray-800" />
+            border-t-[5px] border-t-gray-800"
+          />
         </>
       ) : (
         <>
-          <span className="absolute left-1/2 -translate-x-1/2 bottom-full w-0 h-0
+          <span
+            className="absolute left-1/2 -translate-x-1/2 bottom-full w-0 h-0
             border-l-[6px] border-l-transparent
             border-r-[6px] border-r-transparent
-            border-b-[6px] border-b-gray-600" />
-          <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-1px] w-0 h-0
+            border-b-[6px] border-b-gray-600"
+          />
+          <span
+            className="absolute left-1/2 -translate-x-1/2 bottom-full mb-[-1px] w-0 h-0
             border-l-[5px] border-l-transparent
             border-r-[5px] border-r-transparent
-            border-b-[5px] border-b-gray-800" />
+            border-b-[5px] border-b-gray-800"
+          />
         </>
       )}
 
@@ -139,17 +146,13 @@ function GlossaryPopup({ term, entry, position }) {
       <span className="block text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5">
         What it is
       </span>
-      <span className="block text-gray-300 text-xs leading-relaxed mb-2">
-        {entry.what}
-      </span>
+      <span className="block text-gray-300 text-xs leading-relaxed mb-2">{entry.what}</span>
 
       {/* How to use */}
       <span className="block text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5">
         How to use
       </span>
-      <span className="block text-gray-300 text-xs leading-relaxed mb-2">
-        {entry.howToUse}
-      </span>
+      <span className="block text-gray-300 text-xs leading-relaxed mb-2">{entry.howToUse}</span>
 
       {/* Range / note chip */}
       <span className="block bg-gray-700/60 rounded-lg px-2.5 py-1.5 text-[10px] text-cyan-400/80 font-medium">
@@ -161,10 +164,10 @@ function GlossaryPopup({ term, entry, position }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function GlossaryTooltip({ term, children }) {
-  const [visible,  setVisible]  = useState(false);
+  const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState('above');
-  const wrapRef                 = useRef(null);
-  const hideTimer               = useRef(null);
+  const wrapRef = useRef(null);
+  const hideTimer = useRef(null);
 
   // Cleanup timer on unmount
   useEffect(() => () => clearTimeout(hideTimer.current), []);
@@ -202,13 +205,7 @@ export default function GlossaryTooltip({ term, children }) {
       aria-describedby={`glossary-${(term || '').replace(/\s+/g, '-').toLowerCase()}`}
     >
       {children}
-      {visible && (
-        <GlossaryPopup
-          term={term}
-          entry={entry}
-          position={position}
-        />
-      )}
+      {visible && <GlossaryPopup term={term} entry={entry} position={position} />}
     </span>
   );
 }

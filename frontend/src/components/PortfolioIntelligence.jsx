@@ -32,7 +32,9 @@ function fmt(value, currency) {
     }
     return currency + abs.toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
-  return currency + abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    currency + abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
 }
 
 /** Derive plain-English recommendation from signal + P&L% + RSI */
@@ -40,15 +42,19 @@ function getRecommendation(signal, pnlPct, rsi) {
   const s = (signal || '').toUpperCase();
   if (s === 'STRONG_BUY') return { text: 'Add More ▲▲', color: 'text-green-400' };
   if (s === 'BUY' && pnlPct > 0) return { text: 'Hold / Add ▲', color: 'text-green-400' };
-  if (s === 'BUY' && pnlPct <= 0) return { text: 'Hold — signal improving →', color: 'text-yellow-400' };
-  if ((s === 'HOLD' || s === 'NEUTRAL') && pnlPct > 5) return { text: 'Book partial profits ↘', color: 'text-yellow-400' };
+  if (s === 'BUY' && pnlPct <= 0)
+    return { text: 'Hold — signal improving →', color: 'text-yellow-400' };
+  if ((s === 'HOLD' || s === 'NEUTRAL') && pnlPct > 5)
+    return { text: 'Book partial profits ↘', color: 'text-yellow-400' };
   if (s === 'HOLD' || s === 'NEUTRAL') return { text: 'Wait for signal →', color: 'text-gray-400' };
   if (s === 'SELL' && pnlPct > 0) return { text: 'Book profits ▼', color: 'text-orange-400' };
   if (s === 'SELL' && pnlPct <= 0) return { text: 'Cut loss ▼', color: 'text-red-400' };
   if (s === 'STRONG_SELL') return { text: 'Exit now ✕', color: 'text-red-400' };
   // RSI fallbacks
-  if (rsi !== null && rsi < 30) return { text: 'Oversold — consider adding ▲', color: 'text-green-400' };
-  if (rsi !== null && rsi > 70) return { text: 'Overbought — trim position ↘', color: 'text-yellow-400' };
+  if (rsi !== null && rsi < 30)
+    return { text: 'Oversold — consider adding ▲', color: 'text-green-400' };
+  if (rsi !== null && rsi > 70)
+    return { text: 'Overbought — trim position ↘', color: 'text-yellow-400' };
   return { text: 'Monitor position →', color: 'text-gray-400' };
 }
 
@@ -82,9 +88,16 @@ function signalBadgeClass(signal) {
 
 /** Sector colours — rotate through a palette */
 const SECTOR_COLORS = [
-  'bg-cyan-500', 'bg-purple-500', 'bg-yellow-500', 'bg-orange-500',
-  'bg-pink-500', 'bg-teal-500', 'bg-blue-500', 'bg-lime-500',
-  'bg-rose-500', 'bg-emerald-500',
+  'bg-cyan-500',
+  'bg-purple-500',
+  'bg-yellow-500',
+  'bg-orange-500',
+  'bg-pink-500',
+  'bg-teal-500',
+  'bg-blue-500',
+  'bg-lime-500',
+  'bg-rose-500',
+  'bg-emerald-500',
 ];
 
 // ─── Loading Skeleton ─────────────────────────────────────────────────────────
@@ -134,7 +147,9 @@ function HoldingCard({ pos, liveData, onSymbolSelect, onClose }) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-bold text-cyan-400 text-base">{pos.symbol.replace(/\.(NS|BO)$/i, '')}</span>
+            <span className="font-bold text-cyan-400 text-base">
+              {pos.symbol.replace(/\.(NS|BO)$/i, '')}
+            </span>
             {meta.name && (
               <span className="text-gray-400 text-xs truncate max-w-[160px]">{meta.name}</span>
             )}
@@ -145,7 +160,9 @@ function HoldingCard({ pos, liveData, onSymbolSelect, onClose }) {
             </span>
           )}
         </div>
-        <span className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 ${signalBadgeClass(signal)}`}>
+        <span
+          className={`px-2 py-0.5 rounded text-xs font-semibold shrink-0 ${signalBadgeClass(signal)}`}
+        >
           {signal.replace('_', ' ')}
         </span>
       </div>
@@ -167,16 +184,20 @@ function HoldingCard({ pos, liveData, onSymbolSelect, onClose }) {
         <div className="bg-gray-900/50 rounded-lg p-2">
           <div className="text-gray-500 text-[10px] uppercase tracking-wide mb-0.5">P&amp;L</div>
           <div className={`font-bold text-sm ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {pnl >= 0 ? '+' : '-'}{fmt(Math.abs(pnl), currency)}
+            {pnl >= 0 ? '+' : '-'}
+            {fmt(Math.abs(pnl), currency)}
           </div>
           <div className={`text-xs ${pnlPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
+            {pnlPct >= 0 ? '+' : ''}
+            {pnlPct.toFixed(2)}%
           </div>
         </div>
         {rsi !== null && (
           <div className="bg-gray-900/50 rounded-lg p-2">
             <div className="text-gray-500 text-[10px] uppercase tracking-wide mb-0.5">RSI</div>
-            <div className={`font-bold text-sm ${rsi < 30 ? 'text-green-400' : rsi > 70 ? 'text-yellow-400' : 'text-white'}`}>
+            <div
+              className={`font-bold text-sm ${rsi < 30 ? 'text-green-400' : rsi > 70 ? 'text-yellow-400' : 'text-white'}`}
+            >
               {rsi.toFixed(1)}
             </div>
             <div className="text-gray-500 text-xs">
@@ -200,7 +221,10 @@ function HoldingCard({ pos, liveData, onSymbolSelect, onClose }) {
 
       {/* View Chart */}
       <button
-        onClick={() => { onSymbolSelect(pos.symbol); onClose(); }}
+        onClick={() => {
+          onSymbolSelect(pos.symbol);
+          onClose();
+        }}
         className="w-full mt-1 py-1.5 text-xs text-cyan-400 border border-cyan-700/40 rounded-lg hover:bg-cyan-900/20 transition-colors"
       >
         View Chart →
@@ -226,7 +250,10 @@ export default function PortfolioIntelligence({
 
   // ── Fetch quote + signals for every holding concurrently ───────────────────
   useEffect(() => {
-    if (!portfolio?.length) { setLoading(false); return; }
+    if (!portfolio?.length) {
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -235,10 +262,14 @@ export default function PortfolioIntelligence({
     const base = apiBase || '';
 
     const fetches = portfolio.map((pos) => {
-      const quotePromise = fetch(`${base}/api/v4/quote/${encodeURIComponent(pos.symbol)}`, { signal })
+      const quotePromise = fetch(`${base}/api/v4/quote/${encodeURIComponent(pos.symbol)}`, {
+        signal,
+      })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
-      const signalsPromise = fetch(`${base}/api/v4/signals/${encodeURIComponent(pos.symbol)}`, { signal })
+      const signalsPromise = fetch(`${base}/api/v4/signals/${encodeURIComponent(pos.symbol)}`, {
+        signal,
+      })
         .then((r) => (r.ok ? r.json() : null))
         .catch(() => null);
       return Promise.allSettled([quotePromise, signalsPromise]).then(([q, s]) => ({
@@ -339,7 +370,8 @@ export default function PortfolioIntelligence({
   }, [portfolio, liveData]);
 
   // ── Default currency for totals ────────────────────────────────────────────
-  const defaultCurrency = portfolio.length > 0 ? getCurrency(portfolio[0].symbol, portfolio[0].currency) : '₹';
+  const defaultCurrency =
+    portfolio.length > 0 ? getCurrency(portfolio[0].symbol, portfolio[0].currency) : '₹';
 
   return (
     <div
@@ -354,7 +386,9 @@ export default function PortfolioIntelligence({
         <div className="px-6 py-4 border-b border-gray-700/60 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-white">Portfolio Intelligence</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{portfolio.length} position{portfolio.length !== 1 ? 's' : ''} — live signals</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {portfolio.length} position{portfolio.length !== 1 ? 's' : ''} — live signals
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -365,27 +399,44 @@ export default function PortfolioIntelligence({
         </div>
 
         <div className="p-5 space-y-6">
-
           {/* ── Summary Bar ── */}
           <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl p-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
               <div>
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Total Invested</div>
-                <div className="text-white font-bold text-lg">{fmt(totals.invested, defaultCurrency)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Current Value</div>
-                <div className="text-white font-bold text-lg">{fmt(totals.currentValue, defaultCurrency)}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">Total P&amp;L</div>
-                <div className={`font-bold text-lg ${totals.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {totals.pnl >= 0 ? '+' : '-'}{fmt(Math.abs(totals.pnl), defaultCurrency)}
-                  <span className="text-sm ml-1">({totals.pnlPct >= 0 ? '+' : ''}{totals.pnlPct.toFixed(2)}%)</span>
+                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                  Total Invested
+                </div>
+                <div className="text-white font-bold text-lg">
+                  {fmt(totals.invested, defaultCurrency)}
                 </div>
               </div>
               <div>
-                <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">Target Return</div>
+                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                  Current Value
+                </div>
+                <div className="text-white font-bold text-lg">
+                  {fmt(totals.currentValue, defaultCurrency)}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs uppercase tracking-wide mb-0.5">
+                  Total P&amp;L
+                </div>
+                <div
+                  className={`font-bold text-lg ${totals.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}
+                >
+                  {totals.pnl >= 0 ? '+' : '-'}
+                  {fmt(Math.abs(totals.pnl), defaultCurrency)}
+                  <span className="text-sm ml-1">
+                    ({totals.pnlPct >= 0 ? '+' : ''}
+                    {totals.pnlPct.toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-500 text-xs uppercase tracking-wide mb-1">
+                  Target Return
+                </div>
                 <div className="flex items-center gap-1">
                   <input
                     type="number"
@@ -411,8 +462,8 @@ export default function PortfolioIntelligence({
                     progressToTarget >= 100
                       ? 'bg-green-400'
                       : progressToTarget >= 50
-                      ? 'bg-cyan-400'
-                      : 'bg-yellow-500'
+                        ? 'bg-cyan-400'
+                        : 'bg-yellow-500'
                   }`}
                   style={{ width: `${Math.max(2, progressToTarget)}%` }}
                 />
@@ -431,7 +482,9 @@ export default function PortfolioIntelligence({
           {/* ── Holdings cards ── */}
           {portfolio.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Holdings</h3>
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+                Holdings
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {loading
                   ? portfolio.map((_, i) => <CardSkeleton key={i} />)
@@ -462,7 +515,9 @@ export default function PortfolioIntelligence({
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400 w-10 text-right shrink-0">{pct.toFixed(1)}%</span>
+                    <span className="text-xs text-gray-400 w-10 text-right shrink-0">
+                      {pct.toFixed(1)}%
+                    </span>
                     <span className="text-xs text-gray-500 w-20 text-right shrink-0 hidden sm:block">
                       {fmt(value, defaultCurrency)}
                     </span>
@@ -482,23 +537,33 @@ export default function PortfolioIntelligence({
 
               {/* Signal tally */}
               <div className="flex gap-4 text-xs">
-                <span className="text-green-400 font-medium">{actionSummary.buyCount} BUY signal{actionSummary.buyCount !== 1 ? 's' : ''}</span>
+                <span className="text-green-400 font-medium">
+                  {actionSummary.buyCount} BUY signal{actionSummary.buyCount !== 1 ? 's' : ''}
+                </span>
                 <span className="text-gray-500">/</span>
-                <span className="text-red-400 font-medium">{actionSummary.sellCount} SELL signal{actionSummary.sellCount !== 1 ? 's' : ''}</span>
+                <span className="text-red-400 font-medium">
+                  {actionSummary.sellCount} SELL signal{actionSummary.sellCount !== 1 ? 's' : ''}
+                </span>
                 <span className="text-gray-500">/</span>
-                <span className="text-gray-400">{portfolio.length - actionSummary.buyCount - actionSummary.sellCount} HOLD</span>
+                <span className="text-gray-400">
+                  {portfolio.length - actionSummary.buyCount - actionSummary.sellCount} HOLD
+                </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 {/* Best opportunity */}
                 {actionSummary.bestOpportunity && (
                   <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
-                    <div className="text-green-400 text-xs font-semibold uppercase tracking-wide mb-1">Best Opportunity</div>
+                    <div className="text-green-400 text-xs font-semibold uppercase tracking-wide mb-1">
+                      Best Opportunity
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-cyan-400 font-bold text-sm">
                         {actionSummary.bestOpportunity.symbol.replace(/\.(NS|BO)$/i, '')}
                       </span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${signalBadgeClass(actionSummary.bestOpportunity.signal)}`}>
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded ${signalBadgeClass(actionSummary.bestOpportunity.signal)}`}
+                      >
                         {actionSummary.bestOpportunity.signal.replace('_', ' ')}
                       </span>
                     </div>
@@ -511,12 +576,16 @@ export default function PortfolioIntelligence({
                 {/* Biggest risk */}
                 {actionSummary.biggestRisk && (
                   <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-3">
-                    <div className="text-red-400 text-xs font-semibold uppercase tracking-wide mb-1">Biggest Risk</div>
+                    <div className="text-red-400 text-xs font-semibold uppercase tracking-wide mb-1">
+                      Biggest Risk
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-cyan-400 font-bold text-sm">
                         {actionSummary.biggestRisk.symbol.replace(/\.(NS|BO)$/i, '')}
                       </span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${signalBadgeClass(actionSummary.biggestRisk.signal)}`}>
+                      <span
+                        className={`text-xs px-1.5 py-0.5 rounded ${signalBadgeClass(actionSummary.biggestRisk.signal)}`}
+                      >
                         {actionSummary.biggestRisk.signal.replace('_', ' ')}
                       </span>
                     </div>
@@ -528,7 +597,6 @@ export default function PortfolioIntelligence({
               </div>
             </div>
           )}
-
         </div>
 
         {/* ── Footer ── */}

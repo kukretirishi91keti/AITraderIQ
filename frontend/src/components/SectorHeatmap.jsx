@@ -16,7 +16,7 @@ SYMBOL_INDEX.forEach(({ symbol, sector }) => {
   SECTOR_MAP[symbol] = sector || 'Other';
 });
 
-const BUY_SIGNALS  = new Set(['BUY', 'STRONG_BUY', 'STRONG BUY']);
+const BUY_SIGNALS = new Set(['BUY', 'STRONG_BUY', 'STRONG BUY']);
 const SELL_SIGNALS = new Set(['SELL', 'STRONG_SELL', 'STRONG SELL']);
 
 function normaliseSignal(raw = '') {
@@ -31,7 +31,7 @@ function computeOutlook(bullCount, bearCount) {
 
 function outlookWeight(o) {
   if (o === 'BULLISH') return 0;
-  if (o === 'MIXED')   return 1;
+  if (o === 'MIXED') return 1;
   return 2; // BEARISH
 }
 
@@ -66,7 +66,7 @@ function rsiBarClass(rsi) {
 function signalTextClass(signal) {
   if (!signal) return 'text-gray-400';
   const s = normaliseSignal(signal);
-  if (BUY_SIGNALS.has(s))  return 'text-green-400';
+  if (BUY_SIGNALS.has(s)) return 'text-green-400';
   if (SELL_SIGNALS.has(s)) return 'text-red-400';
   return 'text-yellow-400';
 }
@@ -95,7 +95,7 @@ function SectorCard({ sector, onSymbolSelect }) {
   const { name, avgRSI, bullCount, bearCount, totalStocks, outlook, topPick } = sector;
 
   const rsiDisplay = avgRSI !== null ? avgRSI.toFixed(1) : '--';
-  const rsiPct     = avgRSI !== null ? Math.min(100, Math.max(0, avgRSI)) : 0;
+  const rsiPct = avgRSI !== null ? Math.min(100, Math.max(0, avgRSI)) : 0;
 
   return (
     <div
@@ -164,10 +164,10 @@ function SectorCard({ sector, onSymbolSelect }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
-  const [sectors,   setSectors]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
+  const [sectors, setSectors] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [error,     setError]     = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,16 +195,14 @@ export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
           // Average RSI
           const rsiValues = list.map((s) => parseFloat(s.rsi)).filter((v) => !isNaN(v));
           const avgRSI =
-            rsiValues.length > 0
-              ? rsiValues.reduce((a, b) => a + b, 0) / rsiValues.length
-              : null;
+            rsiValues.length > 0 ? rsiValues.reduce((a, b) => a + b, 0) / rsiValues.length : null;
 
           // Bull / bear counts
           let bullCount = 0;
           let bearCount = 0;
           list.forEach((s) => {
             const sig = normaliseSignal(s.signal || '');
-            if (BUY_SIGNALS.has(sig))       bullCount++;
+            if (BUY_SIGNALS.has(sig)) bullCount++;
             else if (SELL_SIGNALS.has(sig)) bearCount++;
           });
 
@@ -235,7 +233,9 @@ export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
     }
 
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [apiBase]);
 
   const timestamp = fetchedAt
@@ -248,12 +248,9 @@ export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-base font-bold text-white tracking-wide">
-            Market Sectors{' '}
-            <span className="text-gray-400 font-normal text-sm">— India NSE</span>
+            Market Sectors <span className="text-gray-400 font-normal text-sm">— India NSE</span>
           </h2>
-          {timestamp && (
-            <p className="text-xs text-gray-500 mt-0.5">Updated {timestamp}</p>
-          )}
+          {timestamp && <p className="text-xs text-gray-500 mt-0.5">Updated {timestamp}</p>}
         </div>
 
         {!loading && (
@@ -286,18 +283,12 @@ export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
         {loading
           ? Array.from({ length: 9 }).map((_, i) => <SkeletonCard key={i} />)
           : sectors.map((sector) => (
-              <SectorCard
-                key={sector.name}
-                sector={sector}
-                onSymbolSelect={onSymbolSelect}
-              />
+              <SectorCard key={sector.name} sector={sector} onSymbolSelect={onSymbolSelect} />
             ))}
       </div>
 
       {!loading && sectors.length === 0 && !error && (
-        <p className="text-gray-500 text-sm text-center py-8">
-          No sector data available.
-        </p>
+        <p className="text-gray-500 text-sm text-center py-8">No sector data available.</p>
       )}
     </div>
   );

@@ -15,15 +15,15 @@
 import React from 'react';
 import { getSignalValue } from '../utils/formatters';
 
-const BUY_SIGNALS  = new Set(['BUY', 'STRONG_BUY', 'STRONG BUY']);
+const BUY_SIGNALS = new Set(['BUY', 'STRONG_BUY', 'STRONG BUY']);
 const SELL_SIGNALS = new Set(['SELL', 'STRONG_SELL', 'STRONG SELL']);
 
 function capitalFromProfile(profile) {
   if (!profile) return 50000;
   const range = (profile.capitalRange || profile.capital_range || '').toLowerCase();
-  if (range === 'small')         return 25000;
-  if (range === 'medium')        return 100000;
-  if (range === 'large')         return 500000;
+  if (range === 'small') return 25000;
+  if (range === 'medium') return 100000;
+  if (range === 'large') return 500000;
   if (range === 'institutional') return 2000000;
   return 50000;
 }
@@ -61,31 +61,31 @@ export default function TradeSetupPanel({
   onPaperTrade,
 }) {
   // Guard: need valid price and ATR
-  const entry  = quote?.price ? parseFloat(quote.price) : null;
+  const entry = quote?.price ? parseFloat(quote.price) : null;
   const atrRaw = signals?.atr !== undefined ? getSignalValue(signals.atr) : null;
-  const atr    = atrRaw !== null ? parseFloat(atrRaw) : null;
+  const atr = atrRaw !== null ? parseFloat(atrRaw) : null;
 
   if (!entry || !atr || isNaN(entry) || isNaN(atr) || atr <= 0) return null;
 
   // Normalise signal
   const signalRaw = (signals?.signal || '').toUpperCase().replace(/\s+/g, '_');
-  const isSell    = SELL_SIGNALS.has(signalRaw);
-  const isBuy     = BUY_SIGNALS.has(signalRaw);
+  const isSell = SELL_SIGNALS.has(signalRaw);
+  const isBuy = BUY_SIGNALS.has(signalRaw);
 
   // Price levels
-  const stop    = isSell ? entry + 1.5 * atr : entry - 1.5 * atr;
-  const target1 = isSell ? entry - 2 * atr   : entry + 2 * atr;   // conservative
-  const target2 = isSell ? entry - 3 * atr   : entry + 3 * atr;   // aggressive
+  const stop = isSell ? entry + 1.5 * atr : entry - 1.5 * atr;
+  const target1 = isSell ? entry - 2 * atr : entry + 2 * atr; // conservative
+  const target2 = isSell ? entry - 3 * atr : entry + 3 * atr; // aggressive
 
-  const riskPerShare   = Math.abs(entry - stop);
+  const riskPerShare = Math.abs(entry - stop);
   const rewardPerShare = Math.abs(target1 - entry);
-  const rr             = riskPerShare > 0 ? rewardPerShare / riskPerShare : 0;
+  const rr = riskPerShare > 0 ? rewardPerShare / riskPerShare : 0;
 
   // Position sizing (2% capital risk rule)
-  const capital        = capitalFromProfile(investorProfile);
-  const riskAmount     = capital * 0.02;
+  const capital = capitalFromProfile(investorProfile);
+  const riskAmount = capital * 0.02;
   const suggestedShares = Math.max(1, Math.floor(riskAmount / riskPerShare));
-  const positionSize   = suggestedShares * entry;
+  const positionSize = suggestedShares * entry;
 
   // Direction badge
   let dirLabel = 'NEUTRAL';
@@ -102,7 +102,7 @@ export default function TradeSetupPanel({
     if (!onPaperTrade) return;
     onPaperTrade({
       symbol,
-      side:   isSell ? 'sell' : 'buy',
+      side: isSell ? 'sell' : 'buy',
       shares: suggestedShares,
       entry,
       stop,
@@ -118,9 +118,7 @@ export default function TradeSetupPanel({
           <h3 className="text-sm font-bold text-white">Trade Setup</h3>
           <span className="text-xs text-gray-400 font-mono">{symbol}</span>
         </div>
-        <span className={`text-xs font-bold px-3 py-1 rounded-full ${dirClass}`}>
-          {dirLabel}
-        </span>
+        <span className={`text-xs font-bold px-3 py-1 rounded-full ${dirClass}`}>{dirLabel}</span>
       </div>
 
       {/* ── Main layout: data grid + position box ── */}
@@ -158,8 +156,7 @@ export default function TradeSetupPanel({
             Position Size (2% risk rule)
           </p>
           <p className="text-white text-sm font-semibold">
-            <span className="text-cyan-400 text-lg">{suggestedShares}</span>
-            {' '}shares
+            <span className="text-cyan-400 text-lg">{suggestedShares}</span> shares
           </p>
           <p className="text-gray-300 text-xs">
             = {currency}
@@ -167,8 +164,7 @@ export default function TradeSetupPanel({
           </p>
           <p className="text-gray-500 text-[10px]">
             Capital: {currency}
-            {capital.toLocaleString('en-IN')} · 2% ={' '}
-            {currency}
+            {capital.toLocaleString('en-IN')} · 2% = {currency}
             {riskAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </p>
 

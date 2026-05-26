@@ -33,14 +33,14 @@ function getISTSession() {
   const m = ist.getMinutes();
   const totalMin = h * 60 + m;
 
-  const PRE_START  = 8 * 60;          // 08:00
-  const OPEN_START = 9 * 60 + 15;     // 09:15
-  const OPEN_END   = 15 * 60 + 30;    // 15:30
-  const AFTER_END  = 17 * 60;         // 17:00
+  const PRE_START = 8 * 60; // 08:00
+  const OPEN_START = 9 * 60 + 15; // 09:15
+  const OPEN_END = 15 * 60 + 30; // 15:30
+  const AFTER_END = 17 * 60; // 17:00
 
   if (totalMin >= PRE_START && totalMin < OPEN_START) return 'PRE-MARKET';
-  if (totalMin >= OPEN_START && totalMin < OPEN_END)  return 'OPEN';
-  if (totalMin >= OPEN_END   && totalMin < AFTER_END) return 'AFTER-MARKET';
+  if (totalMin >= OPEN_START && totalMin < OPEN_END) return 'OPEN';
+  if (totalMin >= OPEN_END && totalMin < AFTER_END) return 'AFTER-MARKET';
   return 'CLOSED';
 }
 
@@ -67,11 +67,11 @@ function buildReason(direction, aiScore) {
   const score = typeof aiScore === 'number' ? aiScore : 50;
 
   if (d === 'BULLISH' && score > 65) return 'Strong momentum + oversold setup';
-  if (d === 'BULLISH')               return 'Technical setup favoring upside';
-  if (d === 'LEAN_BULLISH')          return 'Technical setup favoring upside';
+  if (d === 'BULLISH') return 'Technical setup favoring upside';
+  if (d === 'LEAN_BULLISH') return 'Technical setup favoring upside';
   if (d === 'BEARISH' && score < 35) return 'Bearish pressure — wait for stabilization';
-  if (d === 'BEARISH')               return 'Weakening — consider avoiding today';
-  if (d === 'LEAN_BEARISH')          return 'Weakening — consider avoiding today';
+  if (d === 'BEARISH') return 'Weakening — consider avoiding today';
+  if (d === 'LEAN_BEARISH') return 'Weakening — consider avoiding today';
   return 'Neutral — watch for a directional breakout';
 }
 
@@ -83,18 +83,18 @@ const RANK_BADGES = ['①', '②', '③', '④', '⑤'];
 
 function directionBadgeClass(direction) {
   const d = (direction || '').toUpperCase();
-  if (d === 'BULLISH')      return 'bg-green-700/30 text-green-300 border border-green-700/40';
+  if (d === 'BULLISH') return 'bg-green-700/30 text-green-300 border border-green-700/40';
   if (d === 'LEAN_BULLISH') return 'bg-green-800/30 text-green-400 border border-green-700/30';
-  if (d === 'BEARISH')      return 'bg-red-700/30 text-red-300 border border-red-700/40';
+  if (d === 'BEARISH') return 'bg-red-700/30 text-red-300 border border-red-700/40';
   if (d === 'LEAN_BEARISH') return 'bg-red-800/30 text-red-400 border border-red-700/30';
   return 'bg-gray-600/30 text-gray-400 border border-gray-600/40';
 }
 
 function directionLabel(direction) {
   const d = (direction || '').toUpperCase();
-  if (d === 'BULLISH')      return 'BULLISH';
+  if (d === 'BULLISH') return 'BULLISH';
   if (d === 'LEAN_BULLISH') return 'LEAN BULLISH';
-  if (d === 'BEARISH')      return 'BEARISH';
+  if (d === 'BEARISH') return 'BEARISH';
   if (d === 'LEAN_BEARISH') return 'LEAN BEARISH';
   return 'NEUTRAL';
 }
@@ -102,15 +102,17 @@ function directionLabel(direction) {
 /** Mood badge for the overall market_bias from scanner */
 function moodBadge(bias) {
   const b = (bias || '').toUpperCase();
-  if (b.includes('BULL')) return { cls: 'bg-green-600/25 text-green-300 border border-green-600/40', label: 'BULLISH' };
-  if (b.includes('BEAR')) return { cls: 'bg-red-600/25 text-red-300 border border-red-600/40',   label: 'BEARISH' };
+  if (b.includes('BULL'))
+    return { cls: 'bg-green-600/25 text-green-300 border border-green-600/40', label: 'BULLISH' };
+  if (b.includes('BEAR'))
+    return { cls: 'bg-red-600/25 text-red-300 border border-red-600/40', label: 'BEARISH' };
   return { cls: 'bg-gray-600/25 text-gray-300 border border-gray-600/40', label: 'NEUTRAL' };
 }
 
 /** Session badge appearance */
 function sessionBadge(session) {
-  if (session === 'OPEN')         return 'text-green-400';
-  if (session === 'PRE-MARKET')   return 'text-yellow-400';
+  if (session === 'OPEN') return 'text-green-400';
+  if (session === 'PRE-MARKET') return 'text-yellow-400';
   if (session === 'AFTER-MARKET') return 'text-blue-400';
   return 'text-gray-500';
 }
@@ -169,19 +171,13 @@ function PickRow({ pick, rank, onSymbolSelect }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function DailyBriefing({
-  apiBase,
-  market,
-  onSymbolSelect,
-  isCollapsed,
-  onToggle,
-}) {
-  const [data, setData]     = useState(null);
+export default function DailyBriefing({ apiBase, market, onSymbolSelect, isCollapsed, onToggle }) {
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
-  const [session]           = useState(() => getISTSession());
-  const [today]             = useState(() => formatDate(new Date()));
-  const abortRef            = useRef(null);
+  const [error, setError] = useState(null);
+  const [session] = useState(() => getISTSession());
+  const [today] = useState(() => formatDate(new Date()));
+  const abortRef = useRef(null);
 
   // ── Fetch scanner data on mount ────────────────────────────────────────────
   useEffect(() => {
@@ -218,12 +214,11 @@ export default function DailyBriefing({
   const mood = data ? moodBadge(data.market_bias) : null;
   const picks = data?.top_picks?.slice(0, 3) ?? [];
 
-  const sessCls  = sessionBadge(session);
+  const sessCls = sessionBadge(session);
 
   // ── Collapsed header (always visible) ─────────────────────────────────────
   return (
     <div className="bg-gray-800/70 border border-gray-700/50 rounded-xl overflow-hidden shadow-lg">
-
       {/* ── Header row — always visible ── */}
       <button
         onClick={onToggle}
@@ -240,9 +235,10 @@ export default function DailyBriefing({
 
           {/* Mood badge — visible even when collapsed */}
           {mood && !loading && (
-            <span className={`inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full border ${mood.cls}`}>
-              {mood.label === 'BULLISH' ? '↑' : mood.label === 'BEARISH' ? '↓' : '→'}{' '}
-              {mood.label}
+            <span
+              className={`inline-flex items-center px-2 py-0.5 text-[10px] font-semibold rounded-full border ${mood.cls}`}
+            >
+              {mood.label === 'BULLISH' ? '↑' : mood.label === 'BEARISH' ? '↓' : '→'} {mood.label}
             </span>
           )}
 
@@ -266,7 +262,6 @@ export default function DailyBriefing({
       {/* ── Expandable body ── */}
       {!isCollapsed && (
         <div className="border-t border-gray-700/40">
-
           {/* Mobile date / session row */}
           <div className="flex items-center gap-2 px-4 pt-3 pb-1 sm:hidden flex-wrap">
             <span className="text-gray-400 text-xs">{today}</span>
@@ -283,15 +278,12 @@ export default function DailyBriefing({
 
           {/* Error state */}
           {!loading && error && (
-            <div className="px-4 py-4 text-sm text-gray-400">
-              Market data loading...
-            </div>
+            <div className="px-4 py-4 text-sm text-gray-400">Market data loading...</div>
           )}
 
           {/* Picks */}
           {!loading && !error && data && (
             <div className="px-4 pb-4 pt-3 space-y-2">
-
               {/* Bias detail line */}
               {data.bias_label && (
                 <p className="text-xs text-gray-400 mb-3 leading-relaxed">

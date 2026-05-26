@@ -87,7 +87,10 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
             <h2 className="text-lg font-bold text-white">Paper Trade</h2>
             <p className="text-sm text-gray-400">{symbol} · No real money</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl leading-none">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white text-2xl leading-none"
+          >
             &times;
           </button>
         </div>
@@ -109,11 +112,15 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
               {step === 0 && (
                 <div>
                   <p className="text-center text-gray-300 mb-5">
-                    What direction do you expect <span className="text-white font-medium">{symbol}</span> to move?
+                    What direction do you expect{' '}
+                    <span className="text-white font-medium">{symbol}</span> to move?
                   </p>
                   <div className="flex gap-4">
                     <button
-                      onClick={() => { setSide('buy'); setStep(1); }}
+                      onClick={() => {
+                        setSide('buy');
+                        setStep(1);
+                      }}
                       className="flex-1 py-6 rounded-xl bg-green-900/40 border-2 border-green-600 hover:bg-green-900/70 flex flex-col items-center gap-2 transition-colors"
                     >
                       <span className="text-3xl">↑</span>
@@ -121,7 +128,10 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
                       <span className="text-xs text-gray-400 text-center">Price will rise</span>
                     </button>
                     <button
-                      onClick={() => { setSide('sell'); setStep(1); }}
+                      onClick={() => {
+                        setSide('sell');
+                        setStep(1);
+                      }}
                       className="flex-1 py-6 rounded-xl bg-red-900/40 border-2 border-red-600 hover:bg-red-900/70 flex flex-col items-center gap-2 transition-colors"
                     >
                       <span className="text-3xl">↓</span>
@@ -172,19 +182,26 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
                       <div className="flex justify-between">
                         <span className="text-gray-400">Investment</span>
                         <span className="text-white font-medium">
-                          {currency}{(entry * shares).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          {currency}
+                          {(entry * shares).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       {loss && (
                         <div className="flex justify-between">
                           <span className="text-gray-400">Max loss (if stop hit)</span>
-                          <span className="text-red-400">−{currency}{Math.abs(loss)}</span>
+                          <span className="text-red-400">
+                            −{currency}
+                            {Math.abs(loss)}
+                          </span>
                         </div>
                       )}
                       {gain && (
                         <div className="flex justify-between">
                           <span className="text-gray-400">Potential gain (if target hit)</span>
-                          <span className="text-green-400">+{currency}{gain}</span>
+                          <span className="text-green-400">
+                            +{currency}
+                            {gain}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -209,7 +226,9 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
               {/* Step 2: Confirm */}
               {step === 2 && (
                 <div>
-                  <p className="text-gray-300 mb-4 text-center text-sm">Review your trade before placing</p>
+                  <p className="text-gray-300 mb-4 text-center text-sm">
+                    Review your trade before placing
+                  </p>
                   <div className="bg-gray-700/50 rounded-xl p-4 mb-4 space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-400 text-sm">Direction</span>
@@ -230,25 +249,37 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
                     {entry && (
                       <div className="flex justify-between">
                         <span className="text-gray-400 text-sm">Entry</span>
-                        <span className="text-white text-sm">{currency}{entry.toFixed(2)}</span>
+                        <span className="text-white text-sm">
+                          {currency}
+                          {entry.toFixed(2)}
+                        </span>
                       </div>
                     )}
                     {stop && (
                       <div className="flex justify-between">
                         <span className="text-gray-400 text-sm">Stop Loss</span>
-                        <span className="text-red-400 text-sm">{currency}{stop.toFixed(2)}</span>
+                        <span className="text-red-400 text-sm">
+                          {currency}
+                          {stop.toFixed(2)}
+                        </span>
                       </div>
                     )}
                     {target && (
                       <div className="flex justify-between">
                         <span className="text-gray-400 text-sm">Target</span>
-                        <span className="text-green-400 text-sm">{currency}{target.toFixed(2)}</span>
+                        <span className="text-green-400 text-sm">
+                          {currency}
+                          {target.toFixed(2)}
+                        </span>
                       </div>
                     )}
                     {gain && (
                       <div className="flex justify-between border-t border-gray-600 pt-2 mt-2">
                         <span className="text-gray-400 text-sm">If target hit</span>
-                        <span className="text-green-400 font-semibold text-sm">+{currency}{gain}</span>
+                        <span className="text-green-400 font-semibold text-sm">
+                          +{currency}
+                          {gain}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -275,8 +306,19 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
                       {loading ? (
                         <>
                           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8v8H4z"
+                            />
                           </svg>
                           Placing…
                         </>
