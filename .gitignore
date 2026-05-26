@@ -21,3 +21,4 @@ backend/cache/
 backend/reports/*.json
 backend/reports/*.html
 report_temp.db
+.claude/
