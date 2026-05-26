@@ -42,13 +42,41 @@ class SetLevels(BaseModel):
 # ENDPOINTS
 # =============================================================================
 
+@router.post("/simulate", status_code=200)
+async def simulate_paper_trade(request: PlaceTrade):
+    """Simulate a paper trade without saving — for unauthenticated / guest users."""
+    symbol = validate_symbol(request.symbol)
+    try:
+        svc = get_market_data_service()
+        quote = await svc.get_quote(symbol)
+        price = quote.get("price")
+        currency = quote.get("currency", "$")
+        if price is None:
+            raise ValueError("No price returned")
+    except Exception as e:
+        logger.error(f"Guest simulate quote failed for {symbol}: {e}")
+        raise HTTPException(status_code=502, detail=f"Could not fetch current price for {symbol}")
+
+    return {
+        "id": None,
+        "symbol": symbol,
+        "side": request.side,
+        "quantity": request.quantity,
+        "entry_price": price,
+        "currency": currency,
+        "status": "simulated",
+        "guest": True,
+        "message": f"Paper {request.side} simulated: {request.quantity} × {symbol} @ {currency}{price:.2f} — log in to save real trades",
+    }
+
+
 @router.post("", status_code=201)
 async def place_paper_trade(
     request: PlaceTrade,
     user: User = Depends(require_auth),
     db: AsyncSession = Depends(get_db),
 ):
-    """Place a new paper trade (buy or sell)."""
+    """Place a new paper trade (buy or sell). Requires authentication."""
     symbol = validate_symbol(request.symbol)
 
     # Fetch current market price

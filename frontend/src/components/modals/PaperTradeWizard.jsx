@@ -39,6 +39,7 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
 
   const entry = prefill?.entry || null;
   const stop = prefill?.stop || null;
@@ -53,8 +54,11 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
     setError(null);
     try {
       const headers = { 'Content-Type': 'application/json' };
+      const endpoint = token
+        ? `${API_BASE}/api/paper-trade`
+        : `${API_BASE}/api/paper-trade/simulate`;
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${API_BASE}/api/paper-trade`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify({ symbol, side, quantity: shares }),
@@ -63,8 +67,10 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
         const d = await res.json().catch(() => ({}));
         throw new Error(d.detail || `Error ${res.status}`);
       }
+      const result = await res.json().catch(() => ({}));
+      setIsGuest(!!result.guest);
       setDone(true);
-      if (onSuccess) setTimeout(onSuccess, 1500);
+      if (onSuccess && !result.guest) setTimeout(onSuccess, 1500);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -99,10 +105,19 @@ export default function PaperTradeWizard({ onClose, symbol, prefill, token, onSu
           {done ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">✅</div>
-              <p className="text-green-400 font-semibold text-lg">Trade placed!</p>
-              <p className="text-gray-400 text-sm mt-1">
-                {side?.toUpperCase()} {shares} × {symbol} — check Paper Trades to track it.
+              <p className="text-green-400 font-semibold text-lg">
+                {isGuest ? 'Trade simulated!' : 'Trade placed!'}
               </p>
+              <p className="text-gray-400 text-sm mt-1">
+                {side?.toUpperCase()} {shares} × {symbol}
+              </p>
+              {isGuest ? (
+                <p className="text-yellow-400 text-xs mt-3 bg-yellow-900/20 border border-yellow-700/40 rounded-lg px-3 py-2">
+                  Guest mode — trade not saved. Log in to track your paper trades.
+                </p>
+              ) : (
+                <p className="text-gray-500 text-xs mt-2">Check Paper Trades to track it.</p>
+              )}
             </div>
           ) : (
             <>

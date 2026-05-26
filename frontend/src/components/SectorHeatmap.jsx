@@ -181,7 +181,7 @@ export default function SectorHeatmap({ apiBase = '', onSymbolSelect }) {
         const data = await res.json();
         if (cancelled) return;
 
-        const stocks = data.stocks || [];
+        const stocks = data.all || data.stocks || [];
 
         // Group stocks by sector
         const grouped = {};
