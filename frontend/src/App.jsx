@@ -64,6 +64,13 @@ const StrategyIntelligence = lazy(() => import('./components/StrategyIntelligenc
 const PaperTradesModal = lazy(() => import('./components/modals/PaperTradesModal'));
 const TradeJournalModal = lazy(() => import('./components/modals/TradeJournalModal'));
 const OnboardingModal = lazy(() => import('./components/modals/OnboardingModal'));
+const PortfolioIntelligence = lazy(() => import('./components/PortfolioIntelligence'));
+const PaperTradeWizard = lazy(() => import('./components/modals/PaperTradeWizard'));
+
+// Eagerly loaded (above-the-fold, small)
+import DailyBriefing from './components/DailyBriefing';
+import TradeSetupPanel from './components/TradeSetupPanel';
+import SectorHeatmap from './components/SectorHeatmap';
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -104,7 +111,12 @@ export default function App() {
   const [financialsLoading, setFinancialsLoading] = useState(false);
   const [showScreener, setShowScreener] = useState(false);
   const [showPortfolio, setShowPortfolio] = useState(false);
+  const [showPortfolioIntelligence, setShowPortfolioIntelligence] = useState(false);
   const [showPaperTrades, setShowPaperTrades] = useState(false);
+  const [showPaperTradeWizard, setShowPaperTradeWizard] = useState(false);
+  const [paperTradeWizardPrefill, setPaperTradeWizardPrefill] = useState(null);
+  const [showSectorHeatmap, setShowSectorHeatmap] = useState(false);
+  const [briefingCollapsed, setBriefingCollapsed] = useState(false);
   const [showJournal, setShowJournal] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showMobileAI, setShowMobileAI] = useState(false);
@@ -378,6 +390,9 @@ export default function App() {
       const anyModalOpen =
         showScreener ||
         showPortfolio ||
+        showPortfolioIntelligence ||
+        showPaperTradeWizard ||
+        showSectorHeatmap ||
         showAddToPortfolio ||
         showAlerts ||
         showUserGuide ||
@@ -458,6 +473,9 @@ export default function App() {
         case 'Escape':
           setShowScreener(false);
           setShowPortfolio(false);
+          setShowPortfolioIntelligence(false);
+          setShowPaperTradeWizard(false);
+          setShowSectorHeatmap(false);
           setShowAddToPortfolio(false);
           setShowAlerts(false);
           setShowUserGuide(false);
@@ -1138,7 +1156,7 @@ export default function App() {
               Screener
             </button>
             <button
-              onClick={() => setShowPortfolio(true)}
+              onClick={() => setShowPortfolioIntelligence(true)}
               className="px-3 py-2 bg-green-600 hover:bg-green-500 rounded-lg text-sm font-medium"
             >
               💰 Portfolio
@@ -1591,6 +1609,15 @@ export default function App() {
 
         {/* Main Panel */}
         <main className="flex-1 p-4 overflow-y-auto">
+          {/* Daily Briefing — top of main panel */}
+          <DailyBriefing
+            apiBase={API_BASE}
+            market={selectedMarket}
+            onSymbolSelect={handleSymbolSelect}
+            isCollapsed={briefingCollapsed}
+            onToggle={() => setBriefingCollapsed((c) => !c)}
+          />
+
           {/* Symbol Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
             <div>
@@ -1727,9 +1754,22 @@ export default function App() {
             />
           </div>
 
+          {/* Trade Setup Panel — ATR-based entry/stop/target for current symbol */}
+          <TradeSetupPanel
+            symbol={selectedSymbol}
+            quote={quote}
+            signals={signals}
+            investorProfile={investorProfile}
+            currency={currentMarket.currency}
+            onPaperTrade={(prefill) => {
+              setPaperTradeWizardPrefill(prefill);
+              setShowPaperTradeWizard(true);
+            }}
+          />
+
           {/* Tabs */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner'].map(
+            {['technicals', 'backtest', 'sentiment', 'fundamentals', 'news', 'AI scanner', 'sectors'].map(
               (tab) => (
                 <button
                   key={tab}
@@ -1740,7 +1780,9 @@ export default function App() {
                     ? 'Nifty 50'
                     : tab === 'AI scanner' && selectedMarket === 'India_BSE'
                       ? 'Sensex'
-                      : tab}
+                      : tab === 'sectors'
+                        ? '🏭 Sectors'
+                        : tab}
                 </button>
               )
             )}
@@ -2010,6 +2052,9 @@ export default function App() {
                   onSymbolSelect={handleSymbolSelect}
                 />
               ))}
+            {activeTab === 'sectors' && (
+              <SectorHeatmap apiBase={API_BASE} onSymbolSelect={handleSymbolSelect} />
+            )}
           </div>
         </main>
 
@@ -2241,6 +2286,28 @@ export default function App() {
           <StrategyIntelligence
             symbol={selectedSymbol}
             onClose={() => setShowStrategyIntelligence(false)}
+          />
+        )}
+        {showPortfolioIntelligence && (
+          <PortfolioIntelligence
+            onClose={() => setShowPortfolioIntelligence(false)}
+            portfolio={portfolio}
+            apiBase={API_BASE}
+            investorProfile={investorProfile}
+            onSymbolSelect={(sym) => { handleSymbolSelect(sym); setShowPortfolioIntelligence(false); }}
+            isLoggedIn={isLoggedIn}
+          />
+        )}
+        {showPaperTradeWizard && (
+          <PaperTradeWizard
+            onClose={() => setShowPaperTradeWizard(false)}
+            symbol={selectedSymbol}
+            prefill={paperTradeWizardPrefill}
+            token={user?.access_token}
+            onSuccess={() => {
+              setShowPaperTradeWizard(false);
+              setPaperTradeWizardPrefill(null);
+            }}
           />
         )}
       </Suspense>
