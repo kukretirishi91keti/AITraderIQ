@@ -141,6 +141,13 @@ PLANS = {
 # =============================================================================
 
 
+def _db_dt(dt: datetime) -> datetime:
+    """Make a DB-returned datetime timezone-aware (SQLite stores naive UTC)."""
+    if dt is None:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
 def check_ai_query_limit(user: User) -> dict:
     """Check if user has remaining AI queries for today."""
     plan = PLANS.get(user.plan or "free", PLANS["free"])
@@ -150,7 +157,7 @@ def check_ai_query_limit(user: User) -> dict:
         return {"allowed": True, "remaining": -1, "limit": -1}
 
     now = datetime.now(timezone.utc)
-    if user.ai_queries_reset_at is None or user.ai_queries_reset_at.date() < now.date():
+    if user.ai_queries_reset_at is None or _db_dt(user.ai_queries_reset_at).date() < now.date():
         user.ai_queries_today = 0
         user.ai_queries_reset_at = now
 
@@ -222,7 +229,8 @@ async def get_my_plan(user: User = Depends(require_auth)):
         "ai_usage": ai_status,
         "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
         "is_expired": (
-            user.plan_expires_at is not None and user.plan_expires_at < datetime.now(timezone.utc)
+            user.plan_expires_at is not None
+            and _db_dt(user.plan_expires_at) < datetime.now(timezone.utc)
         ) if user.plan != "free" else False,
     }
 
