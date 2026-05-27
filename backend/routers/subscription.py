@@ -15,7 +15,7 @@ Tiers:
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 import logging
@@ -149,7 +149,7 @@ def check_ai_query_limit(user: User) -> dict:
     if daily_limit == -1:
         return {"allowed": True, "remaining": -1, "limit": -1}
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if user.ai_queries_reset_at is None or user.ai_queries_reset_at.date() < now.date():
         user.ai_queries_today = 0
         user.ai_queries_reset_at = now
@@ -177,7 +177,7 @@ def get_plan_limits(user: User) -> dict:
 async def _activate_plan(user: User, plan_key: str, db: AsyncSession):
     """Activate a plan for a user."""
     user.plan = plan_key
-    user.plan_expires_at = datetime.utcnow() + timedelta(days=30)
+    user.plan_expires_at = datetime.now(timezone.utc) + timedelta(days=30)
     user.ai_queries_today = 0
     await db.commit()
     await db.refresh(user)
@@ -222,7 +222,7 @@ async def get_my_plan(user: User = Depends(require_auth)):
         "ai_usage": ai_status,
         "plan_expires_at": user.plan_expires_at.isoformat() if user.plan_expires_at else None,
         "is_expired": (
-            user.plan_expires_at is not None and user.plan_expires_at < datetime.utcnow()
+            user.plan_expires_at is not None and user.plan_expires_at < datetime.now(timezone.utc)
         ) if user.plan != "free" else False,
     }
 
@@ -322,7 +322,7 @@ async def _create_razorpay_order(request, plan, user, db):
         order_data = {
             "amount": amount_paise,
             "currency": "INR",
-            "receipt": f"order_{user.id}_{request.plan}_{int(datetime.utcnow().timestamp())}",
+            "receipt": f"order_{user.id}_{request.plan}_{int(datetime.now(timezone.utc).timestamp())}",
             "notes": {
                 "user_id": str(user.id),
                 "plan": request.plan,

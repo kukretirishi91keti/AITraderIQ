@@ -24,7 +24,7 @@ import asyncio
 import json
 import os
 import sys
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 # ── Environment bootstrap (mirrors conftest.py) ──────────────────────────────
@@ -291,7 +291,7 @@ async def run_report() -> dict:
     client = await _make_client()
 
     report = {
-        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "date": str(date.today()),
         "mode": "DEMO" if DEMO_MODE else "LIVE",
         "base_url": BASE_URL or "in-process",

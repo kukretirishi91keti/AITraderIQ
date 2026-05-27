@@ -8,7 +8,7 @@ trade if the level has been triggered.
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,7 +56,7 @@ async def _check_and_close(trade, svc, db: AsyncSession) -> bool:
     trade.pnl = pnl
     trade.pnl_percent = pnl_pct
     trade.status = "closed"
-    trade.closed_at = datetime.utcnow()
+    trade.closed_at = datetime.now(timezone.utc)
     trade.notes = f"{trade.notes}\n{triggered_note}".strip()
     await db.commit()
 

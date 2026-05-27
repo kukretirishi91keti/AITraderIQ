@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from auth.security import require_auth
@@ -381,7 +381,7 @@ async def apply_portfolio_strategy(
     holding_analyses.sort(key=lambda x: x["confidence"], reverse=True)
 
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "portfolio_size": len(holding_analyses),
         "market_filter": request.market.upper() if request.market else "ALL",
         "strategy_mode": request.strategy_name,
