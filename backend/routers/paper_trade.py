@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from database.engine import get_db
@@ -319,7 +319,7 @@ async def close_paper_trade(
     trade.pnl = round(pnl, 2)
     trade.pnl_percent = round(pnl_percent, 2)
     trade.status = "closed"
-    trade.closed_at = datetime.utcnow()
+    trade.closed_at = datetime.now(timezone.utc)
 
     await db.commit()
 

@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database.engine import get_db
 from database.models import User, WatchlistItem, PortfolioItem, Alert
@@ -220,7 +220,7 @@ async def update_portfolio_item(
     if update.notes is not None:
         item.notes = sanitize_text(update.notes)
 
-    item.updated_at = datetime.utcnow()
+    item.updated_at = datetime.now(timezone.utc)
     await db.commit()
 
     return {"message": "Holding updated"}
