@@ -11,7 +11,7 @@ services:
       - key: CORS_ORIGINS
         value: https://aitraderiq.netlify.app
       - key: DEMO_MODE
-        value: "true"
+        value: "false"
       - key: DATABASE_URL
         value: sqlite+aiosqlite:///./traderai.db
       - key: PYTHON_VERSION

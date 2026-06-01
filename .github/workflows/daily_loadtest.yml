@@ -1,0 +1,102 @@
+name: Daily Load Test (10 Users)
+
+on:
+  schedule:
+    # 3:15 UTC = 8:45 AM IST — runs Mon-Fri before NSE market open
+    - cron: '15 3 * * 1-5'
+  # Also lets you trigger it manually from GitHub UI
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Backend URL to test (leave blank for production)'
+        required: false
+        default: ''
+
+jobs:
+  loadtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install locust
+        run: pip install locust
+
+      - name: Set target URL
+        id: url
+        run: |
+          URL="${{ github.event.inputs.target_url }}"
+          if [ -z "$URL" ]; then
+            URL="${{ secrets.PRODUCTION_URL }}"
+          fi
+          if [ -z "$URL" ]; then
+            echo "ERROR: No target URL. Set PRODUCTION_URL in repo secrets."
+            exit 1
+          fi
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Run load test (10 users, 5 min)
+        run: |
+          mkdir -p loadtest/reports
+          locust \
+            -f loadtest/locustfile.py \
+            --host "${{ steps.url.outputs.url }}" \
+            --users 10 \
+            --spawn-rate 2 \
+            --run-time 5m \
+            --headless \
+            --html loadtest/reports/report_${{ github.run_id }}.html \
+            --csv  loadtest/reports/stats_${{ github.run_id }} \
+            --exit-code-on-error 0
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-report-${{ github.run_id }}
+          path: loadtest/reports/
+          retention-days: 30
+
+      - name: Check pass/fail thresholds
+        run: |
+          python - <<'EOF'
+          import csv, sys
+
+          stats_file = "loadtest/reports/stats_${{ github.run_id }}_stats.csv"
+          try:
+              with open(stats_file) as f:
+                  rows = list(csv.DictReader(f))
+          except FileNotFoundError:
+              print("No stats file found — skipping threshold check")
+              sys.exit(0)
+
+          # Aggregated row
+          agg = next((r for r in rows if r["Name"] == "Aggregated"), None)
+          if not agg:
+              sys.exit(0)
+
+          failures   = int(agg.get("Failure Count", 0))
+          total      = int(agg.get("Request Count", 1))
+          avg_ms     = float(agg.get("Average Response Time", 0))
+          p95_ms     = float(agg.get("95%", 0))
+          fail_rate  = failures / total * 100 if total else 0
+
+          print(f"Total requests : {total}")
+          print(f"Failures       : {failures}  ({fail_rate:.1f}%)")
+          print(f"Avg resp time  : {avg_ms:.0f} ms")
+          print(f"95th pct       : {p95_ms:.0f} ms")
+
+          passed = fail_rate < 2.0 and avg_ms < 3000
+          if passed:
+              print("\n✅ PASS — ready for market open")
+          else:
+              print("\n❌ FAIL — investigate before market opens")
+              sys.exit(1)
+          EOF
