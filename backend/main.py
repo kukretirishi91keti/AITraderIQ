@@ -62,7 +62,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # Check demo mode from environment
-DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 VERSION = "6.0.0"
 
 # Track loaded routers
