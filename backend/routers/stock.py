@@ -817,62 +817,56 @@ async def get_stock_data(
 
 @router.get("/financials/{symbol}")
 async def get_financials(symbol: str):
-    """Get company financials for a symbol."""
+    """Get company financials for a symbol using real yfinance data."""
     symbol = validate_symbol(symbol)
-    seed = get_seed(symbol)
-    random.seed(seed)
-    
-    # Get current price
+
     try:
-        svc = get_market_data_service()
-        quote = await svc.get_quote(symbol)
-        price = quote.get("price", 100.0)
-        currency = quote.get("currency", "$")
-        name = quote.get("name", f"{symbol} Corp")
-    except:
-        price = 100.0
-        currency = "$"
-        name = f"{symbol} Corp"
-    
-    # Generate realistic financials
-    shares_outstanding = random.randint(500, 5000) * 1_000_000
-    market_cap = price * shares_outstanding
-    revenue = market_cap * random.uniform(0.3, 0.8)
-    net_income = revenue * random.uniform(0.05, 0.25)
-    eps = net_income / shares_outstanding
-    pe_ratio = price / eps if eps > 0 else 0
-    
-    return {
-        "success": True,
-        "symbol": symbol,
-        "name": name,
-        "currency": currency,
-        "financials": {
-            "market_cap": round(market_cap),
-            "market_cap_formatted": f"{market_cap/1e9:.2f}B",
-            "revenue": round(revenue),
-            "revenue_formatted": f"{revenue/1e9:.2f}B",
-            "net_income": round(net_income),
-            "net_income_formatted": f"{net_income/1e9:.2f}B",
-            "eps": round(eps, 2),
-            "pe_ratio": round(pe_ratio, 2),
-            "dividend_yield": round(random.uniform(0, 3), 2),
-            "profit_margin": round(net_income / revenue * 100, 2),
-            "roe": round(random.uniform(10, 30), 2),
-            "debt_to_equity": round(random.uniform(0.2, 1.5), 2),
-            "current_ratio": round(random.uniform(1, 3), 2),
-            "quick_ratio": round(random.uniform(0.8, 2), 2),
-            "beta": round(random.uniform(0.8, 1.5), 2),
-            "52_week_high": round(price * 1.15, 2),
-            "52_week_low": round(price * 0.75, 2),
-            "avg_volume": random.randint(1, 50) * 1_000_000,
-            "shares_outstanding": shares_outstanding
-        },
-        "sector": "Technology",
-        "industry": "Software",
-        "source": "DEMO",
-        "timestamp": datetime.now().isoformat()
-    }
+        try:
+            from services.financials_service import get_financials_service
+        except ImportError:
+            from financials_service import get_financials_service
+
+        fin_svc = get_financials_service()
+        data = await fin_svc.get_financials(symbol, include_summary=False)
+
+        profit_margin_raw = data.get("profitMargin")   # decimal: 0.25 → 25%
+        div_yield_raw = data.get("dividendYield")       # decimal: 0.015 → 1.5%
+
+        financials_obj = {
+            "market_cap": data.get("marketCap"),
+            "market_cap_formatted": data.get("marketCapFormatted"),
+            "revenue": data.get("revenue"),
+            "revenue_formatted": data.get("revenueFormatted"),
+            "net_income": data.get("netIncome"),
+            "net_income_formatted": data.get("netIncomeFormatted"),
+            "eps": data.get("eps"),
+            "pe_ratio": data.get("pe"),
+            "dividend_yield": round(div_yield_raw * 100, 2) if div_yield_raw else 0,
+            "profit_margin": round(profit_margin_raw * 100, 2) if profit_margin_raw else None,
+            "debt_to_equity": data.get("debtToEquity"),
+            "current_ratio": data.get("currentRatio"),
+            "beta": data.get("beta"),
+            "fiftyTwoWeekHigh": data.get("fiftyTwoWeekHigh"),
+            "fiftyTwoWeekLow": data.get("fiftyTwoWeekLow"),
+            "sector": data.get("sector", "N/A"),
+            "industry": data.get("industry", "N/A"),
+        }
+
+        return {
+            "success": True,
+            "symbol": symbol,
+            "name": data.get("name", symbol),
+            "currency": data.get("currency", "$"),
+            "financials": financials_obj,
+            "sector": data.get("sector", "N/A"),
+            "industry": data.get("industry", "N/A"),
+            "dataQuality": data.get("dataQuality", "LIVE"),
+            "source": data.get("source", "YFINANCE"),
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Financials error for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch financials")
 
 
 # =============================================================================

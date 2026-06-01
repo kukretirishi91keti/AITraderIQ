@@ -33,12 +33,15 @@ except ImportError:
 
 try:
     from services.cache_manager import get_cache_manager
-    from services.genai_service import get_genai_service
 except ImportError:
     from cache_manager import get_cache_manager
+
+try:
+    from services.genai_service import get_genai_service
+except ImportError:
     try:
         from genai_service import get_genai_service
-    except:
+    except ImportError:
         get_genai_service = None
 
 
@@ -164,6 +167,9 @@ def _fetch_financials_sync(symbol: str) -> Optional[Dict[str, Any]]:
             'totalDebtFormatted': _format_large_number(info.get('totalDebt')),
             'debtToEquity': info.get('debtToEquity'),
             'currentRatio': info.get('currentRatio'),
+            'beta': info.get('beta'),
+            'fiftyTwoWeekHigh': info.get('fiftyTwoWeekHigh'),
+            'fiftyTwoWeekLow': info.get('fiftyTwoWeekLow'),
             
             # Per Share
             'eps': info.get('trailingEps'),
