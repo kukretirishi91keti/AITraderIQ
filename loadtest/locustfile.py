@@ -42,15 +42,16 @@ class TraderUser(HttpUser):
     # ------------------------------------------------------------------
 
     def on_start(self):
-        """Register (ignore 409) then log in to get a JWT."""
+        """Register (ignore 409 if already exists) then log in to get a JWT."""
         self.client.post(
             "/api/auth/register",
-            json={"email": TEST_EMAIL, "password": TEST_PASSWORD, "name": "Load Tester"},
+            json={"email": TEST_EMAIL, "username": "loadtester", "password": TEST_PASSWORD, "full_name": "Load Tester"},
             name="/api/auth/register",
         )
+        # Login uses OAuth2PasswordRequestForm — must be form-encoded, not JSON
         res = self.client.post(
             "/api/auth/login",
-            json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
+            data={"username": TEST_EMAIL, "password": TEST_PASSWORD},
             name="/api/auth/login",
         )
         if res.status_code == 200:
@@ -127,7 +128,6 @@ def print_summary(environment, **kwargs):
     print(f"  Failures       : {total.num_failures}")
     print(f"  Avg resp time  : {total.avg_response_time:.0f} ms")
     print(f"  95th pct       : {total.get_response_time_percentile(0.95):.0f} ms")
-    print(f"  Req/s (peak)   : {total.max_rps:.1f}")
     fail_rate = (total.num_failures / total.num_requests * 100) if total.num_requests else 0
     status = "✅ PASS" if fail_rate < 1 and total.avg_response_time < 2000 else "❌ FAIL"
     print(f"\n  Result: {status}  (fail rate {fail_rate:.1f}%, avg {total.avg_response_time:.0f}ms)")
