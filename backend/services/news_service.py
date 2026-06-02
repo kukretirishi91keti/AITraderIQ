@@ -20,19 +20,23 @@ import random
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# NEWSAPI CONFIGURATION
+# NEWS SOURCE CONFIGURATION
+# Finnhub is free (no commercial restrictions) and covers Indian + US stocks.
+# NewsAPI free tier is development-only; we keep the key optional as last resort.
 # =============================================================================
 
+FINNHUB_KEY = os.environ.get('FINNHUB_API_KEY', '')
 NEWSAPI_KEY = os.environ.get('NEWSAPI_KEY', '')
 NEWSAPI_BASE_URL = "https://newsapi.org/v2"
 
-# Try to import newsapi
 try:
     from newsapi import NewsApiClient
     NEWSAPI_AVAILABLE = bool(NEWSAPI_KEY)
 except ImportError:
     NewsApiClient = None
     NEWSAPI_AVAILABLE = False
+
+import httpx
 
 # Import our cache and sentiment services
 try:
@@ -154,6 +158,44 @@ CURATED_HEADLINES = {
         "Global markets react to central bank policy decisions"
     ]
 }
+
+
+# =============================================================================
+# FINNHUB NEWS (primary — free, covers NSE/BSE via general news search)
+# =============================================================================
+
+async def _fetch_from_finnhub(symbol: str, count: int = 10) -> Optional[List[Dict[str, Any]]]:
+    """Fetch company news from Finnhub. Works for US and Indian stocks."""
+    if not FINNHUB_KEY:
+        return None
+    # Finnhub uses bare symbol without exchange suffix
+    fh_symbol = symbol.split(".")[0] if "." in symbol else symbol
+    from_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(
+                "https://finnhub.io/api/v1/company-news",
+                params={"symbol": fh_symbol, "from": from_date, "to": to_date, "token": FINNHUB_KEY},
+            )
+            items = r.json()
+        if not isinstance(items, list) or not items:
+            return None
+        return [
+            {
+                "title": a.get("headline", ""),
+                "description": a.get("summary", ""),
+                "source": a.get("source", "Finnhub"),
+                "url": a.get("url", ""),
+                "publishedAt": datetime.fromtimestamp(a["datetime"]).isoformat() if a.get("datetime") else "",
+                "author": a.get("source", ""),
+            }
+            for a in items[:count]
+            if a.get("headline")
+        ] or None
+    except Exception as e:
+        logger.warning(f"Finnhub news error for {symbol}: {e}")
+        return None
 
 
 # =============================================================================
@@ -321,18 +363,24 @@ class NewsService:
             data['cached'] = True
             return data
         
-        # Try NewsAPI
+        # Try Finnhub company news (free, no commercial restrictions)
         articles = None
         source = "CURATED"
-        
-        if NEWSAPI_AVAILABLE:
+
+        if FINNHUB_KEY:
+            articles = await _fetch_from_finnhub(symbol, count)
+            if articles:
+                self.stats["api_fetches"] += 1
+                source = "FINNHUB"
+
+        # Try NewsAPI if Finnhub didn't deliver
+        if not articles and NEWSAPI_AVAILABLE:
             company_name = self._get_company_name(symbol)
             articles = _fetch_from_newsapi(f"{company_name} stock", page_size=count)
-            
             if articles:
                 self.stats["api_fetches"] += 1
                 source = "NEWSAPI"
-        
+
         # Fallback to curated
         if not articles:
             self.stats["fallback_used"] += 1

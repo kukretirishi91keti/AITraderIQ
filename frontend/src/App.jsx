@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { useAuth } from './context/AuthContext';
 import ConnectionStatus from './components/ConnectionStatus';
+import IndiaIndexBar from './components/IndiaIndexBar';
 import RiskDisclaimer from './components/RiskDisclaimer';
 import ToastNotification from './components/ToastNotification';
 import BacktestPanel from './components/BacktestPanel';
@@ -1068,6 +1069,9 @@ export default function App() {
           API Docs
         </a>
       </div>
+
+      {/* India Index Bar — Nifty 50 + Bank Nifty live levels */}
+      <IndiaIndexBar />
 
       {/* Header */}
       <header className="bg-gray-800 px-4 py-3 border-b border-gray-700">

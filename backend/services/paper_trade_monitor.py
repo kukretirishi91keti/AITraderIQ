@@ -67,7 +67,7 @@ async def _check_and_close(trade, svc, db: AsyncSession) -> bool:
     return True
 
 
-async def monitor_paper_trades(session_factory, interval_seconds: int = 60):
+async def monitor_paper_trades(session_factory, interval_seconds: int = 10):
     """Continuously monitor open paper trades and auto-close on triggered levels."""
     from database.models import PaperTrade
     from services.market_data_service import get_market_data_service
