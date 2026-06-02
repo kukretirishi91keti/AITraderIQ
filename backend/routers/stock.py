@@ -28,6 +28,10 @@ from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import logging
+import os
+import httpx
+
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
 import random
 import hashlib
 
@@ -206,6 +210,18 @@ async def get_quote(symbol: str):
         result = {"success": True, **quote}
         result.setdefault("symbol", symbol)
         result.setdefault("timestamp", datetime.now().isoformat())
+
+        # Attach circuit limits for Indian stocks (NSE daily price bands)
+        prev = quote.get("prevClose") or quote.get("price")
+        if prev and (symbol.endswith(".NS") or symbol.endswith(".BO")):
+            result["circuit_limits"] = {
+                "upper_10": round(prev * 1.10, 2),
+                "lower_10": round(prev * 0.90, 2),
+                "upper_20": round(prev * 1.20, 2),
+                "lower_20": round(prev * 0.80, 2),
+                "prev_close": round(prev, 2),
+            }
+
         return result
     except Exception as e:
         logger.error(f"Quote error for {symbol}: {e}")
@@ -867,6 +883,174 @@ async def get_financials(symbol: str):
     except Exception as e:
         logger.error(f"Financials error for {symbol}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch financials")
+
+
+# =============================================================================
+# MARKET STATUS — IST-aware open/pre-open/closed state
+# =============================================================================
+
+@router.get("/market-status")
+async def get_market_status():
+    """Return current NSE/BSE market session state in IST."""
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
+    day = now.weekday()  # 0=Mon, 6=Sun
+    hhmm = now.hour * 100 + now.minute
+    is_weekday = day < 5
+
+    # NSE holidays 2026 (approximate — update annually)
+    nse_holidays = {
+        "2026-01-26", "2026-03-25", "2026-04-02", "2026-04-14",
+        "2026-04-17", "2026-05-01", "2026-08-15", "2026-10-02",
+        "2026-10-20", "2026-10-21", "2026-11-04", "2026-12-25",
+    }
+    today_str = now.strftime("%Y-%m-%d")
+    is_holiday = today_str in nse_holidays
+
+    if not is_weekday or is_holiday:
+        session = "CLOSED"
+        label = "Closed" + (" (Holiday)" if is_holiday else " (Weekend)")
+    elif 900 <= hhmm < 915:
+        session = "PRE_OPEN"
+        label = "Pre-Open (9:00–9:15)"
+    elif 915 <= hhmm < 1530:
+        session = "OPEN"
+        label = "Market Open"
+    elif 1530 <= hhmm < 1600:
+        session = "POST_CLOSE"
+        label = "Post-Close (3:30–4:00)"
+    else:
+        session = "CLOSED"
+        label = "Closed"
+
+    return {
+        "session": session,
+        "label": label,
+        "ist_time": now.strftime("%H:%M IST"),
+        "ist_date": today_str,
+        "is_holiday": is_holiday,
+        "next_open": "Mon 9:15 AM IST" if day >= 4 else "Tomorrow 9:15 AM IST" if session == "CLOSED" else None,
+    }
+
+
+# =============================================================================
+# EARNINGS CALENDAR — upcoming results via Finnhub
+# =============================================================================
+
+@router.get("/earnings/{symbol}")
+async def get_earnings_calendar(symbol: str):
+    """Get upcoming and recent earnings dates via Finnhub."""
+    symbol = validate_symbol(symbol)
+    fh_symbol = symbol.split(".")[0] if "." in symbol else symbol
+    from_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    to_date   = (datetime.now() + timedelta(days=90)).strftime("%Y-%m-%d")
+
+    if not FINNHUB_KEY:
+        return {"success": True, "symbol": symbol, "earnings": [], "source": "UNAVAILABLE",
+                "message": "FINNHUB_API_KEY not configured"}
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            r = await client.get(
+                "https://finnhub.io/api/v1/calendar/earnings",
+                params={"symbol": fh_symbol, "from": from_date, "to": to_date, "token": FINNHUB_KEY},
+            )
+            data = r.json()
+        events = data.get("earningsCalendar", [])
+        return {
+            "success": True,
+            "symbol": symbol,
+            "earnings": [
+                {
+                    "date": e.get("date"),
+                    "epsEstimate": e.get("epsEstimate"),
+                    "epsActual": e.get("epsActual"),
+                    "revenueEstimate": e.get("revenueEstimate"),
+                    "revenueActual": e.get("revenueActual"),
+                    "quarter": e.get("quarter"),
+                    "year": e.get("year"),
+                }
+                for e in events
+            ],
+            "source": "FINNHUB",
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        logger.error(f"Earnings calendar error for {symbol}: {e}")
+        return {"success": False, "symbol": symbol, "earnings": [], "error": str(e)}
+
+
+# =============================================================================
+# FII/DII — Daily institutional flow data (NSE public data)
+# =============================================================================
+
+_fii_dii_cache: dict = {}
+
+@router.get("/fii-dii")
+async def get_fii_dii():
+    """Return today's FII/DII buy/sell data from NSE."""
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d")
+
+    if _fii_dii_cache.get("date") == today and _fii_dii_cache.get("data"):
+        return {**_fii_dii_cache["data"], "cached": True}
+
+    nse_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json, text/plain, */*",
+        "Referer": "https://www.nseindia.com/",
+    }
+    try:
+        async with httpx.AsyncClient(timeout=12.0, headers=nse_headers,
+                                     follow_redirects=True) as client:
+            # NSE requires a session cookie — prime it first
+            await client.get("https://www.nseindia.com/")
+            r = await client.get("https://www.nseindia.com/api/fiidiiTradeReact")
+            rows = r.json()
+
+        fii_buy = fii_sell = fii_net = dii_buy = dii_sell = dii_net = 0.0
+        date_label = today
+        for row in rows if isinstance(rows, list) else []:
+            cat = str(row.get("category", "")).upper()
+            try:
+                if "FII" in cat or "FPI" in cat:
+                    fii_buy  += float(row.get("buyValue",  0) or 0)
+                    fii_sell += float(row.get("sellValue", 0) or 0)
+                    fii_net  += float(row.get("netValue",  0) or 0)
+                    date_label = row.get("date", today)
+                elif "DII" in cat:
+                    dii_buy  += float(row.get("buyValue",  0) or 0)
+                    dii_sell += float(row.get("sellValue", 0) or 0)
+                    dii_net  += float(row.get("netValue",  0) or 0)
+            except (ValueError, TypeError):
+                continue
+
+        result = {
+            "success": True,
+            "date": date_label,
+            "fii": {"buy": round(fii_buy, 2), "sell": round(fii_sell, 2), "net": round(fii_net, 2)},
+            "dii": {"buy": round(dii_buy, 2), "sell": round(dii_sell, 2), "net": round(dii_net, 2)},
+            "source": "NSE",
+            "cached": False,
+        }
+        _fii_dii_cache["date"] = today
+        _fii_dii_cache["data"] = result
+        return result
+
+    except Exception as e:
+        logger.warning(f"FII/DII fetch failed: {e} — using simulated data")
+        import random, hashlib
+        seed = hashlib.md5(today.encode()).hexdigest()
+        rng = random.Random(seed)
+        fii_net = round(rng.uniform(-3000, 3000), 2)
+        dii_net = round(rng.uniform(-2000, 2000), 2)
+        return {
+            "success": True,
+            "date": today,
+            "fii": {"buy": 0, "sell": 0, "net": fii_net},
+            "dii": {"buy": 0, "sell": 0, "net": dii_net},
+            "source": "SIMULATED",
+            "cached": False,
+        }
 
 
 # =============================================================================

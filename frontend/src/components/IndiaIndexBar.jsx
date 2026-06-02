@@ -30,9 +30,31 @@ function IndexTile({ index }) {
   );
 }
 
+function MarketStatusBadge({ status }) {
+  if (!status) return null;
+  const cfg = {
+    OPEN: { dot: 'bg-green-400', text: 'text-green-300', bg: 'bg-green-900/30' },
+    PRE_OPEN: { dot: 'bg-yellow-400', text: 'text-yellow-300', bg: 'bg-yellow-900/30' },
+    POST_CLOSE: { dot: 'bg-blue-400', text: 'text-blue-300', bg: 'bg-blue-900/30' },
+    CLOSED: { dot: 'bg-gray-500', text: 'text-gray-400', bg: 'bg-gray-800' },
+  };
+  const c = cfg[status.session] || cfg.CLOSED;
+  return (
+    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded ${c.bg} border border-gray-700`}>
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${c.dot} ${status.session === 'OPEN' ? 'animate-pulse' : ''}`}
+      />
+      <span className={`text-xs font-medium ${c.text} whitespace-nowrap`}>{status.label}</span>
+      <span className="text-gray-500 text-xs">{status.ist_time}</span>
+    </div>
+  );
+}
+
 export default function IndiaIndexBar() {
   const [indices, setIndices] = useState([]);
-  const intervalRef = useRef(null);
+  const [marketStatus, setMarketStatus] = useState(null);
+  const indexRef = useRef(null);
+  const statusRef = useRef(null);
 
   const fetchIndices = () => {
     fetch(`${API_BASE}/api/v4/indices`)
@@ -43,17 +65,30 @@ export default function IndiaIndexBar() {
       .catch(() => {});
   };
 
+  const fetchStatus = () => {
+    fetch(`${API_BASE}/api/v4/market-status`)
+      .then((r) => r.json())
+      .then((d) => setMarketStatus(d))
+      .catch(() => {});
+  };
+
   useEffect(() => {
     fetchIndices();
-    intervalRef.current = setInterval(fetchIndices, 5000);
-    return () => clearInterval(intervalRef.current);
+    fetchStatus();
+    indexRef.current = setInterval(fetchIndices, 5000);
+    statusRef.current = setInterval(fetchStatus, 30000);
+    return () => {
+      clearInterval(indexRef.current);
+      clearInterval(statusRef.current);
+    };
   }, []);
 
-  if (!indices.length) return null;
+  if (!indices.length && !marketStatus) return null;
 
   return (
     <div className="bg-gray-900 border-b border-gray-700 px-4 py-1 flex items-center gap-3 overflow-x-auto">
       <span className="text-gray-500 text-xs font-medium whitespace-nowrap">NSE</span>
+      <MarketStatusBadge status={marketStatus} />
       {indices.map((idx) => (
         <IndexTile key={idx.symbol} index={idx} />
       ))}

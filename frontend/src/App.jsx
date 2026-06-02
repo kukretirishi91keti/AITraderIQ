@@ -73,6 +73,8 @@ import DailyBriefing from './components/DailyBriefing';
 import TradeSetupPanel from './components/TradeSetupPanel';
 import SectorHeatmap from './components/SectorHeatmap';
 import GlossaryTooltip from './components/GlossaryTooltip';
+import EarningsTab from './components/EarningsTab';
+import FiiDiiTab from './components/FiiDiiTab';
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -1735,6 +1737,21 @@ export default function App() {
                   </span>
                 )}
               </div>
+              {/* Circuit limits — NSE stocks only */}
+              {quote?.circuit_limits &&
+                (selectedMarket === 'India' || selectedMarket === 'India_BSE') && (
+                  <div className="flex items-center gap-3 text-xs mt-1">
+                    <span className="text-gray-500">Circuit:</span>
+                    <span className="text-red-400">
+                      ↓ ₹{quote.circuit_limits.lower_10.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-gray-500">|</span>
+                    <span className="text-green-400">
+                      ↑ ₹{quote.circuit_limits.upper_10.toLocaleString('en-IN')}
+                    </span>
+                    <span className="text-gray-600">(±10% band)</span>
+                  </div>
+                )}
             </div>
             <div className="flex gap-2 flex-wrap">
               <button
@@ -1820,6 +1837,9 @@ export default function App() {
               'news',
               'AI scanner',
               'sectors',
+              ...(selectedMarket === 'India' || selectedMarket === 'India_BSE'
+                ? ['earnings', 'fii/dii']
+                : []),
             ].map((tab) => (
               <button
                 key={tab}
@@ -2109,6 +2129,10 @@ export default function App() {
             {activeTab === 'sectors' && (
               <SectorHeatmap apiBase={API_BASE} onSymbolSelect={handleSymbolSelect} />
             )}
+
+            {activeTab === 'earnings' && <EarningsTab symbol={selectedSymbol} apiBase={API_BASE} />}
+
+            {activeTab === 'fii/dii' && <FiiDiiTab apiBase={API_BASE} />}
           </div>
         </main>
 
