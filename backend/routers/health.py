@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import time
+import os
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -160,3 +161,50 @@ async def liveness_check() -> Dict[str, str]:
 def get_metrics() -> HealthMetrics:
     """Get the global metrics instance."""
     return metrics
+
+
+@router.get("/config-status")
+async def config_status() -> Dict[str, Any]:
+    """
+    Public endpoint — shows which env vars are SET (not their values).
+    Use this to verify Render is injecting secrets correctly after a deploy.
+    Safe to expose: only booleans, no key material.
+    """
+    td_key  = os.getenv("TWELVE_DATA_API_KEY", "")
+    fh_key  = os.getenv("FINNHUB_API_KEY", "")
+    groq    = os.getenv("GROQ_API_KEY", "")
+    db_url  = os.getenv("DATABASE_URL", "")
+    sg_key  = os.getenv("SENDGRID_API_KEY", "")
+    demo    = os.getenv("DEMO_MODE", "true")
+    jwt     = os.getenv("JWT_SECRET_KEY", "")
+
+    def _preview(k):
+        if not k:
+            return None
+        return f"{k[:4]}...{k[-4:]}" if len(k) > 8 else "set"
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "demo_mode": demo.lower() == "true",
+        "keys": {
+            "TWELVE_DATA_API_KEY": {"set": bool(td_key), "preview": _preview(td_key)},
+            "FINNHUB_API_KEY":     {"set": bool(fh_key), "preview": _preview(fh_key)},
+            "GROQ_API_KEY":        {"set": bool(groq),   "preview": _preview(groq)},
+            "SENDGRID_API_KEY":    {"set": bool(sg_key),  "preview": _preview(sg_key)},
+            "DATABASE_URL":        {"set": bool(db_url),  "postgres": "postgresql" in db_url},
+            "JWT_SECRET_KEY":      {"set": bool(jwt),     "strong": len(jwt) >= 32},
+        },
+        "data_sources": {
+            "india_nse": "TWELVE_DATA" if td_key else "SIMULATED",
+            "us_stocks":  "FINNHUB"    if fh_key else "SIMULATED",
+            "ai_chat":    "GROQ"       if groq   else "RULE_BASED",
+            "email_alerts": "SENDGRID" if sg_key  else "DISABLED",
+            "database":   "POSTGRES"   if ("postgresql" in db_url) else "SQLITE",
+        },
+        "readiness": {
+            "can_serve_india_live": bool(td_key and demo.lower() != "true"),
+            "can_serve_us_live":    bool(fh_key and demo.lower() != "true"),
+            "auth_works":           bool(jwt),
+            "db_persistent":        "postgresql" in db_url,
+        },
+    }

@@ -10,10 +10,90 @@ Provides company financial data:
 """
 
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+TWELVE_DATA_KEY = os.getenv("TWELVE_DATA_API_KEY", "")
+FINNHUB_KEY = os.getenv("FINNHUB_API_KEY", "")
+
+
+def _is_indian(symbol: str) -> bool:
+    return symbol.endswith(".NS") or symbol.endswith(".BO")
+
+
+def _to_td_symbol(symbol: str) -> str:
+    """RELIANCE.NS → RELIANCE:NSE, INFY.BO → INFY:BSE"""
+    if symbol.endswith(".NS"):
+        return f"{symbol[:-3]}:NSE"
+    if symbol.endswith(".BO"):
+        return f"{symbol[:-3]}:BSE"
+    return symbol
+
+
+async def _fetch_twelvedata_fundamentals(symbol: str) -> Optional[Dict[str, Any]]:
+    """Fetch fundamentals from Twelve Data for NSE/BSE stocks."""
+    if not TWELVE_DATA_KEY or not _is_indian(symbol):
+        return None
+    td_sym = _to_td_symbol(symbol)
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.twelvedata.com/fundamentals",
+                params={"symbol": td_sym, "apikey": TWELVE_DATA_KEY},
+            )
+            d = r.json()
+        if d.get("status") == "error" or "valuations_metrics" not in d:
+            return None
+        vm = d.get("valuations_metrics", {})
+        stats = d.get("statistics", {})
+        balance = d.get("balance_sheet", {})
+        income = d.get("income_statement", {})
+        overview = d.get("overview", {})
+        return {
+            "symbol": symbol,
+            "name": overview.get("name", symbol),
+            "sector": overview.get("sector", "N/A"),
+            "industry": overview.get("industry", "N/A"),
+            "pe": _safe_float(vm.get("pe")),
+            "forwardPe": _safe_float(vm.get("forward_pe")),
+            "priceToBook": _safe_float(vm.get("price_to_book")),
+            "peg": _safe_float(vm.get("peg_ratio")),
+            "eps": _safe_float(stats.get("eps")),
+            "marketCap": _safe_float(overview.get("market_capitalization")),
+            "marketCapFormatted": _format_large_number(_safe_float(overview.get("market_capitalization")), "₹"),
+            "revenue": _safe_float(income.get("total_revenue")),
+            "revenueFormatted": _format_large_number(_safe_float(income.get("total_revenue")), "₹"),
+            "netIncome": _safe_float(income.get("net_income")),
+            "netIncomeFormatted": _format_large_number(_safe_float(income.get("net_income")), "₹"),
+            "dividendYield": _safe_float(stats.get("dividend_yield")),
+            "debtToEquity": _safe_float(balance.get("total_debt")) and _safe_float(balance.get("total_equity")) and (
+                _safe_float(balance.get("total_debt")) / _safe_float(balance.get("total_equity"))
+                if _safe_float(balance.get("total_equity")) else None
+            ),
+            "beta": _safe_float(stats.get("beta")),
+            "fiftyTwoWeekHigh": _safe_float(stats.get("52_week_high")),
+            "fiftyTwoWeekLow": _safe_float(stats.get("52_week_low")),
+            "currency": "INR",
+            "dataQuality": "LIVE",
+            "source": "TWELVE_DATA",
+            "timestamp": datetime.now().isoformat(),
+        }
+    except Exception as e:
+        logger.warning(f"Twelve Data fundamentals error for {symbol}: {e}")
+        return None
+
+
+def _safe_float(v) -> Optional[float]:
+    try:
+        return float(v) if v not in (None, "", "None", "N/A") else None
+    except (ValueError, TypeError):
+        return None
+
 
 # Try imports
 try:
@@ -387,13 +467,19 @@ class FinancialsService:
             data['cached'] = True
             return data
         
-        # Try yfinance
+        # 1. Twelve Data — primary for Indian (NSE/BSE) stocks
         financials = None
-        if YFINANCE_AVAILABLE:
+        if _is_indian(symbol):
+            financials = await _fetch_twelvedata_fundamentals(symbol)
+            if financials:
+                self.stats["live_fetches"] += 1
+
+        # 2. yfinance — primary for US, fallback for India
+        if not financials and YFINANCE_AVAILABLE:
             financials = await run_in_threadpool(_fetch_financials_sync, symbol)
             if financials:
                 self.stats["live_fetches"] += 1
-        
+
         # Fallback
         if not financials:
             self.stats["fallback_used"] += 1

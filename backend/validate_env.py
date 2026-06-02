@@ -69,3 +69,23 @@ def validate_environment():
         sys.exit(1)
 
     print(f"[ENV] Validation passed ({len(warnings)} warnings)")
+
+    # ── Print API key status clearly so Render logs show it on every deploy ──
+    td_key  = os.getenv("TWELVE_DATA_API_KEY", "")
+    fh_key  = os.getenv("FINNHUB_API_KEY", "")
+    sg_key  = os.getenv("SENDGRID_API_KEY", "")
+
+    def _mask(k):
+        if not k:
+            return "NOT SET ❌"
+        if len(k) <= 8:
+            return "SET (short) ✓"
+        return f"{k[:4]}...{k[-4:]} ✓"
+
+    print("[API KEYS]")
+    print(f"  TWELVE_DATA_API_KEY : {_mask(td_key)}")
+    print(f"  FINNHUB_API_KEY     : {_mask(fh_key)}")
+    print(f"  GROQ_API_KEY        : {'SET ✓' if groq_key else 'NOT SET ❌'}")
+    print(f"  SENDGRID_API_KEY    : {'SET ✓' if sg_key else 'NOT SET (email alerts disabled)'}")
+    print(f"  DATABASE_URL        : {'SET ✓' if db_url else 'NOT SET ❌ (using SQLite)'}")
+

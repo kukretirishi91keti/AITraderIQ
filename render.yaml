@@ -22,3 +22,7 @@ services:
         sync: false  # Set in Render dashboard - twelvedata.com ($8/mo, India/NSE primary)
       - key: FINNHUB_API_KEY
         sync: false  # Set in Render dashboard - finnhub.io (free, US stocks + news)
+      - key: SENDGRID_API_KEY
+        sync: false  # Set in Render dashboard - sendgrid.com (free 100/day, price alert emails)
+      - key: ALERT_FROM_EMAIL
+        sync: false  # Set in Render dashboard - verified sender email in SendGrid (e.g. alerts@yourdomain.com)
