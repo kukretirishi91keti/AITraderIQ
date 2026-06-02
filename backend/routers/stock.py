@@ -870,6 +870,38 @@ async def get_financials(symbol: str):
 
 
 # =============================================================================
+# INDICES ENDPOINT — Nifty 50 + Bank Nifty live levels (India dashboard bar)
+# =============================================================================
+
+@router.get("/indices")
+async def get_india_indices():
+    """Return live Nifty 50 and Bank Nifty index levels via Twelve Data."""
+    import asyncio as _asyncio
+    svc = get_market_data_service()
+
+    nifty_task = _asyncio.create_task(svc.get_quote("NIFTY50.NS"))
+    banknifty_task = _asyncio.create_task(svc.get_quote("BANKNIFTY.NS"))
+    nifty, banknifty = await _asyncio.gather(nifty_task, banknifty_task, return_exceptions=True)
+
+    def _safe(q, name, symbol):
+        if isinstance(q, Exception) or not q:
+            return {"name": name, "symbol": symbol, "price": None, "change": None,
+                    "changePercent": None, "dataQuality": "UNAVAILABLE"}
+        return {"name": name, "symbol": symbol, "price": q.get("price"),
+                "change": q.get("change"), "changePercent": q.get("changePercent"),
+                "dataQuality": q.get("dataQuality", "LIVE")}
+
+    return {
+        "success": True,
+        "indices": [
+            _safe(nifty, "NIFTY 50", "NIFTY50.NS"),
+            _safe(banknifty, "BANK NIFTY", "BANKNIFTY.NS"),
+        ],
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+# =============================================================================
 # HEALTH ENDPOINT
 # =============================================================================
 

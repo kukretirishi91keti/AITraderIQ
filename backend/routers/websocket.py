@@ -107,11 +107,10 @@ _broadcast_running = False
 
 async def price_broadcast_loop():
     """
-    Background loop that streams real-time prices to subscribed clients.
-
-    Priority:
-      1. Finnhub WebSocket — sub-second tick data (when FINNHUB_API_KEY is set)
-      2. REST polling fallback — 5s interval via market_data_service (yfinance/MME)
+    Hybrid broadcast loop:
+      - Finnhub WebSocket for US stocks (real-time ticks)
+      - REST polling every 5s for Indian stocks (.NS/.BO) via Twelve Data
+      - Pure polling fallback when no Finnhub key is set
     """
     global _broadcast_running
     if _broadcast_running:
@@ -122,11 +121,45 @@ async def price_broadcast_loop():
     finnhub_key = os.getenv("FINNHUB_API_KEY", "")
 
     if finnhub_key:
-        await _finnhub_ws_loop(finnhub_key)
+        # Run Finnhub WS (US) and India polling concurrently
+        await asyncio.gather(
+            _finnhub_ws_loop(finnhub_key),
+            _india_polling_loop(),
+            return_exceptions=True,
+        )
     else:
         await _polling_fallback_loop()
 
     _broadcast_running = False
+
+
+async def _india_polling_loop():
+    """Poll Twelve Data every 5s for Indian stocks (.NS / .BO symbols)."""
+    try:
+        from services.market_data_service import get_market_data_service
+        svc = get_market_data_service()
+        while True:
+            symbols = manager.get_all_subscribed_symbols()
+            indian = [s for s in symbols if s.endswith(".NS") or s.endswith(".BO")]
+            for symbol in indian:
+                try:
+                    quote = await svc.get_quote(symbol)
+                    if quote and quote.get("price"):
+                        await manager.broadcast_to_symbol(symbol, {
+                            "type": "quote",
+                            "symbol": symbol,
+                            "price": quote.get("price"),
+                            "change": quote.get("change"),
+                            "changePercent": quote.get("changePercent"),
+                            "volume": quote.get("volume"),
+                            "dataQuality": quote.get("dataQuality", "LIVE"),
+                            "timestamp": datetime.now().isoformat(),
+                        })
+                except Exception as e:
+                    logger.warning(f"India poll error for {symbol}: {e}")
+            await asyncio.sleep(5)
+    except asyncio.CancelledError:
+        logger.info("India polling loop stopped")
 
 
 async def _finnhub_ws_loop(finnhub_key: str):

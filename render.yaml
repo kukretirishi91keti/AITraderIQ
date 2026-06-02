@@ -13,8 +13,12 @@ services:
       - key: DEMO_MODE
         value: "false"
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./traderai.db
+        sync: false  # Set in Render dashboard: postgresql+asyncpg://neondb_owner:PASSWORD@ep-holy-morning-ao6v1ghx.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
       - key: PYTHON_VERSION
         value: "3.11"
       - key: GROQ_API_KEY
-        sync: false  # Set manually in Render dashboard - get free key at console.groq.com
+        sync: false  # Set in Render dashboard - free key at console.groq.com
+      - key: TWELVE_DATA_API_KEY
+        sync: false  # Set in Render dashboard - twelvedata.com ($8/mo, India/NSE primary)
+      - key: FINNHUB_API_KEY
+        sync: false  # Set in Render dashboard - finnhub.io (free, US stocks + news)
