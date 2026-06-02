@@ -2,8 +2,10 @@ name: Daily Load Test (10 Users)
 
 on:
   schedule:
-    # 3:15 UTC = 8:45 AM IST — runs Mon-Fri before NSE market open
+    # 3:15 UTC = 8:45 AM IST — before NSE/BSE market open (Mon-Fri)
     - cron: '15 3 * * 1-5'
+    # 10:45 UTC = 4:15 PM IST — after NSE/BSE market close (Mon-Fri)
+    - cron: '45 10 * * 1-5'
   # Also lets you trigger it manually from GitHub UI
   workflow_dispatch:
     inputs:
