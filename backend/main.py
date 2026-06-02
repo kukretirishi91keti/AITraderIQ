@@ -69,16 +69,18 @@ VERSION = "6.0.0"
 loaded_routers = []
 
 
+# Keep warm list small — Twelve Data free plan = 800 credits/day.
+# Each cold start burns 1 credit per symbol. 5 symbols × many cold starts
+# stays within budget; Yahoo Direct handles everything else as fallback.
 _NIFTY_WARM_SYMBOLS = [
-    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-    "BAJFINANCE.NS", "BHARTIARTL.NS", "SBIN.NS", "LT.NS", "KOTAKBANK.NS",
-    "WIPRO.NS", "AXISBANK.NS", "MARUTI.NS", "SUNPHARMA.NS", "TITAN.NS",
+    "RELIANCE.NS", "HDFCBANK.NS", "TCS.NS", "INFY.NS", "ICICIBANK.NS",
 ]
 
 async def _warm_nifty_cache():
-    """Staggered startup fetch for top NSE stocks — populates LKG cache so
-    the first real user request is a cache hit instead of a cold Twelve Data call."""
-    await asyncio.sleep(5)  # Let the server finish starting up first
+    """Warm LKG cache for the 5 most-viewed NSE stocks at startup.
+    Uses 30s gaps to stay within the 8-req/min Twelve Data limit and
+    conserve the 800/day credit budget across multiple cold starts."""
+    await asyncio.sleep(10)  # Let the server fully start first
     try:
         from services.market_data_service import get_market_data_service
         svc = get_market_data_service()
@@ -88,7 +90,7 @@ async def _warm_nifty_cache():
                 logger.info(f"Cache warm: {sym}")
             except Exception as e:
                 logger.warning(f"Cache warm failed for {sym}: {e}")
-            await asyncio.sleep(8)  # 8s gap → max ~7.5 req/min, under Twelve Data 8/min limit
+            await asyncio.sleep(30)  # 30s gap = 2 req/min, conserves daily credits
     except Exception as e:
         logger.warning(f"Cache warmer error: {e}")
 
