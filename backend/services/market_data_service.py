@@ -453,13 +453,21 @@ async def _fetch_twelvedata_history_async(
         return None
 
 
+# Twelve Data quota guard — when daily credits are exhausted (429), skip TD calls
+# for 4 hours rather than hammering the API every 2 minutes.
+_td_backoff_until: Optional[datetime] = None
+
+
 async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
     """
     Fetch real-time quote from Twelve Data for Indian NSE/BSE stocks.
     Only called when TWELVE_DATA_API_KEY is set.
     """
+    global _td_backoff_until
     if not TWELVE_DATA_KEY:
         return None
+    if _td_backoff_until and datetime.now() < _td_backoff_until:
+        return None          # Quota exhausted — skip until backoff window expires
     td_symbol = _to_twelvedata_symbol(symbol)
     if not td_symbol:
         return None          # Not an Indian symbol; let Finnhub/yfinance handle it
@@ -474,7 +482,13 @@ async def _fetch_twelvedata_quote_async(symbol: str) -> Optional[Dict[str, Any]]
             msg = d.get("message", "")
             is_rate_limit = d.get("code") == 429 or "429" in str(d.get("code", "")) or "run out" in msg.lower() or "too many" in msg.lower()
             if is_rate_limit:
-                logger.warning(f"Twelve Data RATE LIMIT hit for {td_symbol} — using LKG/MME fallback")
+                # Back off for 4 hours — daily quota resets at midnight UTC
+                _td_backoff_until = datetime.now() + timedelta(hours=4)
+                logger.warning(
+                    f"Twelve Data daily quota EXHAUSTED — backing off for 4h "
+                    f"(resumes ~{_td_backoff_until.strftime('%H:%M')}). "
+                    f"Falling through to Yahoo Direct for Indian stocks."
+                )
             else:
                 logger.warning(f"Twelve Data no data for {td_symbol}: {msg}")
             return None
