@@ -22,11 +22,10 @@ function IndexTile({ index }) {
         ₹{index.price.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
       </span>
       <span className={`text-xs font-medium ${color}`}>
-        {sign}{index.changePercent?.toFixed(2)}%
+        {sign}
+        {index.changePercent?.toFixed(2)}%
       </span>
-      {index.dataQuality === 'SIMULATED' && (
-        <span className="text-yellow-600 text-xs">~</span>
-      )}
+      {index.dataQuality === 'SIMULATED' && <span className="text-yellow-600 text-xs">~</span>}
     </div>
   );
 }
