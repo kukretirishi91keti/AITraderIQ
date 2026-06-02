@@ -75,6 +75,7 @@ import SectorHeatmap from './components/SectorHeatmap';
 import GlossaryTooltip from './components/GlossaryTooltip';
 import EarningsTab from './components/EarningsTab';
 import FiiDiiTab from './components/FiiDiiTab';
+import OptionChainTab from './components/OptionChainTab';
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -1838,7 +1839,7 @@ export default function App() {
               'AI scanner',
               'sectors',
               ...(selectedMarket === 'India' || selectedMarket === 'India_BSE'
-                ? ['earnings', 'fii/dii']
+                ? ['earnings', 'fii/dii', 'option chain']
                 : []),
             ].map((tab) => (
               <button
@@ -2133,6 +2134,10 @@ export default function App() {
             {activeTab === 'earnings' && <EarningsTab symbol={selectedSymbol} apiBase={API_BASE} />}
 
             {activeTab === 'fii/dii' && <FiiDiiTab apiBase={API_BASE} />}
+
+            {activeTab === 'option chain' && (
+              <OptionChainTab symbol={selectedSymbol} apiBase={API_BASE} />
+            )}
           </div>
         </main>
 

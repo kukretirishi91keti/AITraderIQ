@@ -1086,6 +1086,132 @@ async def get_india_indices():
 
 
 # =============================================================================
+# OPTION CHAIN — NSE public API (read-only, 3-min cache)
+# =============================================================================
+
+_option_chain_cache: dict = {}
+_NSE_OC_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.nseindia.com/",
+}
+
+@router.get("/option-chain/{underlying}")
+async def get_option_chain(underlying: str, strikes: int = 10):
+    """
+    Return ATM ± N strikes option chain for NIFTY, BANKNIFTY, or an NSE equity.
+    Cached for 3 minutes to stay well within NSE rate limits.
+    """
+    underlying = underlying.upper().strip()
+    cache_key = underlying
+    cached = _option_chain_cache.get(cache_key)
+    if cached and (datetime.now() - cached["ts"]).seconds < 180:
+        return {**cached["data"], "cached": True}
+
+    # Choose NSE endpoint: indices vs equities
+    index_names = {"NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"}
+    if underlying in index_names:
+        nse_url = f"https://www.nseindia.com/api/option-chain-indices?symbol={underlying}"
+    else:
+        # Strip .NS / .BO suffix for equity option chain
+        sym_clean = underlying.replace(".NS", "").replace(".BO", "")
+        nse_url = f"https://www.nseindia.com/api/option-chain-equities?symbol={sym_clean}"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0, headers=_NSE_OC_HEADERS,
+                                      follow_redirects=True) as client:
+            # Prime NSE session cookie
+            await client.get("https://www.nseindia.com/", timeout=8.0)
+            r = await client.get(nse_url, timeout=12.0)
+            raw = r.json()
+
+        records = raw.get("records", {})
+        all_data = records.get("data", [])
+        expiry_dates = records.get("expiryDates", [])
+        underlying_value = records.get("underlyingValue", 0)
+        nearest_expiry = expiry_dates[0] if expiry_dates else None
+
+        # Filter to nearest expiry
+        if nearest_expiry:
+            all_data = [d for d in all_data if d.get("expiryDate") == nearest_expiry]
+
+        # Sort by strike and find ATM
+        all_data.sort(key=lambda x: x.get("strikePrice", 0))
+        atm_strike = min(
+            (d["strikePrice"] for d in all_data if d.get("strikePrice")),
+            key=lambda s: abs(s - (underlying_value or 0)),
+            default=0,
+        )
+
+        # Keep strikes_count strikes on each side of ATM
+        strikes_list = sorted({d["strikePrice"] for d in all_data if d.get("strikePrice")})
+        try:
+            atm_idx = strikes_list.index(atm_strike)
+        except ValueError:
+            atm_idx = len(strikes_list) // 2
+        lo = max(0, atm_idx - strikes)
+        hi = min(len(strikes_list), atm_idx + strikes + 1)
+        selected_strikes = set(strikes_list[lo:hi])
+
+        # Build rows
+        rows = []
+        for d in all_data:
+            sp = d.get("strikePrice")
+            if sp not in selected_strikes:
+                continue
+            ce = d.get("CE", {}) or {}
+            pe = d.get("PE", {}) or {}
+            rows.append({
+                "strikePrice": sp,
+                "isATM": sp == atm_strike,
+                "CE": {
+                    "oi": ce.get("openInterest", 0),
+                    "oiChange": ce.get("changeinOpenInterest", 0),
+                    "volume": ce.get("totalTradedVolume", 0),
+                    "iv": ce.get("impliedVolatility", 0),
+                    "ltp": ce.get("lastPrice", 0),
+                    "bid": ce.get("bidprice", 0),
+                    "ask": ce.get("askPrice", 0),
+                },
+                "PE": {
+                    "oi": pe.get("openInterest", 0),
+                    "oiChange": pe.get("changeinOpenInterest", 0),
+                    "volume": pe.get("totalTradedVolume", 0),
+                    "iv": pe.get("impliedVolatility", 0),
+                    "ltp": pe.get("lastPrice", 0),
+                    "bid": pe.get("bidprice", 0),
+                    "ask": pe.get("askPrice", 0),
+                },
+            })
+
+        result = {
+            "success": True,
+            "underlying": underlying,
+            "underlyingValue": underlying_value,
+            "atmStrike": atm_strike,
+            "expiryDate": nearest_expiry,
+            "expiryDates": expiry_dates[:4],
+            "rows": rows,
+            "source": "NSE",
+            "cached": False,
+            "timestamp": datetime.now().isoformat(),
+        }
+        _option_chain_cache[cache_key] = {"data": result, "ts": datetime.now()}
+        return result
+
+    except Exception as exc:
+        logger.warning("Option chain fetch failed for %s: %s", underlying, exc)
+        return {
+            "success": False,
+            "underlying": underlying,
+            "rows": [],
+            "error": "Option chain data temporarily unavailable. NSE API may be rate-limiting.",
+            "cached": False,
+        }
+
+
+# =============================================================================
 # HEALTH ENDPOINT
 # =============================================================================
 

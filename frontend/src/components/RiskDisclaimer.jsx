@@ -24,8 +24,9 @@ export default function RiskDisclaimer() {
         <span className="text-yellow-400 font-medium">Disclaimer: </span>
         AITraderIQ provides simulated or delayed market data for{' '}
         <strong>educational purposes only</strong>. This is <strong>not financial advice</strong>.
-        Trading involves risk of loss. Past performance does not guarantee future results. Verify
-        all data independently.
+        Not registered with SEBI as an investment advisor. Trading in equities and derivatives
+        involves risk of loss. Past performance does not guarantee future results. Verify all data
+        independently before trading.
       </p>
       <button
         onClick={handleDismiss}
