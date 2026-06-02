@@ -103,6 +103,14 @@ function TradeSetupNoATR({ symbol, entry, currency, signal }) {
   );
 }
 
+// ATR multipliers per trader style
+const STYLE_ATR = {
+  Scalper: { stop: 0.5, t1: 1.0, t2: 1.5 },
+  Day: { stop: 1.0, t1: 1.5, t2: 2.5 },
+  Swing: { stop: 1.5, t1: 2.0, t2: 3.0 },
+  Position: { stop: 2.0, t1: 3.0, t2: 5.0 },
+};
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function TradeSetupPanel({
   symbol,
@@ -112,6 +120,7 @@ export default function TradeSetupPanel({
   currency = '₹',
   onPaperTrade,
   loading = false,
+  traderStyle = 'Swing',
 }) {
   // Show skeleton while data is in-flight
   if (loading) return <TradeSetupSkeleton />;
@@ -135,10 +144,13 @@ export default function TradeSetupPanel({
   const isSell = SELL_SIGNALS.has(signalRaw);
   const isBuy = BUY_SIGNALS.has(signalRaw);
 
+  // ATR multipliers driven by trading style
+  const mults = STYLE_ATR[traderStyle] || STYLE_ATR.Swing;
+
   // Price levels
-  const stop = isSell ? entry + 1.5 * atr : entry - 1.5 * atr;
-  const target1 = isSell ? entry - 2 * atr : entry + 2 * atr; // conservative
-  const target2 = isSell ? entry - 3 * atr : entry + 3 * atr; // aggressive
+  const stop = isSell ? entry + mults.stop * atr : entry - mults.stop * atr;
+  const target1 = isSell ? entry - mults.t1 * atr : entry + mults.t1 * atr;
+  const target2 = isSell ? entry - mults.t2 * atr : entry + mults.t2 * atr;
 
   const riskPerShare = Math.abs(entry - stop);
   const rewardPerShare = Math.abs(target1 - entry);
@@ -242,8 +254,9 @@ export default function TradeSetupPanel({
 
       {/* ── Disclaimer ── */}
       <p className="text-[10px] text-gray-500 leading-relaxed">
-        Stop = 1.5&times;ATR {isSell ? 'above' : 'below'} entry &middot; Target = 2-3&times;ATR{' '}
-        {isSell ? 'below' : 'above'} &middot; 2% capital risk rule
+        [{traderStyle}] Stop = {mults.stop}&times;ATR {isSell ? 'above' : 'below'} entry &middot;
+        Target = {mults.t1}–{mults.t2}&times;ATR {isSell ? 'below' : 'above'} &middot; 2% capital
+        risk rule
       </p>
     </div>
   );

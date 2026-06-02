@@ -76,6 +76,7 @@ import GlossaryTooltip from './components/GlossaryTooltip';
 import EarningsTab from './components/EarningsTab';
 import FiiDiiTab from './components/FiiDiiTab';
 import OptionChainTab from './components/OptionChainTab';
+import TraderContextRibbon from './components/TraderContextRibbon';
 
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
@@ -1012,6 +1013,21 @@ export default function App() {
     setLoading(true);
   }, [chartInterval]);
 
+  // Auto-adapt chart interval and default tab when trader style changes
+  useEffect(() => {
+    const styleDefaults = {
+      Scalper: { interval: '5m', tab: 'technicals' },
+      Day: { interval: '15m', tab: 'technicals' },
+      Swing: { interval: '1d', tab: 'backtest' },
+      Position: { interval: '1wk', tab: 'fundamentals' },
+    };
+    const d = styleDefaults[traderStyle];
+    if (d) {
+      setChartInterval(d.interval);
+      setActiveTab(d.tab);
+    }
+  }, [traderStyle]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ============================================================
   // SYNC USER DATA FROM BACKEND ON LOGIN
   // ============================================================
@@ -1801,6 +1817,9 @@ export default function App() {
             </span>
           </div>
 
+          {/* Trader style playbook ribbon */}
+          <TraderContextRibbon traderStyle={traderStyle} />
+
           {/* Chart */}
           <div
             key={`chart-${selectedSymbol}-${chartInterval}`}
@@ -1822,6 +1841,7 @@ export default function App() {
             investorProfile={investorProfile}
             currency={currentMarket.currency}
             loading={loading}
+            traderStyle={traderStyle}
             onPaperTrade={(prefill) => {
               setPaperTradeWizardPrefill(prefill);
               setShowPaperTradeWizard(true);
