@@ -3,14 +3,24 @@ End-to-end trader-type workflow tests.
 Runs against a live server at http://127.0.0.1:8765.
 Tests every user type × every feature discussed in the review session.
 
-Run with:
+Run locally:
+    # Start server first:
+    DEMO_MODE=true JWT_SECRET_KEY="test-secret-key-minimum-32-chars-long" \\
+      DATABASE_URL="sqlite+aiosqlite:///./workflow_test.db" \\
+      python -m uvicorn main:app --port 8765
+
+    # Then run tests:
     pytest tests/test_trader_workflow_e2e.py -v --timeout=30
+
+In CI: handled by the e2e-test job in ci.yml (server started automatically).
 """
 
 import pytest
 import httpx
 import asyncio
 from datetime import datetime
+
+pytestmark = pytest.mark.e2e
 
 BASE = "http://127.0.0.1:8765"
 
