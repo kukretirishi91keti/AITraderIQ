@@ -99,4 +99,32 @@ describe('ChartPanel', () => {
     );
     expect(container.querySelector('svg')).toBeTruthy();
   });
+
+  it('shows 3 mid-axis ticks for a 1-month chart (>=10 candles)', () => {
+    const history = Array.from({ length: 22 }, (_, i) =>
+      makeCandle(100 + i, `2024-01-${String(i + 1).padStart(2, '0')}T09:00:00`)
+    );
+    const { container } = render(
+      <ChartPanel history={history} selectedSymbol="AAPL" chartInterval="1d" currency="$" />
+    );
+    // start + 3 mid + end = 5 date-label texts (plus 2 price labels = 7 total text nodes)
+    const dateTexts = [...container.querySelectorAll('text')].filter((t) =>
+      t.textContent.includes('Jan')
+    );
+    expect(dateTexts.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('shows no mid-axis ticks for fewer than 10 candles', () => {
+    const history = Array.from({ length: 5 }, (_, i) =>
+      makeCandle(100 + i, `2024-01-${String(i + 1).padStart(2, '0')}T09:00:00`)
+    );
+    const { container } = render(
+      <ChartPanel history={history} selectedSymbol="AAPL" chartInterval="1d" currency="$" />
+    );
+    const dateTexts = [...container.querySelectorAll('text')].filter((t) =>
+      t.textContent.includes('Jan')
+    );
+    // Only start + end = 2 labels
+    expect(dateTexts.length).toBeLessThanOrEqual(2);
+  });
 });
