@@ -66,10 +66,12 @@ function ChartPanel({ history, selectedSymbol, chartInterval, currency }) {
     const width = 700;
     const height = 200;
     const padding = 40;
+    // Guard against single-candle: division by (length-1) would produce Infinity/NaN
+    const xDivisor = Math.max(history.length - 1, 1);
 
     const points = history
       .map((h, i) => {
-        const x = padding + (i / (history.length - 1)) * (width - 2 * padding);
+        const x = padding + (i / xDivisor) * (width - 2 * padding);
         const y =
           height -
           padding -
