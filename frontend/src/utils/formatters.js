@@ -3,15 +3,30 @@
  * Extracted from App.jsx for reusability.
  */
 
-export const formatTimestamp = (timestamp, interval = '1d') => {
+export const formatTimestamp = (timestamp, interval = '1d', spansDays = false) => {
   if (timestamp === null || timestamp === undefined || timestamp === '') {
     return '';
   }
 
-  if (typeof timestamp === 'string' && timestamp.includes('T')) {
-    const date = new Date(timestamp);
+  // Twelve Data returns "2024-01-15 09:15:00" (space, not T) — normalize it
+  const normalized =
+    typeof timestamp === 'string' && !timestamp.includes('T')
+      ? timestamp.replace(' ', 'T')
+      : timestamp;
+
+  if (typeof normalized === 'string' && normalized.includes('T')) {
+    const date = new Date(normalized);
     if (!isNaN(date.getTime())) {
       if (['1m', '5m', '15m', '30m'].includes(interval)) {
+        // Multi-day intraday charts: include date so start/end labels differ
+        if (spansDays) {
+          return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
         return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       }
       if (interval === '1h') {
@@ -26,7 +41,7 @@ export const formatTimestamp = (timestamp, interval = '1d') => {
     }
   }
 
-  const numTs = Number(timestamp);
+  const numTs = Number(normalized);
   if (isNaN(numTs) || numTs <= 0) {
     return '';
   }
@@ -39,6 +54,14 @@ export const formatTimestamp = (timestamp, interval = '1d') => {
   }
 
   if (['1m', '5m', '15m', '30m'].includes(interval)) {
+    if (spansDays) {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   }
   if (interval === '1h') {
