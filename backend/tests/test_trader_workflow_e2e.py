@@ -85,10 +85,10 @@ async def test_demo_mode_never_returns_simulated_future_dates():
         r = await c.get("/api/v4/history/AAPL?period=1mo&interval=1d")
         assert r.status_code == 200
         candles = r.json().get("candles") or r.json().get("history") or r.json().get("data") or []
-        now = datetime.now()
+        now = datetime.utcnow()  # naive UTC — API returns naive timestamps
         future = [
-            c for c in candles
-            if datetime.fromisoformat(c["timestamp"].replace("Z", "")) > now
+            candle for candle in candles
+            if datetime.fromisoformat(candle["timestamp"].rstrip("Z").split("+")[0]) > now
         ]
         assert not future, f"{len(future)} future-dated candles returned: {future[:2]}"
 
@@ -99,8 +99,8 @@ async def test_demo_mode_no_weekend_candles():
         r = await c.get("/api/v4/history/AAPL?period=1mo&interval=1d")
         candles = r.json().get("candles") or r.json().get("history") or r.json().get("data") or []
         bad = [
-            c for c in candles
-            if datetime.fromisoformat(c["timestamp"].replace("Z", "")).weekday() >= 5
+            candle for candle in candles
+            if datetime.fromisoformat(candle["timestamp"].rstrip("Z").split("+")[0]).weekday() >= 5
         ]
         assert not bad, f"{len(bad)} weekend candles: {bad[:2]}"
 
