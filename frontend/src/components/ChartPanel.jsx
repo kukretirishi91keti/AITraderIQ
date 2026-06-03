@@ -120,6 +120,20 @@ function ChartPanel({ history, selectedSymbol, chartInterval, currency }) {
           }));
     const displayEndLabel = endLabel || 'Now';
 
+    // 3 mid-axis ticks — only shown when enough candles to avoid label overlap
+    const midTicks =
+      history.length >= 10
+        ? [0.25, 0.5, 0.75].map((pct) => {
+            const idx = Math.round(pct * (history.length - 1));
+            const candle = history[idx];
+            const ts = candle?.timestamp || candle?.date;
+            return {
+              x: padding + pct * (width - 2 * padding),
+              label: formatTimestamp(ts, chartInterval, spansDays),
+            };
+          })
+        : [];
+
     return (
       <svg viewBox={`0 0 ${width} ${height + 20}`} className="w-full h-64">
         <defs>
@@ -162,6 +176,21 @@ function ChartPanel({ history, selectedSymbol, chartInterval, currency }) {
         <text x={padding} y={height - padding + 20} fill="#9ca3af" fontSize="10">
           {displayStartLabel}
         </text>
+        {midTicks.map(
+          ({ x, label }) =>
+            label && (
+              <text
+                key={x}
+                x={x}
+                y={height - padding + 20}
+                fill="#9ca3af"
+                fontSize="10"
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            )
+        )}
         <text
           x={width - padding}
           y={height - padding + 20}

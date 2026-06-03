@@ -809,47 +809,75 @@ def _generate_mme_quote(symbol: str) -> Dict[str, Any]:
 
 
 def _generate_mme_history(
-    symbol: str, 
+    symbol: str,
     period: str = "1mo",
     interval: str = "1d"
 ) -> List[Dict]:
-    """Generate simulated historical data."""
+    """Generate simulated historical data (SIMULATED quality label)."""
     stock_info = GLOBAL_STOCKS.get(symbol, {})
     base_price = stock_info.get('basePrice', 100)
-    
-    # Determine number of candles
-    period_days = {'1d': 1, '5d': 5, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365}
+
+    # Trading-day counts (weekends excluded), matching what real providers return
+    period_days = {'1d': 1, '5d': 5, '1mo': 22, '3mo': 65, '6mo': 130, '1y': 252}
     days = period_days.get(period, 30)
-    
-    interval_map = {'1m': 1, '5m': 5, '15m': 15, '1h': 60, '1d': 1440}
-    
+
+    # Minutes between candles for intraday intervals
+    intraday_minutes = {'1m': 1, '5m': 5, '15m': 15, '30m': 30, '1h': 60}
+    candle_minutes = intraday_minutes.get(interval, None)
+
     seed = f"history:{symbol}:{period}:{interval}"
     rng = random.Random(hashlib.md5(seed.encode()).hexdigest())
-    
+
+    # Collect trading-day timestamps in reverse order (most recent first), then reverse
+    now = datetime.now()
+    timestamps = []
+    cursor = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    walked = 0
+
+    if candle_minutes:
+        # Intraday: generate candles within each trading day's session (09:15–15:30)
+        target_candles = min(days * (390 // candle_minutes), 200)
+        while len(timestamps) < target_candles and walked < days * 3:
+            if cursor.weekday() < 5:  # Mon–Fri only
+                session_start = cursor.replace(hour=9, minute=15)
+                session_end = cursor.replace(hour=15, minute=30)
+                t = session_end
+                while t >= session_start and len(timestamps) < target_candles:
+                    timestamps.append(t)
+                    t -= timedelta(minutes=candle_minutes)
+            cursor -= timedelta(days=1)
+            walked += 1
+    else:
+        # Daily / weekly: one candle per trading day, no weekends
+        target_candles = min(days, 200)
+        while len(timestamps) < target_candles and walked < days * 3:
+            if cursor.weekday() < 5:  # Mon–Fri only
+                timestamps.append(cursor)
+            cursor -= timedelta(days=1)
+            walked += 1
+
+    timestamps.reverse()  # chronological order
+
     candles = []
     current_price = base_price
-    
-    for i in range(min(days * 2, 200)):  # Cap at 200 candles
-        timestamp = datetime.now() - timedelta(days=days - i)
-        
-        # Random walk
+    for ts in timestamps:
         change_pct = (rng.random() - 0.48) * 3  # Slight upward bias
         current_price *= (1 + change_pct / 100)
-        
+
         open_price = current_price * (1 + (rng.random() - 0.5) * 0.01)
         close_price = current_price
         high = max(open_price, close_price) * (1 + rng.random() * 0.015)
         low = min(open_price, close_price) * (1 - rng.random() * 0.015)
-        
+
         candles.append({
-            'timestamp': timestamp.isoformat(),
+            'timestamp': ts.isoformat(),
             'open': round(open_price, 2),
             'high': round(high, 2),
             'low': round(low, 2),
             'close': round(close_price, 2),
             'volume': int(rng.random() * 20000000)
         })
-    
+
     return candles
 
 

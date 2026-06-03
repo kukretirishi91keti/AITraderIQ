@@ -2,6 +2,7 @@
 
 import pytest
 import pytest_asyncio
+from datetime import datetime
 from httpx import AsyncClient
 
 
@@ -127,3 +128,64 @@ async def test_demo_mode_never_errors(client: AsyncClient):
             f"Demo mode: {method} {path} returned {resp.status_code} — "
             f"expected 200. Body: {resp.text[:300]}"
         )
+
+
+# ---------------------------------------------------------------------------
+# 11. Simulator: no weekends, no future timestamps, correct candle count
+# ---------------------------------------------------------------------------
+
+def test_simulator_no_weekends_daily():
+    from services.market_data_service import _generate_mme_history
+    candles = _generate_mme_history("AAPL", "1mo", "1d")
+    assert candles, "Simulator must return candles"
+    bad = [
+        c for c in candles
+        if datetime.fromisoformat(c["timestamp"]).weekday() >= 5
+    ]
+    assert not bad, f"Simulator returned {len(bad)} weekend candles: {bad[:3]}"
+
+
+def test_simulator_no_future_timestamps():
+    from services.market_data_service import _generate_mme_history
+    candles = _generate_mme_history("AAPL", "1mo", "1d")
+    now = datetime.now()
+    future = [
+        c for c in candles
+        if datetime.fromisoformat(c["timestamp"]) > now
+    ]
+    assert not future, f"Simulator returned {len(future)} future candles"
+
+
+def test_simulator_correct_candle_count_1mo():
+    from services.market_data_service import _generate_mme_history
+    candles = _generate_mme_history("AAPL", "1mo", "1d")
+    # period_days['1mo'] = 22 trading days
+    assert 20 <= len(candles) <= 22, f"Expected ~22 daily candles, got {len(candles)}"
+
+
+def test_simulator_intraday_no_weekends():
+    from services.market_data_service import _generate_mme_history
+    candles = _generate_mme_history("AAPL", "5d", "15m")
+    assert candles, "Intraday simulator must return candles"
+    bad = [
+        c for c in candles
+        if datetime.fromisoformat(c["timestamp"]).weekday() >= 5
+    ]
+    assert not bad, f"Intraday simulator returned {len(bad)} weekend candles"
+
+
+def test_simulator_intraday_session_hours():
+    from services.market_data_service import _generate_mme_history
+    candles = _generate_mme_history("AAPL", "5d", "15m")
+    for c in candles:
+        t = datetime.fromisoformat(c["timestamp"])
+        assert t.hour >= 9, f"Candle before 9 AM: {c['timestamp']}"
+        assert t.hour < 16, f"Candle after 4 PM: {c['timestamp']}"
+
+
+def test_simulator_deterministic():
+    from services.market_data_service import _generate_mme_history
+    a = _generate_mme_history("RELIANCE.NS", "1mo", "1d")
+    b = _generate_mme_history("RELIANCE.NS", "1mo", "1d")
+    assert [c["close"] for c in a] == [c["close"] for c in b], \
+        "Simulator must be deterministic for same inputs"
