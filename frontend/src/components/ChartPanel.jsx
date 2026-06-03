@@ -87,16 +87,20 @@ function ChartPanel({ history, selectedSymbol, chartInterval, currency }) {
 
     // Detect if candles span multiple calendar days (fixes same-label bug for intraday week views)
     const firstMs = firstTimestamp
-      ? new Date(typeof firstTimestamp === 'string' && !firstTimestamp.includes('T')
-          ? firstTimestamp.replace(' ', 'T')
-          : firstTimestamp).getTime()
+      ? new Date(
+          typeof firstTimestamp === 'string' && !firstTimestamp.includes('T')
+            ? firstTimestamp.replace(' ', 'T')
+            : firstTimestamp
+        ).getTime()
       : 0;
     const lastMs = lastTimestamp
-      ? new Date(typeof lastTimestamp === 'string' && !lastTimestamp.includes('T')
-          ? lastTimestamp.replace(' ', 'T')
-          : lastTimestamp).getTime()
+      ? new Date(
+          typeof lastTimestamp === 'string' && !lastTimestamp.includes('T')
+            ? lastTimestamp.replace(' ', 'T')
+            : lastTimestamp
+        ).getTime()
       : 0;
-    const spansDays = !isNaN(firstMs) && !isNaN(lastMs) && (lastMs - firstMs) > 86400000;
+    const spansDays = !isNaN(firstMs) && !isNaN(lastMs) && lastMs - firstMs > 86400000;
 
     const startLabel = formatTimestamp(firstTimestamp, chartInterval, spansDays);
     const endLabel = formatTimestamp(lastTimestamp, chartInterval, spansDays);
