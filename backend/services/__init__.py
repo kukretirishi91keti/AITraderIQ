@@ -26,22 +26,15 @@ try:
 except ImportError as e:
     logger.warning(f"market_data_service not available: {e}")
 
-# FinBERT Sentiment
-try:
-    from .finbert_service import (
-        analyze_sentiment, analyze_batch,
-        analyze_news_for_symbol, aggregate_sentiment,
-        is_finbert_available,
-        get_service_status as get_finbert_status
-    )
-except (ImportError, Exception) as e:
-    logger.warning(f"finbert_service not available: {e}")
-    def analyze_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
-    def analyze_batch(*a, **kw): return []
-    def analyze_news_for_symbol(*a, **kw): return []
-    def aggregate_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
-    def is_finbert_available(): return False
-    def get_finbert_status(): return {"status": "unavailable"}
+# FinBERT Sentiment — optional, not active in current release.
+# torch + transformers are NOT in requirements.txt; stubs are used instead.
+# To enable: install torch + transformers, create services/finbert_service.py.
+def analyze_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
+def analyze_batch(*a, **kw): return []
+def analyze_news_for_symbol(*a, **kw): return []
+def aggregate_sentiment(*a, **kw): return {"label": "neutral", "score": 0}
+def is_finbert_available(): return False
+def get_finbert_status(): return {"status": "unavailable"}
 
 # News
 try:

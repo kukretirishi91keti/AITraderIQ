@@ -56,6 +56,11 @@ function SentimentDashboard({ symbol }) {
     <div className="space-y-4">
       {/* Composite Score */}
       <div className={`rounded-lg p-4 text-center ${SCORE_BG[data.label] || 'bg-gray-800/50'}`}>
+        <div className="flex justify-end mb-1">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/70 text-gray-400 font-mono tracking-wide">
+            SIMULATED
+          </span>
+        </div>
         <div className="text-3xl font-bold">
           <span className={SCORE_COLORS[data.label] || 'text-white'}>
             {data.composite_score > 0 ? '+' : ''}

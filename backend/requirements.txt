@@ -16,8 +16,9 @@ sentry-sdk[fastapi]>=1.40.0
 
 # AI/ML
 groq>=0.4.0
-transformers>=4.35.0
-torch>=2.0.0
+# transformers and torch removed: FinBERT service is not active.
+# The import is guarded in services/__init__.py with a try/except.
+# Re-add if FinBERT sentiment analysis is enabled in a future release.
 
 # HTTP Client (for sentiment APIs)
 aiohttp>=3.9.0

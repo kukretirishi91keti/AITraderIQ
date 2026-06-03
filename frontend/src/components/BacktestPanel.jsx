@@ -58,7 +58,12 @@ function BacktestPanel({ symbol, traderStyle = 'swing', currency = '$' }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-cyan-400">Signal Backtest: {symbol}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-cyan-400">Signal Backtest: {symbol}</h3>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/70 text-gray-400 font-mono tracking-wide">
+            SIMULATED
+          </span>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setView('single')}
