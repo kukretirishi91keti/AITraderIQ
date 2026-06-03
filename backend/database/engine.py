@@ -20,7 +20,8 @@ elif DATABASE_URL.startswith("postgresql://"):
 # Connection args vary by database type
 _connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
-    _connect_args = {"check_same_thread": False}
+    # timeout=20: retry for up to 20s when DB is locked (test teardown races)
+    _connect_args = {"check_same_thread": False, "timeout": 20}
 
 # Async engine for FastAPI
 engine = create_async_engine(

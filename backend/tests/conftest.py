@@ -1,6 +1,7 @@
 """Shared fixtures for backend tests."""
 
 import os
+import uuid
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -9,8 +10,11 @@ from datetime import timedelta
 # Force test environment BEFORE any app imports
 os.environ["DEMO_MODE"] = "true"
 os.environ["JWT_SECRET_KEY"] = "test-secret-key-not-for-production"
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
 os.environ["GROQ_API_KEY"] = ""  # Force rule-based AI fallback
+
+# Each worker gets its own DB file to avoid SQLite locking across tests
+_TEST_DB = f"sqlite+aiosqlite:///./test_{uuid.uuid4().hex[:8]}.db"
+os.environ["DATABASE_URL"] = _TEST_DB
 
 from main import app  # noqa: E402
 from database.engine import engine, Base  # noqa: E402
@@ -19,7 +23,7 @@ from auth.security import create_access_token, hash_password  # noqa: E402
 
 @pytest_asyncio.fixture
 async def db():
-    """Create fresh database tables for each test."""
+    """Create fresh database tables for each test, drop after."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
