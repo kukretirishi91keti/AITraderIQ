@@ -369,16 +369,12 @@ async def test_journey_expired_token_recovery(client: AsyncClient):
     me = await client.get("/api/auth/me", headers=expired_headers)
     assert me.status_code == 401
 
-    # Re-login with form data (username matches _quick_register format)
+    # Re-login via OAuth2 form (username from _quick_register: "journeyexpire1")
     login_resp = await client.post(
         "/api/auth/login",
-        data={
-            "username": "journeyexpire1",
-            "password": "SecurePass123!",
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        data={"username": user["user"]["username"], "password": "SecurePass123!"},
     )
-    assert login_resp.status_code == 200
+    assert login_resp.status_code == 200, f"Re-login failed: {login_resp.text}"
 
     # New token works
     new_token = login_resp.json()["access_token"]

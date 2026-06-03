@@ -283,6 +283,7 @@ async def test_smoke_1000_concurrent_users(client):
 # =============================================================================
 
 @pytest.mark.asyncio
+@pytest.mark.slow
 async def test_registration_storm_1000(client):
     """Verify 1000 unique users can register without collisions or data loss."""
     results = {"success": 0, "duplicate": 0, "error": 0, "db_locked": 0}
@@ -436,6 +437,7 @@ async def test_strategy_intelligence_load(client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.slow
 async def test_authenticated_workflow_at_scale(client):
     """Verify full authenticated workflows (register -> login -> CRUD) at scale."""
     num_users = 200
