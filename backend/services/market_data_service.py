@@ -831,7 +831,10 @@ def _generate_mme_history(
     # Collect trading-day timestamps in reverse order (most recent first), then reverse
     now = datetime.now()
     timestamps = []
-    cursor = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    # Start cursor at the most recent past market close (15:30).
+    # If today's close hasn't happened yet, roll back to yesterday's close.
+    close_today = now.replace(hour=15, minute=30, second=0, microsecond=0)
+    cursor = close_today if now >= close_today else close_today - timedelta(days=1)
     walked = 0
 
     if candle_minutes:
