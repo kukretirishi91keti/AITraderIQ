@@ -543,10 +543,11 @@ async def test_endpoint_correctness_spot_checks(client):
     assert models.status_code == 200
     mdata = models.json()
     assert "available" in mdata
-    assert len(mdata["available"]) >= 4
+    assert len(mdata["available"]) >= 2  # retired Groq models removed
     assert "default" in mdata
     model_ids = [m["id"] for m in mdata["available"]]
-    for expected in AI_MODELS:
+    # Retired models (mixtral/gemma2) are still accepted by /query but no longer listed
+    for expected in ("llama-3.3-70b-versatile", "llama-3.1-8b-instant"):
         assert expected in model_ids, f"Missing model: {expected}"
 
     # 3. Strategy list structure

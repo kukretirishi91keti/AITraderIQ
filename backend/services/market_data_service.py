@@ -524,27 +524,54 @@ _YF_HEADERS = {
     "Referer": "https://finance.yahoo.com/",
 }
 
+_YAHOO_HOSTS = ("query1.finance.yahoo.com", "query2.finance.yahoo.com")
+
+
+async def _yahoo_chart(symbol: str, params: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    """GET Yahoo's v8 chart endpoint, failing over between its two API hosts.
+
+    Returns the first chart result dict, or None. Never raises.
+    """
+    async with httpx.AsyncClient(timeout=8.0, headers=_YF_HEADERS, follow_redirects=True) as client:
+        for host in _YAHOO_HOSTS:
+            url = f"https://{host}/v8/finance/chart/{symbol}"
+            try:
+                r = await client.get(url, params=params)
+            except Exception as e:
+                logger.warning(f"Yahoo {host} error for {symbol}: {e}")
+                continue
+            if r.status_code != 200:
+                logger.warning(f"Yahoo {host} returned {r.status_code} for {symbol}")
+                continue
+            try:
+                result = (r.json().get("chart") or {}).get("result")
+            except ValueError:
+                continue
+            if result:
+                return result[0]
+    return None
+
+
 async def _fetch_yahoo_quote_async(symbol: str) -> Optional[Dict[str, Any]]:
     """
     Direct Yahoo Finance v8 API call with browser User-Agent.
     Avoids the yfinance library which Yahoo actively rate-limits on shared IPs.
     """
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
     try:
-        async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS, follow_redirects=True) as client:
-            r = await client.get(url, params={"interval": "1d", "range": "2d"})
-            if r.status_code == 429:
-                logger.warning(f"Yahoo direct: rate limited for {symbol}")
-                return None
-            d = r.json()
-        result = d.get("chart", {}).get("result")
-        if not result:
+        chart = await _yahoo_chart(symbol, {"interval": "1d", "range": "5d"})
+        if not chart:
             return None
-        meta = result[0].get("meta", {})
+        meta = chart.get("meta", {})
         price = meta.get("regularMarketPrice") or meta.get("previousClose")
         if not price:
             return None
-        prev_close = meta.get("chartPreviousClose") or meta.get("previousClose") or price
+        # Previous session close = second-to-last daily close. (chartPreviousClose
+        # is the close *before the whole range*, which overstated the day change.)
+        closes = [c for c in ((chart.get("indicators") or {}).get("quote") or [{}])[0].get("close", []) if c]
+        if len(closes) >= 2:
+            prev_close = closes[-2]
+        else:
+            prev_close = meta.get("previousClose") or meta.get("chartPreviousClose") or price
         change = price - prev_close
         change_pct = (change / prev_close * 100) if prev_close else 0
         market = _get_market_from_symbol(symbol)
@@ -578,17 +605,11 @@ async def _fetch_yahoo_history_async(symbol: str, period: str = "1mo", interval:
     _interval_map = {"1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1h": "60m", "4h": "60m", "1d": "1d", "1w": "1wk", "1wk": "1wk"}
     yf_period = _period_map.get(period, "1mo")
     yf_interval = _interval_map.get(interval, "1d")
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
     try:
-        async with httpx.AsyncClient(timeout=10.0, headers=_YF_HEADERS, follow_redirects=True) as client:
-            r = await client.get(url, params={"interval": yf_interval, "range": yf_period})
-            if r.status_code == 429:
-                logger.warning(f"Yahoo direct history: rate limited for {symbol}")
-                return None
-            d = r.json()
-        result = d.get("chart", {}).get("result")
-        if not result:
+        chart = await _yahoo_chart(symbol, {"interval": yf_interval, "range": yf_period})
+        if not chart:
             return None
+        result = [chart]
         timestamps = result[0].get("timestamp", [])
         ohlcv = result[0].get("indicators", {}).get("quote", [{}])[0]
         opens   = ohlcv.get("open", [])
@@ -1023,6 +1044,16 @@ class MarketDataService:
                 self.stats["live_fetches"] += 1
                 self.stats["last_live_fetch"] = datetime.now().isoformat()
                 return fh_data
+
+        # 2d. Yahoo direct for non-Indian symbols (no key needed; works from
+        # most home/office IPs, often blocked on cloud hosts)
+        if not is_indian:
+            yahoo_data = await _fetch_yahoo_quote_async(symbol)
+            if yahoo_data:
+                self.cache.set(cache_key, yahoo_data, source="YAHOO_DIRECT")
+                self.stats["live_fetches"] += 1
+                self.stats["last_live_fetch"] = datetime.now().isoformat()
+                return yahoo_data
 
         # 3. Try yfinance via SingleFlight (prevents thundering herd)
         async def fetch_live():

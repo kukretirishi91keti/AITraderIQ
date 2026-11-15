@@ -81,8 +81,6 @@ import TraderContextRibbon from './components/TraderContextRibbon';
 const AI_MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', tag: 'Fast' },
-  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', tag: '' },
-  { id: 'gemma2-9b-it', label: 'Gemma 2 9B', tag: '' },
 ];
 
 // ============================================================
@@ -185,7 +183,21 @@ export default function App() {
   const modelPickerRef = useRef(null);
 
   // Health monitoring
-  const [healthStatus, setHealthStatus] = useState('HEALTHY');
+  const [healthStatus, setHealthStatus] = useState('CHECKING');
+  // Server-side AI mode ('GROQ' | 'RULE_BASED' | null while unknown) from /api/config-status
+  const [serverAiMode, setServerAiMode] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_BASE}/api/config-status`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d?.data_sources?.ai_chat) setServerAiMode(d.data_sources.ai_chat);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [pollingInterval, setPollingInterval] = useState(POLLING_INTERVALS.HEALTHY);
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const [demoMode, setDemoMode] = useState(false);
@@ -642,6 +654,14 @@ export default function App() {
           if (healthData.polling_recommendation)
             setPollingInterval(healthData.polling_recommendation * 1000);
           if (healthData.demo_mode !== undefined) setDemoMode(healthData.demo_mode);
+        } else if (healthRes.status === 'rejected' && healthRes.reason?.name !== 'AbortError') {
+          setHealthStatus('BACKEND UNREACHABLE');
+        } else if (healthRes.status === 'fulfilled') {
+          setHealthStatus(
+            healthRes.value.status >= 500
+              ? 'BACKEND UNREACHABLE'
+              : `DEGRADED (${healthRes.value.status})`
+          );
         }
         setLastFetchTime(new Date());
         setLoading(false);
@@ -741,9 +761,13 @@ export default function App() {
     setAiMessages((prev) => [...prev, { role: 'user', content: prompt }]);
     setAiInput('');
     setAiLoading(true);
+    // Hard client-side timeout so a stalled backend/proxy never leaves the chat hanging
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
     try {
       const response = await fetch(`${API_BASE}/api/genai/query`, {
         method: 'POST',
+        signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question: prompt,
@@ -761,6 +785,17 @@ export default function App() {
           groq_api_key: groqApiKey || undefined,
         }),
       });
+      if (!response.ok) {
+        const detail = await response.text().catch(() => '');
+        const reason =
+          response.status === 429
+            ? 'Too many AI requests — wait a minute and try again.'
+            : (response.status >= 502 && response.status <= 504) ||
+                (response.status === 500 && !detail)
+              ? 'Backend is unreachable or still waking up. Check it is running, then retry in ~30s.'
+              : `Server returned ${response.status}${detail ? `: ${detail.slice(0, 120)}` : ''}`;
+        throw new Error(reason);
+      }
       const data = await response.json();
       const modelLabel = AI_MODEL_OPTIONS.find((m) => m.id === data.model)?.label;
       setAiMessages((prev) => [
@@ -776,11 +811,17 @@ export default function App() {
         ...prev,
         {
           role: 'assistant',
-          content: `AI service temporarily unavailable. Error: ${err.message}`,
+          content:
+            err.name === 'AbortError'
+              ? 'AI did not respond within 30s. The backend may be cold-starting — please retry.'
+              : err instanceof TypeError
+                ? `Cannot reach the backend at ${API_BASE || window.location.origin}/api. Is it running? (Locally: uvicorn main:app --port 8000 in backend/)`
+                : `AI request failed: ${err.message}`,
           source: 'error',
         },
       ]);
     } finally {
+      clearTimeout(timer);
       setAiLoading(false);
     }
   };
@@ -1074,7 +1115,13 @@ export default function App() {
       {/* Status Bar */}
       <div className="bg-gray-950 px-4 py-1 flex items-center justify-between text-xs text-gray-500 border-b border-gray-800">
         <span>
-          {healthStatus === 'HEALTHY' ? '🟢' : healthStatus === 'DEGRADED' ? '🟡' : '🔴'}
+          {healthStatus === 'HEALTHY'
+            ? '🟢'
+            : healthStatus === 'CHECKING'
+              ? '⚪'
+              : healthStatus.startsWith('DEGRADED')
+                ? '🟡'
+                : '🔴'}
           {healthStatus === 'HEALTHY' ? ' System healthy' : ` Status: ${healthStatus}`}
           {' • Polling: '}
           {pollingInterval / 1000}s{' • Press ? for shortcuts'}
@@ -2178,7 +2225,31 @@ export default function App() {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-cyan-400">AI Assistant</h3>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-green-400">● Active</span>
+                {(() => {
+                  const lastSrc =
+                    [...aiMessages].reverse().find((m) => m.role === 'assistant')?.source || '';
+                  const mode =
+                    lastSrc === 'error'
+                      ? { label: 'Offline', cls: 'text-red-400', tip: 'Last AI request failed' }
+                      : lastSrc.startsWith('rule-based')
+                        ? {
+                            label: 'Rule-based',
+                            cls: 'text-yellow-400',
+                            tip: lastSrc.split('|')[1]?.trim() || 'No LLM key',
+                          }
+                        : groqApiKey || serverAiMode === 'GROQ'
+                          ? { label: 'Groq AI', cls: 'text-green-400', tip: 'LLM answers enabled' }
+                          : {
+                              label: 'Rule-based',
+                              cls: 'text-yellow-400',
+                              tip: 'Add a free Groq key via 🔑 for full AI answers',
+                            };
+                  return (
+                    <span className={`text-xs ${mode.cls}`} title={mode.tip}>
+                      ● {mode.label}
+                    </span>
+                  );
+                })()}
                 <button
                   className="md:hidden text-gray-400 hover:text-white text-lg leading-none"
                   onClick={() => setShowMobileAI(false)}
