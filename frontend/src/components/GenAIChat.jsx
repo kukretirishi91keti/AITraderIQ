@@ -34,8 +34,6 @@ const formatPrice = (price, ticker) => {
 const MODEL_OPTIONS = [
   { id: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B', tag: 'Best' },
   { id: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B', tag: 'Fast' },
-  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', tag: '' },
-  { id: 'gemma2-9b-it', label: 'Gemma 2 9B', tag: '' },
 ];
 
 export default function GenAIChat({

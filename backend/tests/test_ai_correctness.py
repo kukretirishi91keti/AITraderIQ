@@ -173,3 +173,46 @@ async def test_ai_models_list_has_default(client: AsyncClient):
     assert len(data["available"]) >= 1
     assert "default" in data
     assert isinstance(data["default"], str)
+
+
+# ---------------------------------------------------------------------------
+# Groq path: bounded, non-blocking, and always returns JSON
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_ai_groq_timeout_falls_back_cleanly(client: AsyncClient, monkeypatch):
+    """A hung Groq call must yield a rule-based answer, not a dropped connection."""
+    import asyncio
+    import routers.genai as genai
+
+    async def _hang(*a, **k):
+        raise asyncio.TimeoutError()
+
+    monkeypatch.setattr(genai, "_groq_chat", _hang)
+    resp = await client.post("/api/genai/query", json={
+        "question": "entry?", "symbol": "RELIANCE.NS", "price": 1339.0,
+        "groq_api_key": "gsk_dummy",
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["answer"]
+    assert data["source"].startswith("rule-based")
+    assert "timed out" in data["source"]
+
+
+@pytest.mark.asyncio
+async def test_ai_retired_model_is_upgraded(client: AsyncClient, monkeypatch):
+    import routers.genai as genai
+    seen = {}
+
+    async def _ok(key, model, messages, max_tokens):
+        seen["model"] = model
+        return "ok"
+
+    monkeypatch.setattr(genai, "_groq_chat", _ok)
+    resp = await client.post("/api/genai/query", json={
+        "question": "hi", "model": "mixtral-8x7b-32768", "groq_api_key": "gsk_dummy",
+    })
+    assert resp.status_code == 200
+    assert resp.json()["model"] == genai.DEFAULT_MODEL
+    assert seen["model"] == genai.DEFAULT_MODEL

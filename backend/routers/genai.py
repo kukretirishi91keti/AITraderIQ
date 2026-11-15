@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import os
+import asyncio
 import logging
 
 router = APIRouter(prefix="/api/genai", tags=["genai"])
@@ -29,6 +30,37 @@ logger = logging.getLogger(__name__)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 DEFAULT_MODEL = "llama-3.3-70b-versatile"
 MAX_TOKENS = 300
+# Hard ceiling for one AI answer. Must stay below the proxy timeouts in front of
+# the backend (Netlify ~26s), otherwise the browser sees a dropped connection
+# ("Failed to fetch") instead of a clean rule-based fallback.
+GROQ_TOTAL_TIMEOUT_S = 18.0
+# Models Groq has retired; requests for them are transparently upgraded.
+RETIRED_MODELS = {"mixtral-8x7b-32768", "gemma2-9b-it", "llama3-70b-8192", "llama3-8b-8192"}
+
+
+async def _groq_chat(api_key: str, model: str, messages: list, max_tokens: int) -> str:
+    """Non-blocking Groq call with a bounded total time.
+
+    The previous implementation used the synchronous client inside an async
+    endpoint, which froze the whole event loop (every other request) for up to
+    ~45s while Groq retried. This uses AsyncGroq + one retry + a hard timeout.
+    """
+    from groq import AsyncGroq
+
+    client = AsyncGroq(api_key=api_key, timeout=12.0, max_retries=1)
+    resp = await asyncio.wait_for(
+        client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=0.7,
+        ),
+        timeout=GROQ_TOTAL_TIMEOUT_S,
+    )
+    content = (resp.choices[0].message.content or "").strip()
+    if not content:
+        raise RuntimeError("Empty response from model")
+    return content
 
 # =============================================================================
 # REQUEST/RESPONSE MODELS
@@ -240,40 +272,48 @@ async def query_ai(request: QueryRequest):
     """
     # Use user-supplied key if provided, otherwise fall back to server env key
     effective_key = (request.groq_api_key or '').strip() or GROQ_API_KEY
-    try:
-        from groq import Groq
-        client = Groq(api_key=effective_key, timeout=15.0) if effective_key else None
-    except Exception:
-        client = None
+    groq_error = None
 
-    if client and effective_key:
+    if effective_key:
+        selected_model = request.model or DEFAULT_MODEL
+        if selected_model in RETIRED_MODELS:
+            selected_model = DEFAULT_MODEL
+        messages = [
+            {"role": "system", "content": get_system_prompt(request)},
+            {"role": "user", "content": request.question},
+        ]
         try:
-            system_prompt = get_system_prompt(request)
-            selected_model = request.model or DEFAULT_MODEL
-
-            response = client.chat.completions.create(
-                model=selected_model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": request.question}
-                ],
-                max_tokens=MAX_TOKENS,
-                temperature=0.7,
-            )
-
+            answer = await _groq_chat(effective_key, selected_model, messages, MAX_TOKENS)
             return QueryResponse(
-                answer=response.choices[0].message.content,
+                answer=answer,
                 source="groq",
                 model=selected_model,
-                timestamp=datetime.now().isoformat()
+                timestamp=datetime.now().isoformat(),
             )
-
+        except ImportError:
+            groq_error = "groq library not installed on server"
+        except asyncio.TimeoutError:
+            groq_error = f"timed out after {GROQ_TOTAL_TIMEOUT_S:.0f}s"
         except Exception as e:
-            groq_error = str(e)[:120]
+            msg = str(e)
+            # Model retired/unknown -> one retry on the default model
+            if selected_model != DEFAULT_MODEL and ("model" in msg.lower() and ("decommission" in msg.lower() or "not found" in msg.lower() or "does not exist" in msg.lower())):
+                try:
+                    answer = await _groq_chat(effective_key, DEFAULT_MODEL, messages, MAX_TOKENS)
+                    return QueryResponse(
+                        answer=answer, source="groq", model=DEFAULT_MODEL,
+                        timestamp=datetime.now().isoformat(),
+                    )
+                except Exception as e2:
+                    msg = str(e2)
+            if "401" in msg or "invalid_api_key" in msg.lower() or "invalid api key" in msg.lower():
+                groq_error = "invalid API key — re-enter it via 🔑 AI Key"
+            elif "429" in msg or "rate limit" in msg.lower():
+                groq_error = "Groq rate limit reached — try again in a minute"
+            else:
+                groq_error = msg[:120]
+        if groq_error:
             logger.error(f"Groq API error: {groq_error}")
-            # Fall through to fallback, but surface the real error
-    else:
-        groq_error = None
 
     # Fallback response
     try:
@@ -305,14 +345,10 @@ async def test_api_key(request: TestKeyRequest):
     if not key:
         return {"ok": False, "error": "No key provided"}
     try:
-        from groq import Groq
-        client = Groq(api_key=key)
-        client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            messages=[{"role": "user", "content": "hi"}],
-            max_tokens=5,
-        )
+        await _groq_chat(key, DEFAULT_MODEL, [{"role": "user", "content": "hi"}], 5)
         return {"ok": True, "model": DEFAULT_MODEL}
+    except asyncio.TimeoutError:
+        return {"ok": False, "error": "Groq did not answer in time — try again"}
     except ImportError:
         return {"ok": False, "error": "Groq library not installed on server"}
     except Exception as e:
@@ -321,16 +357,9 @@ async def test_api_key(request: TestKeyRequest):
 @router.get("/health")
 async def genai_health():
     """Check GenAI service health."""
-    client = get_groq_client()
-    
-    if client and GROQ_API_KEY:
+    if GROQ_API_KEY:
         try:
-            # Quick test call
-            response = client.chat.completions.create(
-                model=DEFAULT_MODEL,
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=5
-            )
+            await _groq_chat(GROQ_API_KEY, DEFAULT_MODEL, [{"role": "user", "content": "test"}], 5)
             return {
                 "status": "healthy",
                 "provider": "groq",
@@ -341,11 +370,11 @@ async def genai_health():
             return {
                 "status": "degraded",
                 "provider": "groq",
-                "error": str(e)[:100],
+                "error": (str(e) or type(e).__name__)[:100],
                 "fallback": "rule-based",
                 "timestamp": datetime.now().isoformat()
             }
-    
+
     return {
         "status": "fallback",
         "provider": "rule-based",
@@ -360,8 +389,6 @@ async def list_models():
         "available": [
             {"id": "llama-3.3-70b-versatile", "label": "Llama 3.3 70B", "provider": "groq", "recommended": True, "description": "Best quality, deeper analysis"},
             {"id": "llama-3.1-8b-instant", "label": "Llama 3.1 8B", "provider": "groq", "fast": True, "description": "Fastest responses"},
-            {"id": "mixtral-8x7b-32768", "label": "Mixtral 8x7B", "provider": "groq", "description": "Great balance of speed & quality"},
-            {"id": "gemma2-9b-it", "label": "Gemma 2 9B", "provider": "groq", "description": "Google's compact model"},
         ],
         "default": DEFAULT_MODEL,
         "fallback": "rule-based"
