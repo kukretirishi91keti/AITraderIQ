@@ -115,6 +115,7 @@ async def lifespan(app: FastAPI):
 
     # Start paper trade stop-loss/take-profit monitor
     alert_task = None
+    bot_task = None
     if db_ready:
         try:
             from services.paper_trade_monitor import monitor_paper_trades
@@ -134,6 +135,16 @@ async def lifespan(app: FastAPI):
             print("  Alert Monitor: RUNNING (60s interval)")
         except Exception as e:
             logger.warning(f"Alert monitor failed to start: {e}")
+
+        # Start auto-bot executor
+        try:
+            from services.bot_executor import run_bot_executor
+            bot_task = asyncio.create_task(
+                run_bot_executor(AsyncSessionLocal, interval_seconds=60)
+            )
+            print("  Auto-Bot Executor: RUNNING (60s interval)")
+        except Exception as e:
+            logger.warning(f"Auto-bot executor failed to start: {e}")
 
     print("\n" + "=" * 70)
     print(f"  TraderAI Pro API v{VERSION} - PRODUCTION READY")
@@ -170,7 +181,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Cleanup
-    for task in [monitor_task, alert_task]:
+    for task in [monitor_task, alert_task, bot_task]:
         if task is not None:
             task.cancel()
             try:
@@ -394,6 +405,13 @@ load_router(
     ['routers.paper_trade'],
     'paper trade router',
     '(paper trading simulation)'
+)
+
+# Load auto-bot router
+load_router(
+    ['routers.bot'],
+    'bot router',
+    '(auto-bot config, status, decisions)'
 )
 
 

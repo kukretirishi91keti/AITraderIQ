@@ -38,6 +38,8 @@ class User(Base):
     portfolio_items = relationship("PortfolioItem", back_populates="user", cascade="all, delete-orphan")
     alerts = relationship("Alert", back_populates="user", cascade="all, delete-orphan")
     paper_trades = relationship("PaperTrade", back_populates="user", cascade="all, delete-orphan")
+    bot_config = relationship("BotConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    bot_decisions = relationship("BotDecisionLog", back_populates="user", cascade="all, delete-orphan")
 
 
 class WatchlistItem(Base):
@@ -110,3 +112,41 @@ class PaperTrade(Base):
     closed_at = Column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="paper_trades")
+
+
+class BotConfig(Base):
+    """Per-user auto-bot configuration."""
+    __tablename__ = "bot_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    enabled = Column(Boolean, default=False)
+    strategy = Column(String(20), default="swing")  # day, swing, position, scalp
+    # JSON list of symbols to trade e.g. ["AAPL", "MSFT"]
+    symbols = Column(JSON, default=list)
+    max_position_usd = Column(Float, default=1000.0)
+    max_daily_trades = Column(Integer, default=5)
+    max_daily_loss_pct = Column(Float, default=2.0)   # stop bot if daily loss > 2%
+    min_confidence = Column(Float, default=70.0)       # only act if confidence >= this
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="bot_config")
+
+
+class BotDecisionLog(Base):
+    """Audit trail of every decision the auto-bot makes."""
+    __tablename__ = "bot_decision_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    symbol = Column(String(20), nullable=False)
+    action = Column(String(10), nullable=False)   # BUY, SELL, HOLD, SKIP
+    confidence = Column(Float, nullable=True)
+    score = Column(Integer, nullable=True)
+    reason = Column(Text, default="")
+    indicators = Column(JSON, nullable=True)      # snapshot of RSI/MACD/BB at decision time
+    trade_id = Column(Integer, ForeignKey("paper_trades.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="bot_decisions")
