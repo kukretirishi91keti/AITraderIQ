@@ -255,6 +255,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 def load_router(module_paths, router_name, description=""):
     """Try to load a router from multiple possible paths."""
     from importlib import import_module
+    import_errors = []
     for path in module_paths:
         try:
             module = import_module(path)
@@ -263,13 +264,16 @@ def load_router(module_paths, router_name, description=""):
             loaded_routers.append(router_name)
             logger.info(f"  {router_name} loaded {description}")
             return True
-        except ImportError:
+        except ImportError as e:
+            import_errors.append(f"{path}: {e}")
             continue
         except Exception as e:
             logger.warning(f"Error loading {router_name} from {path}: {e}")
             continue
 
-    logger.warning(f"  {router_name} not available")
+    # Surface the real reason — a silently missing router shows up later as
+    # confusing 404s (e.g. /api/auth/register when greenlet is not installed).
+    logger.error(f"  {router_name} NOT LOADED: {' | '.join(import_errors) or 'see warnings above'}")
     return False
 
 
